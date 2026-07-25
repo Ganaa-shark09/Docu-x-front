@@ -1,16 +1,13 @@
 import { Routes } from '@angular/router';
 
 import { authGuard } from './core/guards/auth.guard';
-import { publicGuard } from './core/guards/public.guard';
 import { MainLayoutComponent } from './core/layout/main-layout.component';
-import { PlaceholderPageComponent } from './shared/components/placeholder-page.component';
 
 export const routes: Routes = [
   {
     path: 'login',
-    canActivate: [publicGuard],
-    loadComponent: () =>
-      import('./features/auth/login/login.component').then((m) => m.LoginComponent),
+    loadChildren: () =>
+      import('./features/auth/auth.routes').then((m) => m.AUTH_ROUTES),
   },
   {
     path: '',
@@ -19,35 +16,45 @@ export const routes: Routes = [
     children: [
       {
         path: 'dashboard',
-        loadComponent: () =>
-          import('./features/dashboard/pages/dashboard-page.component').then(
-            (m) => m.DashboardPageComponent,
+        loadChildren: () =>
+          import('./features/dashboard/dashboard.routes').then(
+            (m) => m.DASHBOARD_ROUTES,
           ),
       },
       {
         path: 'documents',
-        component: PlaceholderPageComponent,
-        data: { title: 'Documents' },
+        loadChildren: () =>
+          import('./features/documents/documents.routes').then(
+            (m) => m.DOCUMENTS_ROUTES,
+          ),
       },
       {
         path: 'ai-chat',
-        component: PlaceholderPageComponent,
-        data: { title: 'AI Chat' },
+        loadChildren: () =>
+          import('./features/ai-chat/ai-chat.routes').then(
+            (m) => m.AI_CHAT_ROUTES,
+          ),
       },
       {
         path: 'approvals',
-        component: PlaceholderPageComponent,
-        data: { title: 'Approvals' },
+        loadChildren: () =>
+          import('./features/approvals/approvals.routes').then(
+            (m) => m.APPROVALS_ROUTES,
+          ),
       },
       {
         path: 'workflows',
-        component: PlaceholderPageComponent,
-        data: { title: 'Workflows' },
+        loadChildren: () =>
+          import('./features/workflows/workflows.routes').then(
+            (m) => m.WORKFLOWS_ROUTES,
+          ),
       },
       {
         path: 'notifications',
-        component: PlaceholderPageComponent,
-        data: { title: 'Notifications' },
+        loadChildren: () =>
+          import('./features/notifications/notifications.routes').then(
+            (m) => m.NOTIFICATIONS_ROUTES,
+          ),
       },
       {
         path: '',

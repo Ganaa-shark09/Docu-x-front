@@ -4,7 +4,7 @@ import { BehaviorSubject, Observable, map, tap } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import { API_ENDPOINTS } from '../config/api-endpoints';
-import { AuthTokens, LoginRequest, LoginResponse, UserProfile } from '../models/auth.model';
+import { AuthTokens, LoginRequest, LoginResponse, UserProfile } from './models/auth.model';
 import { TokenStorageService } from './token-storage.service';
 
 @Injectable({

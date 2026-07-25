@@ -1,0 +1,56 @@
+.pipeline-flow-line {
+        transform-origin: left center;
+        background: linear-gradient(
+          90deg,
+          rgba(14, 165, 233, 0.35),
+          rgba(45, 212, 191, 1),
+          rgba(14, 165, 233, 0.35)
+        );
+        background-size: 220% 100%;
+        animation:
+          pipelineSegmentFill 0.38s ease-out both,
+          pipelineWaterMove 1.1s linear infinite;
+        animation-delay: var(--flow-delay), var(--flow-delay);
+      }
+
+      .pipeline-flow-dot {
+        border-color: rgb(45 212 191);
+        box-shadow: 0 0 0 4px rgba(45, 212, 191, 0.12);
+        animation: pipelineDotPulse 0.35s ease-out both;
+        animation-delay: var(--flow-delay);
+      }
+
+      @keyframes pipelineSegmentFill {
+        0% {
+          transform: scaleX(0);
+          opacity: 0.25;
+        }
+        100% {
+          transform: scaleX(1);
+          opacity: 1;
+        }
+      }
+
+      @keyframes pipelineWaterMove {
+        0% {
+          background-position: 220% 0;
+        }
+        100% {
+          background-position: -220% 0;
+        }
+      }
+
+      @keyframes pipelineDotPulse {
+        0% {
+          transform: scale(0.75);
+          opacity: 0.4;
+        }
+        70% {
+          transform: scale(1.18);
+          opacity: 1;
+        }
+        100% {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }

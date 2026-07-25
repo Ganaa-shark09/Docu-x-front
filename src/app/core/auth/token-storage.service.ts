@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 
-import { AuthTokens, UserProfile } from '../models/auth.model';
+import { AuthTokens, UserProfile } from './models/auth.model';
 
 @Injectable({
   providedIn: 'root',

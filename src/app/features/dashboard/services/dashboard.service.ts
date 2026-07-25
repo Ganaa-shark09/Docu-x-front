@@ -11,7 +11,7 @@ import {
   ExtractionDashboardMetrics,
   RagUsageDashboardMetrics,
   RecentActivityResponse,
-} from '../../../core/models/dashboard.model';
+} from '../models/dashboard.model';
 
 @Injectable({
   providedIn: 'root',

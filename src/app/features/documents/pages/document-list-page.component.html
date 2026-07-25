@@ -1,0 +1,269 @@
+    <section class="space-y-6">
+      <div class="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h2 class="text-2xl font-bold text-slate-950">Documents</h2>
+          <p class="text-sm text-slate-500">
+            Upload, filter, review processing status, and open document details.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          (click)="toggleUpload()"
+          class="rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
+        >
+          {{ showUpload ? 'Hide Upload' : 'Upload Document' }}
+        </button>
+      </div>
+
+      <app-document-upload-form
+        *ngIf="showUpload"
+        [departments]="departments"
+        (uploaded)="handleUploaded()"
+      />
+
+      <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <form
+          [formGroup]="filtersForm"
+          (ngSubmit)="applyFilters()"
+          class="grid gap-4 lg:grid-cols-6"
+        >
+          <div class="lg:col-span-2">
+            <label class="mb-1 block text-sm font-medium text-slate-700">Search</label>
+            <input
+              type="text"
+              formControlName="search"
+              class="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-slate-900"
+              placeholder="Search title or filename"
+            />
+          </div>
+
+          <div>
+            <label class="mb-1 block text-sm font-medium text-slate-700">Status</label>
+            <select
+              formControlName="status"
+              class="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-slate-900"
+            >
+              <option value="">All</option>
+              <option value="uploaded">Uploaded</option>
+              <option value="processing">Processing</option>
+              <option value="ready">Ready</option>
+              <option value="failed">Failed</option>
+              <option value="archived">Archived</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="mb-1 block text-sm font-medium text-slate-700">Type</label>
+            <select
+              formControlName="document_type"
+              class="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-slate-900"
+            >
+              <option value="">All</option>
+              <option value="invoice">Invoice</option>
+              <option value="contract">Contract</option>
+              <option value="policy">Policy</option>
+              <option value="resume">Resume</option>
+              <option value="purchase_order">Purchase Order</option>
+              <option value="report">Report</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="mb-1 block text-sm font-medium text-slate-700">Sensitivity</label>
+            <select
+              formControlName="sensitivity_label"
+              class="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-slate-900"
+            >
+              <option value="">All</option>
+              <option value="public">Public</option>
+              <option value="internal">Internal</option>
+              <option value="confidential">Confidential</option>
+              <option value="highly_confidential">Highly Confidential</option>
+              <option value="restricted">Restricted</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="mb-1 block text-sm font-medium text-slate-700">AI Ready</label>
+            <select
+              formControlName="is_ai_ready"
+              class="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-slate-900"
+            >
+              <option value="">All</option>
+              <option value="true">AI Ready</option>
+              <option value="false">Not Ready</option>
+            </select>
+          </div>
+
+          <div class="flex items-end gap-2 lg:col-span-6">
+            <button
+              type="submit"
+              class="rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
+            >
+              Apply Filters
+            </button>
+
+            <button
+              type="button"
+              (click)="resetFilters()"
+              class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+            >
+              Reset
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div
+        *ngIf="errorMessage"
+        class="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+      >
+        {{ errorMessage }}
+      </div>
+
+      <div class="rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div class="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+          <div>
+            <h3 class="font-semibold text-slate-950">Document Library</h3>
+            <p class="text-sm text-slate-500">{{ totalCount }} documents found</p>
+          </div>
+
+          <button
+            type="button"
+            (click)="loadDocuments()"
+            [disabled]="isLoading"
+            class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+          >
+            {{ isLoading ? 'Refreshing...' : 'Refresh' }}
+          </button>
+        </div>
+
+        <div *ngIf="isLoading && !documents.length" class="p-8 text-center text-sm text-slate-500">
+          Loading documents...
+        </div>
+
+        <div *ngIf="!isLoading && !documents.length" class="p-8 text-center text-sm text-slate-500">
+          No documents found.
+        </div>
+
+        <div *ngIf="documents.length" class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-slate-200">
+            <thead class="bg-slate-50">
+              <tr>
+                <th
+                  class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500"
+                >
+                  Document
+                </th>
+                <th
+                  class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500"
+                >
+                  Status
+                </th>
+                <th
+                  class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500"
+                >
+                  Type
+                </th>
+                <th
+                  class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500"
+                >
+                  Sensitivity
+                </th>
+                <th
+                  class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500"
+                >
+                  AI
+                </th>
+                <th
+                  class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500"
+                >
+                  Created
+                </th>
+                <th
+                  class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500"
+                >
+                  Action
+                </th>
+              </tr>
+            </thead>
+
+            <tbody class="divide-y divide-slate-100 bg-white">
+              <tr *ngFor="let document of documents" class="hover:bg-slate-50">
+                <td class="px-5 py-4">
+                  <div class="font-medium text-slate-950">{{ document.title }}</div>
+                  <div class="text-xs text-slate-500">
+                    {{ document.original_filename }} · {{ formatFileSize(document.file_size) }}
+                  </div>
+                  <div *ngIf="document.department_name" class="mt-1 text-xs text-slate-400">
+                    {{ document.department_name }}
+                  </div>
+                </td>
+
+                <td class="px-5 py-4">
+                  <app-document-status-badge [status]="document.status" />
+                </td>
+
+                <td class="px-5 py-4 text-sm text-slate-600">
+                  {{ formatLabel(document.document_type) }}
+                </td>
+
+                <td class="px-5 py-4 text-sm text-slate-600">
+                  {{ formatLabel(document.sensitivity_label) }}
+                </td>
+
+                <td class="px-5 py-4">
+                  <span
+                    class="rounded-full px-2.5 py-1 text-xs font-semibold"
+                    [class.bg-emerald-100]="document.is_ai_ready"
+                    [class.text-emerald-700]="document.is_ai_ready"
+                    [class.bg-slate-100]="!document.is_ai_ready"
+                    [class.text-slate-600]="!document.is_ai_ready"
+                  >
+                    {{ document.is_ai_ready ? 'Ready' : 'Not Ready' }}
+                  </span>
+                </td>
+
+                <td class="px-5 py-4 text-sm text-slate-500">
+                  {{ document.created_at | date: 'mediumDate' }}
+                </td>
+
+                <td class="px-5 py-4 text-right">
+                  <a
+                    [routerLink]="['/documents', document.uuid]"
+                    class="rounded-xl bg-slate-950 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+                  >
+                    Open
+                  </a>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="flex items-center justify-between border-t border-slate-200 px-5 py-4">
+          <button
+            type="button"
+            (click)="previousPage()"
+            [disabled]="!previousUrl || isLoading"
+            class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Previous
+          </button>
+
+          <span class="text-sm text-slate-500"> Page {{ currentPage }} </span>
+
+          <button
+            type="button"
+            (click)="nextPage()"
+            [disabled]="!nextUrl || isLoading"
+            class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
+      </div>
+    </section>
+  
