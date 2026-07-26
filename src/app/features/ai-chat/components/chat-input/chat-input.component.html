@@ -1,0 +1,22 @@
+<form [formGroup]="form" (ngSubmit)="submit()" class="chat-input">
+  <textarea
+    formControlName="message"
+    rows="1"
+    class="chat-input__textarea"
+    placeholder="Message DocuX AI..."
+    (keydown)="handleKeydown($event)"
+  ></textarea>
+
+  <button
+    type="submit"
+    [disabled]="form.invalid || isSending"
+    class="chat-input__send"
+    title="Send message"
+  >
+    ➤
+  </button>
+</form>
+
+<p *ngIf="form.controls.message.touched && form.controls.message.invalid" class="chat-input__error">
+  Message is required.
+</p>

@@ -1,0 +1,53 @@
+<div class="conversation-panel">
+  <div class="conversation-panel__header">
+    <div>
+      <div class="conversation-panel__title">Conversations</div>
+      <p>Recent document chats</p>
+    </div>
+
+    <!-- <button
+      type="button"
+      (click)="refresh.emit()"
+      [disabled]="isLoading"
+      title="Refresh conversations"
+    >
+      ↻
+    </button> -->
+  </div>
+
+  <div class="conversation-panel__actions">
+    <button
+      type="button"
+      (click)="newChat.emit()"
+      class="conversation-panel__new"
+    >
+      + New Chat
+    </button>
+  </div>
+
+  <div *ngIf="isLoading && !conversations.length" class="conversation-panel__empty">
+    Loading conversations...
+  </div>
+
+  <div *ngIf="!isLoading && !conversations.length" class="conversation-panel__empty">
+    No conversations yet.
+  </div>
+
+  <div *ngIf="conversations.length" class="conversation-list">
+    <button
+      type="button"
+      *ngFor="let conversation of conversations"
+      (click)="selectConversation(conversation.uuid)"
+      class="conversation-item"
+      [class.conversation-item--active]="conversation.uuid === activeConversationUuid"
+    >
+      <div class="conversation-item__title">
+        {{ conversation.title }}
+      </div>
+
+      <div class="conversation-item__date">
+        {{ conversation.updated_at | date: 'medium' }}
+      </div>
+    </button>
+  </div>
+</div>

@@ -1,0 +1,31 @@
+<div *ngIf="sources.length" class="source-card">
+  <div class="source-card__title">
+    Source Citations
+  </div>
+
+  <div class="source-card__list">
+    <div
+      *ngFor="let source of sources; let index = index"
+      class="source-item"
+    >
+      <div class="source-item__top">
+        <div class="source-item__title">
+          {{ index + 1 }}. {{ source.document_title || 'Untitled Document' }}
+        </div>
+
+        <div class="source-item__score">
+          {{ formatScore(source.score) }}
+        </div>
+      </div>
+
+      <div class="source-item__meta">
+        Chunk {{ source.chunk_index ?? '-' }}
+        <span *ngIf="source.department_name"> · {{ source.department_name }}</span>
+      </div>
+
+      <p *ngIf="source.content_preview" class="source-item__preview">
+        {{ source.content_preview }}
+      </p>
+    </div>
+  </div>
+</div>

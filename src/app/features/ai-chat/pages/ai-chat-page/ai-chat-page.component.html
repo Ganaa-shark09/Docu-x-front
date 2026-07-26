@@ -1,0 +1,75 @@
+<section
+  #chatShell
+  class="ai-chat-shell"
+  [class.ai-chat-shell--fullscreen]="isFullscreen"
+>
+  <header class="ai-chat-topbar">
+    <div class="ai-chat-topbar__content">
+      <div class="ai-chat-kicker">Private RAG Workspace</div>
+      <h2>AI Chat</h2>
+      <p>Ask questions over private documents with citations and firewall visibility.</p>
+    </div>
+
+    <div class="ai-chat-topbar__actions">
+      <button
+        type="button"
+        class="ai-chat-refresh-button"
+        (click)="loadConversations()"
+        title="Refresh conversations"
+      >
+        Refresh
+      </button>
+
+      <button
+        type="button"
+        class="ai-chat-fullscreen-button"
+        (click)="toggleFullscreen()"
+      >
+        {{ isFullscreen ? 'Exit full screen' : 'Full screen' }}
+      </button>
+    </div>
+  </header>
+
+  <div
+    *ngIf="errorMessage"
+    class="ai-chat-error"
+  >
+    {{ errorMessage }}
+  </div>
+
+  <div class="ai-chat-body">
+    <aside class="ai-chat-sidebar">
+      <app-conversation-list
+        [conversations]="conversations"
+        [activeConversationUuid]="activeConversationUuid"
+        [isLoading]="isLoadingConversations"
+        (newChat)="startNewChat()"
+        (refresh)="loadConversations()"
+        (selected)="selectConversation($event)"
+      />
+    </aside>
+
+    <main class="ai-chat-main">
+      <div class="ai-chat-messages">
+        <div
+          *ngIf="isLoadingConversation"
+          class="ai-chat-loading"
+        >
+          Loading selected conversation...
+        </div>
+
+        <app-chat-message-list
+          [messages]="messages"
+          [isSending]="isSending"
+        />
+      </div>
+
+      <footer class="ai-chat-composer">
+        <app-chat-input
+          [isSending]="isSending"
+          (sendMessage)="sendMessage($event)"
+        />
+      </footer>
+    </main>
+  </div>
+</section>

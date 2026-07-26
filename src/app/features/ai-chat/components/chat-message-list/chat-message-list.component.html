@@ -1,0 +1,79 @@
+<div
+  #messageScrollContainer
+  class="message-list"
+  (scroll)="onScroll()"
+  (wheel)="handleWheel($event)"
+>
+  <div *ngIf="!messages.length" class="empty-state">
+    <div class="empty-state__card">
+      <div class="empty-state__icon">AI</div>
+
+      <h3>Ask your documents anything</h3>
+
+      <p>
+        Query invoices, contracts, policies, reports, and restricted documents with citations and firewall visibility.
+      </p>
+
+      <div class="empty-state__suggestions">
+        <span>What is the payment term?</span>
+        <span>Summarize this document</span>
+        <span>Show key risks</span>
+      </div>
+    </div>
+  </div>
+
+  <div
+    *ngFor="let message of messages"
+    class="message-row"
+    [class.message-row--user]="message.role === 'user'"
+    [class.message-row--assistant]="message.role === 'assistant'"
+  >
+    <div class="message-avatar">
+      {{ message.role === 'user' ? 'You' : 'AI' }}
+    </div>
+
+    <div class="message-content-wrap">
+      <div class="message-meta">
+        <span class="message-author">{{ message.role === 'user' ? 'You' : 'DocuX AI' }}</span>
+        <span>{{ message.created_at | date: 'short' }}</span>
+        <span *ngIf="message.model_provider">
+          {{ message.model_provider }} / {{ message.model_name }}
+        </span>
+      </div>
+
+      <div class="message-bubble">
+        <div class="message-bubble__content">
+          {{ message.content }}
+        </div>
+
+        <app-source-citations
+          *ngIf="message.role === 'assistant'"
+          [sources]="message.sources || []"
+        />
+
+        <app-firewall-metadata
+          *ngIf="message.role === 'assistant'"
+          [firewall]="message.firewall"
+        />
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="isSending" class="message-row message-row--assistant">
+    <div class="message-avatar">AI</div>
+
+    <div class="message-content-wrap">
+      <div class="message-meta">
+        <span class="message-author">DocuX AI</span>
+        <span>Working...</span>
+      </div>
+
+      <div class="message-bubble message-bubble--thinking">
+        <span class="typing-dot"></span>
+        <span class="typing-dot"></span>
+        <span class="typing-dot"></span>
+        <span class="thinking-text">Thinking with private document context...</span>
+      </div>
+    </div>
+  </div>
+</div>

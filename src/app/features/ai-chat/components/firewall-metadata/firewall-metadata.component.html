@@ -1,0 +1,57 @@
+<div *ngIf="hasFirewallData" class="firewall-card">
+  <div class="firewall-card__header">
+    <div>
+      <div class="firewall-card__eyebrow">
+        AI Data Firewall
+      </div>
+
+      <div class="firewall-card__provider">
+        Provider:
+        <span>{{ formatLabel(firewall?.effective_provider_type) }}</span>
+      </div>
+    </div>
+
+    <span
+      *ngIf="firewall?.forced_local"
+      class="firewall-card__routed"
+    >
+      Routed Local
+    </span>
+  </div>
+
+  <div class="firewall-card__stats">
+    <div>
+      <span>Allowed</span>
+      <strong>{{ firewall?.allowed_count ?? 0 }}</strong>
+    </div>
+
+    <div>
+      <span>Redacted</span>
+      <strong>{{ firewall?.redacted_count ?? 0 }}</strong>
+    </div>
+
+    <div>
+      <span>Blocked</span>
+      <strong>{{ firewall?.blocked_count ?? 0 }}</strong>
+    </div>
+  </div>
+
+  <div *ngIf="actions.length" class="firewall-card__actions">
+    <div
+      *ngFor="let item of actions"
+      class="firewall-action"
+    >
+      <div class="firewall-action__top">
+        <span>{{ item.document_title || 'Document context' }}</span>
+
+        <strong [ngClass]="actionClass(item.action)">
+          {{ formatLabel(item.action) }}
+        </strong>
+      </div>
+
+      <div class="firewall-action__reason">
+        {{ formatLabel(item.reason) }}
+      </div>
+    </div>
+  </div>
+</div>
