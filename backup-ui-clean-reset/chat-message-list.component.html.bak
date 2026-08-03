@@ -1,0 +1,64 @@
+<div
+  #messageScrollContainer
+  class="message-list"
+  (scroll)="onScroll()"
+>
+  <div *ngIf="!messages.length" class="chat-empty">
+    <div class="chat-empty__content">
+      <h2>How can I help?</h2>
+      <p>Ask anything about your uploaded documents.</p>
+
+      <div class="chat-suggestions">
+        <button type="button">What is the payment term?</button>
+        <button type="button">Summarize this document</button>
+        <button type="button">List key risks</button>
+      </div>
+    </div>
+  </div>
+
+  <div
+    *ngFor="let message of messages"
+    class="message-row"
+    [class.message-row--user]="message.role === 'user'"
+    [class.message-row--assistant]="message.role === 'assistant'"
+  >
+    <div class="message-content">
+      <div class="message-meta">
+        <span>{{ message.role === 'user' ? 'You' : 'DocuX AI' }}</span>
+        <span>{{ message.created_at | date: 'short' }}</span>
+        <span *ngIf="message.model_provider">
+          {{ message.model_provider }} / {{ message.model_name }}
+        </span>
+      </div>
+
+      <div class="message-bubble">
+        <div class="message-text">
+          {{ message.content }}
+        </div>
+
+        <app-source-citations
+          *ngIf="message.role === 'assistant'"
+          [sources]="message.sources || []"
+        />
+
+        <app-firewall-metadata
+          *ngIf="message.role === 'assistant'"
+          [firewall]="message.firewall"
+        />
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="isSending" class="message-row message-row--assistant">
+    <div class="message-content">
+      <div class="message-meta">
+        <span>DocuX AI</span>
+        <span>Working...</span>
+      </div>
+
+      <div class="message-bubble message-bubble--thinking">
+        Thinking with private document context...
+      </div>
+    </div>
+  </div>
+</div>

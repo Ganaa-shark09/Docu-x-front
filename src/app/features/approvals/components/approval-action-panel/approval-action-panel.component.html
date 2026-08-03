@@ -1,0 +1,53 @@
+<section class="approval-actions">
+  <div class="approval-actions__header">
+    <h3>Reviewer action</h3>
+    <p>Approve, reject, or request corrections for this review item.</p>
+  </div>
+
+  <label class="approval-actions__label" for="approval-comment">
+    Comment
+  </label>
+
+  <textarea
+    id="approval-comment"
+    [formControl]="commentControl"
+    rows="4"
+    placeholder="Add reviewer comments or correction notes..."
+  ></textarea>
+
+  <div
+    *ngIf="commentControl.touched && commentControl.hasError('required')"
+    class="approval-actions__error"
+  >
+    Comment is required for reject or request changes.
+  </div>
+
+  <div class="approval-actions__buttons">
+    <button
+      type="button"
+      class="approval-actions__button approval-actions__button--approve"
+      [disabled]="disabled || isSubmitting"
+      (click)="submit('approve')"
+    >
+      Approve
+    </button>
+
+    <button
+      type="button"
+      class="approval-actions__button approval-actions__button--changes"
+      [disabled]="disabled || isSubmitting"
+      (click)="submit('request_changes')"
+    >
+      Request Changes
+    </button>
+
+    <button
+      type="button"
+      class="approval-actions__button approval-actions__button--reject"
+      [disabled]="disabled || isSubmitting"
+      (click)="submit('reject')"
+    >
+      Reject
+    </button>
+  </div>
+</section>

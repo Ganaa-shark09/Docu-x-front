@@ -1,0 +1,66 @@
+<section class="field-review">
+  <div class="field-review__header">
+    <h3>Extracted fields</h3>
+    <p>Review and correct field-level extraction results.</p>
+  </div>
+
+  <div *ngIf="!hasFields && !hasRawData" class="field-review__empty">
+    No extraction fields available.
+  </div>
+
+  <div class="field-review__list" *ngIf="hasFields">
+    <article class="field-card" *ngFor="let field of fields">
+      <div class="field-card__top">
+        <div>
+          <div class="field-card__label">{{ getFieldLabel(field) }}</div>
+          <div class="field-card__value">{{ getFieldValue(field) }}</div>
+        </div>
+
+        <span class="field-card__confidence" *ngIf="getConfidence(field)">
+          {{ getConfidence(field) }}
+        </span>
+      </div>
+
+      <p class="field-card__source" *ngIf="field.source_text">
+        {{ field.source_text }}
+      </p>
+
+      <div class="field-card__correction">
+        <input
+          type="text"
+          [(ngModel)]="corrections[field.uuid]"
+          [placeholder]="getFieldValue(field)"
+        />
+
+        <input
+          type="text"
+          [(ngModel)]="comments[field.uuid]"
+          placeholder="Reviewer comment"
+        />
+
+        <button
+          type="button"
+          [disabled]="isSavingFieldUuid === field.uuid"
+          (click)="submitCorrection(field)"
+        >
+          {{ isSavingFieldUuid === field.uuid ? 'Saving...' : 'Save Correction' }}
+        </button>
+      </div>
+    </article>
+  </div>
+
+  <div class="field-review__list" *ngIf="!hasFields && hasRawData">
+    <article class="field-card" *ngFor="let item of rawData | keyvalue">
+      <div class="field-card__top">
+        <div>
+          <div class="field-card__label">{{ formatLabel(item.key) }}</div>
+          <div class="field-card__value">{{ formatValue(item.value) }}</div>
+        </div>
+
+        <span class="field-card__confidence" *ngIf="getRawConfidence(item.value)">
+          {{ getRawConfidence(item.value) }}
+        </span>
+      </div>
+    </article>
+  </div>
+</section>

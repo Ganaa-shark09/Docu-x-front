@@ -1,0 +1,81 @@
+.approval-actions {
+  border: 1px solid var(--app-border);
+  border-radius: 18px;
+  background: var(--app-surface);
+  padding: 20px;
+}
+
+.approval-actions__header h3 {
+  margin: 0;
+  color: var(--app-text);
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.approval-actions__header p {
+  margin: 6px 0 18px;
+  color: var(--app-text-muted);
+  font-size: 14px;
+}
+
+.approval-actions__label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--app-text);
+  font-size: 13px;
+}
+
+.approval-actions textarea {
+  width: 100%;
+  resize: vertical;
+  border: 1px solid var(--app-border-strong);
+  border-radius: 14px;
+  background: var(--app-surface);
+  padding: 12px;
+  color: var(--app-text);
+  font-size: 14px;
+  outline: none;
+}
+
+.approval-actions textarea:focus {
+  border-color: var(--app-text-soft);
+}
+
+.approval-actions__error {
+  margin-top: 8px;
+  color: var(--app-danger-text);
+  font-size: 12px;
+}
+
+.approval-actions__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.approval-actions__button {
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 14px;
+}
+
+.approval-actions__button--approve {
+  background: var(--app-primary);
+  color: var(--app-on-primary);
+}
+
+.approval-actions__button--changes {
+  background: var(--app-warning-bg);
+  color: var(--app-warning-text);
+}
+
+.approval-actions__button--reject {
+  background: var(--app-danger-bg);
+  color: var(--app-danger-text);
+}
+
+.approval-actions__button:disabled {
+  opacity: 0.6;
+}

@@ -1,35 +1,19 @@
 <div class="conversation-panel">
-  <div class="conversation-panel__header">
-    <div>
-      <div class="conversation-panel__title">Conversations</div>
-      <p>Recent document chats</p>
-    </div>
-
-    <!-- <button
-      type="button"
-      (click)="refresh.emit()"
-      [disabled]="isLoading"
-      title="Refresh conversations"
-    >
-      ↻
-    </button> -->
-  </div>
-
-  <div class="conversation-panel__actions">
-    <button
-      type="button"
-      (click)="newChat.emit()"
-      class="conversation-panel__new"
-    >
+  <div class="conversation-actions">
+    <button type="button" class="conversation-new" (click)="newChat.emit()">
       + New Chat
     </button>
   </div>
 
-  <div *ngIf="isLoading && !conversations.length" class="conversation-panel__empty">
+  <div class="conversation-label">
+    Recent chats
+  </div>
+
+  <div *ngIf="isLoading && !conversations.length" class="conversation-empty">
     Loading conversations...
   </div>
 
-  <div *ngIf="!isLoading && !conversations.length" class="conversation-panel__empty">
+  <div *ngIf="!isLoading && !conversations.length" class="conversation-empty">
     No conversations yet.
   </div>
 
@@ -41,11 +25,11 @@
       class="conversation-item"
       [class.conversation-item--active]="conversation.uuid === activeConversationUuid"
     >
-      <div class="conversation-item__title">
+      <div class="conversation-title">
         {{ conversation.title }}
       </div>
 
-      <div class="conversation-item__date">
+      <div class="conversation-date">
         {{ conversation.updated_at | date: 'medium' }}
       </div>
     </button>

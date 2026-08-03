@@ -1,0 +1,105 @@
+.approval-detail-page {
+  display: grid;
+  gap: 22px;
+  color: var(--app-text);
+}
+
+.approval-detail-page__back {
+  color: var(--app-text-muted);
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.approval-detail-page__back:hover {
+  color: var(--app-text);
+}
+
+.approval-detail-page__loading,
+.approval-error {
+  border: 1px solid var(--app-border);
+  border-radius: 14px;
+  background: var(--app-surface);
+  padding: 14px;
+  color: var(--app-text-muted);
+}
+
+.approval-error {
+  border-color: var(--app-danger-border);
+  background: var(--app-danger-bg);
+  color: var(--app-danger-text);
+}
+
+.approval-detail-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.approval-detail-header h1 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.approval-detail-header p {
+  margin: 6px 0 0;
+  color: var(--app-text-muted);
+}
+
+.approval-summary-card {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  border: 1px solid var(--app-border);
+  border-radius: 18px;
+  background: var(--app-surface);
+  padding: 18px;
+}
+
+.approval-summary-card span {
+  display: block;
+  color: var(--app-text-muted);
+  font-size: 12px;
+}
+
+.approval-summary-card strong {
+  display: block;
+  margin-top: 6px;
+  color: var(--app-text);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.approval-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 22px;
+  align-items: start;
+}
+
+.approval-detail-grid__main {
+  display: grid;
+  gap: 22px;
+}
+
+.approval-detail-grid__side {
+  position: sticky;
+  top: 24px;
+}
+
+@media (max-width: 1100px) {
+  .approval-summary-card,
+  .approval-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .approval-detail-grid__side {
+    position: static;
+  }
+}
+
+
+.approval-detail-grid--single {
+  grid-template-columns: minmax(0, 1fr);
+}

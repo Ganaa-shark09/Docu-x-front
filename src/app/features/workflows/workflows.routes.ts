@@ -1,11 +1,18 @@
 import { Routes } from '@angular/router';
 
-import { PlaceholderPageComponent } from '../../shared/components/placeholder-page.component';
-
 export const WORKFLOWS_ROUTES: Routes = [
   {
     path: '',
-    component: PlaceholderPageComponent,
-    data: { title: 'Workflows' },
+    loadComponent: () =>
+      import('./pages/extraction-run-list-page/extraction-run-list-page.component').then(
+        (m) => m.ExtractionRunListPageComponent,
+      ),
+  },
+  {
+    path: ':uuid',
+    loadComponent: () =>
+      import('./pages/extraction-run-detail-page/extraction-run-detail-page.component').then(
+        (m) => m.ExtractionRunDetailPageComponent,
+      ),
   },
 ];

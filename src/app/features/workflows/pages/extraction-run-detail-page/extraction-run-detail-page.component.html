@@ -1,0 +1,99 @@
+<section class="workflow-detail-page">
+  <a routerLink="/workflows" class="workflow-detail-page__back">
+    ← Back to workflows
+  </a>
+
+  <div *ngIf="isLoading" class="workflow-loading">
+    Loading extraction workflow...
+  </div>
+
+  <div *ngIf="errorMessage" class="workflow-error">
+    {{ errorMessage }}
+  </div>
+
+  <div *ngIf="successMessage" class="workflow-success">
+    {{ successMessage }}
+  </div>
+
+  <ng-container *ngIf="!isLoading && run">
+    <header class="workflow-detail-header">
+      <div>
+        <h1>{{ documentTitle }}</h1>
+        <p>{{ templateName }}</p>
+      </div>
+
+      <app-extraction-status-badge [status]="run.status" />
+    </header>
+
+    <section class="workflow-summary-card">
+      <div>
+        <span>Run UUID</span>
+        <strong>{{ run.uuid }}</strong>
+      </div>
+
+      <div>
+        <span>Status</span>
+        <strong>{{ run.status }}</strong>
+      </div>
+
+      <div>
+        <span>Confidence</span>
+        <strong>{{ confidenceLabel }}</strong>
+      </div>
+
+      <div>
+        <span>Requested By</span>
+        <strong>{{ run.requested_by_email || run.requested_by_name || '-' }}</strong>
+      </div>
+
+      <div>
+        <span>Created</span>
+        <strong>{{ run.created_at | date: 'medium' }}</strong>
+      </div>
+
+      <div>
+        <span>Started</span>
+        <strong>{{ run.started_at ? (run.started_at | date: 'medium') : '-' }}</strong>
+      </div>
+
+      <div>
+        <span>Completed</span>
+        <strong>{{ run.completed_at ? (run.completed_at | date: 'medium') : '-' }}</strong>
+      </div>
+
+      <div>
+        <span>Updated</span>
+        <strong>{{ run.updated_at | date: 'medium' }}</strong>
+      </div>
+    </section>
+
+    <section class="workflow-actions">
+      <button type="button" [disabled]="isRerunning" (click)="rerun()">
+        {{ isRerunning ? 'Rerunning...' : 'Rerun Extraction' }}
+      </button>
+
+      <button type="button" [disabled]="isExporting" (click)="exportJson()">
+        {{ isExporting ? 'Exporting...' : 'Export JSON' }}
+      </button>
+
+      <button
+        type="button"
+        [disabled]="isSubmittingApproval"
+        (click)="submitForApproval()"
+      >
+        {{ isSubmittingApproval ? 'Submitting...' : 'Submit for Approval' }}
+      </button>
+    </section>
+
+    <div *ngIf="run.error_message" class="workflow-error">
+      {{ run.error_message }}
+    </div>
+
+    <app-extraction-field-review-list
+      [fields]="fields"
+      [rawData]="rawData"
+      [isSavingFieldUuid]="isSavingFieldUuid"
+      (correctionSubmitted)="saveCorrection($event)"
+    />
+  </ng-container>
+</section>

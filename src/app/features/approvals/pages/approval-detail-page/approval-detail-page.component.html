@@ -1,0 +1,90 @@
+<section class="approval-detail-page">
+  <a routerLink="/approvals" class="approval-detail-page__back">
+    ← Back to approvals
+  </a>
+
+  <div *ngIf="isLoading" class="approval-detail-page__loading">
+    Loading approval detail...
+  </div>
+
+  <div *ngIf="errorMessage" class="approval-error">
+    {{ errorMessage }}
+  </div>
+
+  <ng-container *ngIf="!isLoading && approval">
+    <header class="approval-detail-header">
+      <div>
+        <h1>{{ documentTitle }}</h1>
+        <p>{{ approval.title || approval.description || 'Approval request detail' }}</p>
+      </div>
+
+      <app-approval-status-badge [status]="approval.status" />
+    </header>
+
+    <section class="approval-summary-card">
+      <div>
+        <span>Document</span>
+        <strong>{{ documentFileLabel }}</strong>
+      </div>
+
+      <div>
+        <span>Requester</span>
+        <strong>{{ requesterLabel }}</strong>
+      </div>
+
+      <div>
+        <span>Reviewer</span>
+        <strong>{{ reviewerLabel }}</strong>
+      </div>
+
+      <div>
+        <span>Priority</span>
+        <strong>{{ approval.priority || '-' }}</strong>
+      </div>
+
+      <div>
+        <span>Review Type</span>
+        <strong>{{ approval.review_type || '-' }}</strong>
+      </div>
+
+      <div>
+        <span>Submitted</span>
+        <strong>{{ approval.submitted_at | date: 'medium' }}</strong>
+      </div>
+
+      <div>
+        <span>Updated</span>
+        <strong>{{ approval.updated_at | date: 'medium' }}</strong>
+      </div>
+
+      <div>
+        <span>Reviewed</span>
+        <strong>{{ approval.reviewed_at ? (approval.reviewed_at | date: 'medium') : '-' }}</strong>
+      </div>
+    </section>
+
+    <div
+      class="approval-detail-grid"
+      [class.approval-detail-grid--single]="isFinalStatus"
+    >
+      <div class="approval-detail-grid__main">
+        <app-extraction-review-panel
+          [fields]="approval.extraction_fields || []"
+          [extractedData]="extractionData"
+        />
+
+        <app-approval-comment-list
+          [comments]="approval.comments || []"
+        />
+      </div>
+
+      <aside class="approval-detail-grid__side" *ngIf="!isFinalStatus">
+        <app-approval-action-panel
+          [isSubmitting]="isSubmitting"
+          [disabled]="isFinalStatus"
+          (actionSelected)="handleAction($event)"
+        />
+      </aside>
+    </div>
+  </ng-container>
+</section>

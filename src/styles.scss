@@ -1,152 +1,233 @@
+@import "tailwindcss";
 
-/* AI Chat route should behave like an app workspace, not a scrolling page */
+/* =========================================================
+   DocuX Global Theme
+   Tailwind v4 compatible.
+   Automatically follows system/browser light or dark mode.
+   ========================================================= */
+
+:root,
+html[data-theme='light'] {
+  color-scheme: light;
+
+  --app-bg: #f7f7f8;
+  --app-sidebar: #ffffff;
+  --app-surface: #ffffff;
+  --app-surface-soft: #f3f4f6;
+  --app-hover: #eceff3;
+  --app-border: #e5e7eb;
+  --app-border-strong: #cbd5e1;
+
+  --app-text: #111827;
+  --app-text-muted: #64748b;
+  --app-text-soft: #94a3b8;
+
+  --app-primary: #111827;
+  --app-primary-hover: #1f2937;
+  --app-on-primary: #ffffff;
+
+  --app-danger-bg: #fef2f2;
+  --app-danger-border: #fecaca;
+  --app-danger-text: #b91c1c;
+
+  --app-success-bg: #dcfce7;
+  --app-success-text: #047857;
+
+  --app-warning-bg: #fef3c7;
+  --app-warning-text: #b45309;
+
+  --app-shadow: rgba(15, 23, 42, 0.08);
+}
+
+html[data-theme='dark'] {
+  color-scheme: dark;
+
+  /* ChatGPT-like dark gray, not pure black */
+  --app-bg: #212121;
+  --app-sidebar: #171717;
+  --app-surface: #2f2f2f;
+  --app-surface-soft: #262626;
+  --app-hover: #343541;
+  --app-border: #3f3f46;
+  --app-border-strong: #565869;
+
+  --app-text: #ececf1;
+  --app-text-muted: #c5c5d2;
+  --app-text-soft: #8e8ea0;
+
+  --app-primary: #343541;
+  --app-primary-hover: #40414f;
+  --app-on-primary: #ffffff;
+
+  --app-danger-bg: #3b1216;
+  --app-danger-border: #7f1d1d;
+  --app-danger-text: #fecaca;
+
+  --app-success-bg: #063d2e;
+  --app-success-text: #86efac;
+
+  --app-warning-bg: #3d2d05;
+  --app-warning-text: #fde68a;
+
+  --app-shadow: rgba(0, 0, 0, 0.35);
+}
+
+html,
+body,
+app-root {
+  min-height: 100%;
+  margin: 0;
+  background: var(--app-bg) !important;
+  color: var(--app-text) !important;
+}
+
+body {
+  font-family: Arial, Helvetica, sans-serif !important;
+}
+
+button,
+input,
+textarea,
+select {
+  font-family: inherit !important;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+/* Inputs */
+input,
+textarea,
+select {
+  background-color: var(--app-surface) !important;
+  color: var(--app-text) !important;
+  border-color: var(--app-border-strong) !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--app-text-soft) !important;
+}
+
+/* Tailwind surface compatibility */
+.bg-white,
+.bg-white\/90,
+.bg-white\/95 {
+  background-color: var(--app-surface) !important;
+}
+
+.bg-slate-50,
+.bg-gray-50 {
+  background-color: var(--app-bg) !important;
+}
+
+.bg-slate-100,
+.bg-gray-100 {
+  background-color: var(--app-surface-soft) !important;
+}
+
+.bg-slate-900,
+.bg-slate-950,
+.bg-gray-900 {
+  background-color: var(--app-primary) !important;
+}
+
+.hover\:bg-slate-50:hover,
+.hover\:bg-slate-100:hover,
+.hover\:bg-gray-50:hover,
+.hover\:bg-gray-100:hover {
+  background-color: var(--app-hover) !important;
+}
+
+/* Tailwind text compatibility */
+.text-slate-950,
+.text-slate-900,
+.text-gray-950,
+.text-gray-900 {
+  color: var(--app-text) !important;
+}
+
+.text-slate-700,
+.text-slate-600,
+.text-slate-500,
+.text-slate-400,
+.text-gray-700,
+.text-gray-600,
+.text-gray-500,
+.text-gray-400 {
+  color: var(--app-text-muted) !important;
+}
+
+.text-white {
+  color: var(--app-on-primary) !important;
+}
+
+/* Borders */
+.border-slate-100,
+.border-slate-200,
+.border-slate-300,
+.border-gray-100,
+.border-gray-200,
+.border-gray-300 {
+  border-color: var(--app-border) !important;
+}
+
+/* Cards/shadows */
+.shadow,
+.shadow-sm,
+.shadow-md,
+.shadow-lg {
+  box-shadow: 0 1px 2px var(--app-shadow) !important;
+}
+
+/* Status colors */
+.bg-red-50,
+.bg-red-100 {
+  background-color: var(--app-danger-bg) !important;
+}
+
+.border-red-200,
+.border-red-300 {
+  border-color: var(--app-danger-border) !important;
+}
+
+.text-red-600,
+.text-red-700 {
+  color: var(--app-danger-text) !important;
+}
+
+.bg-emerald-50,
+.bg-emerald-100 {
+  background-color: var(--app-success-bg) !important;
+}
+
+.text-emerald-600,
+.text-emerald-700 {
+  color: var(--app-success-text) !important;
+}
+
+.bg-amber-50,
+.bg-amber-100 {
+  background-color: var(--app-warning-bg) !important;
+}
+
+.text-amber-600,
+.text-amber-700 {
+  color: var(--app-warning-text) !important;
+}
+
+/* AI Chat route scroll lock only */
 body.ai-chat-no-page-scroll {
-  overflow: hidden;
+  overflow: hidden !important;
+  background: var(--app-bg) !important;
 }
 
 body.ai-chat-no-page-scroll app-root {
-  height: 100dvh;
-  overflow: hidden;
-}
-
-/* AI Chat typography normalization */
-app-ai-chat-page,
-app-ai-chat-page * {
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    "Helvetica Neue",
-    Arial,
-    sans-serif !important;
-  letter-spacing: normal !important;
-}
-
-app-ai-chat-page h1,
-app-ai-chat-page h2,
-app-ai-chat-page h3 {
-  font-weight: 700 !important;
-}
-
-app-ai-chat-page p,
-app-ai-chat-page span,
-app-ai-chat-page div,
-app-ai-chat-page textarea,
-app-ai-chat-page input {
-  font-weight: 400 !important;
-}
-
-app-ai-chat-page button,
-app-ai-chat-page strong,
-app-ai-chat-page .conversation-item__title,
-app-ai-chat-page .message-meta strong,
-app-ai-chat-page .source-card__title,
-app-ai-chat-page .source-item__title,
-app-ai-chat-page .firewall-card__eyebrow,
-app-ai-chat-page .firewall-action__top,
-app-ai-chat-page .conversation-panel__header h3 {
-  font-weight: 600 !important;
-}
-
-app-ai-chat-page .empty-state__card h3,
-app-ai-chat-page .ai-chat-topbar h2 {
-  font-weight: 700 !important;
-}
-
-app-ai-chat-page .message-bubble__content,
-app-ai-chat-page .source-item__preview,
-app-ai-chat-page .firewall-action__reason {
-  font-weight: 400 !important;
-}
-
-/* AI Chat final typography override: simple, non-bold text */
-app-ai-chat-page,
-app-ai-chat-page * {
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    "Helvetica Neue",
-    Arial,
-    sans-serif !important;
-  font-weight: 400 !important;
-  letter-spacing: normal !important;
-}
-
-app-ai-chat-page h1,
-app-ai-chat-page h2,
-app-ai-chat-page h3,
-app-ai-chat-page h4,
-app-ai-chat-page p,
-app-ai-chat-page span,
-app-ai-chat-page div,
-app-ai-chat-page button,
-app-ai-chat-page strong,
-app-ai-chat-page textarea,
-app-ai-chat-page input,
-app-ai-chat-page label {
-  font-weight: 400 !important;
-}
-
-/* Keep only main title slightly stronger, not bold-heavy */
-app-ai-chat-page .ai-chat-topbar h2 {
-  font-weight: 500 !important;
-}
-
-/* Keep buttons readable but not bold */
-app-ai-chat-page button,
-app-ai-chat-page .conversation-panel__new,
-app-ai-chat-page .chat-input__send {
-  font-weight: 500 !important;
-}
-
-/* Chat messages should look natural */
-app-ai-chat-page .message-bubble__content,
-app-ai-chat-page .conversation-item__title,
-app-ai-chat-page .message-meta,
-app-ai-chat-page .message-meta strong,
-app-ai-chat-page .source-item__title,
-app-ai-chat-page .firewall-action__top {
-  font-weight: 400 !important;
-}
-
-/* Final AI Chat professional typography */
-app-ai-chat-page,
-app-ai-chat-page * {
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    Arial,
-    sans-serif !important;
-  letter-spacing: normal !important;
-}
-
-app-ai-chat-page h1,
-app-ai-chat-page h2,
-app-ai-chat-page h3,
-app-ai-chat-page h4,
-app-ai-chat-page p,
-app-ai-chat-page span,
-app-ai-chat-page div,
-app-ai-chat-page button,
-app-ai-chat-page strong,
-app-ai-chat-page textarea,
-app-ai-chat-page input,
-app-ai-chat-page label {
-  font-weight: 400 !important;
-}
-
-app-ai-chat-page .ai-chat-topbar h2,
-app-ai-chat-page .conversation-panel__title,
-app-ai-chat-page .message-author,
-app-ai-chat-page .source-card__title,
-app-ai-chat-page .firewall-card__eyebrow {
-  font-weight: 500 !important;
+  height: 100dvh !important;
+  overflow: hidden !important;
 }

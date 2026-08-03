@@ -1,0 +1,23 @@
+:host {
+  display: block;
+  min-height: 100dvh;
+  background: var(--app-bg);
+  color: var(--app-text);
+}
+
+:host ::ng-deep aside {
+  background: var(--app-sidebar) !important;
+  color: var(--app-text) !important;
+  border-right-color: var(--app-border) !important;
+}
+
+:host ::ng-deep header {
+  background: var(--app-surface) !important;
+  color: var(--app-text) !important;
+  border-bottom-color: var(--app-border) !important;
+}
+
+:host ::ng-deep main {
+  background: var(--app-bg) !important;
+  color: var(--app-text) !important;
+}

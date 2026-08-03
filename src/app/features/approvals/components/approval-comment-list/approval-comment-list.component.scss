@@ -1,0 +1,45 @@
+.approval-comments {
+  border: 1px solid var(--app-border);
+  border-radius: 18px;
+  background: var(--app-surface);
+  padding: 20px;
+}
+
+.approval-comments h3 {
+  margin: 0 0 16px;
+  color: var(--app-text);
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.approval-comments__empty {
+  color: var(--app-text-muted);
+  font-size: 14px;
+}
+
+.approval-comments__list {
+  display: grid;
+  gap: 12px;
+}
+
+.approval-comment {
+  border: 1px solid var(--app-border);
+  border-radius: 14px;
+  background: var(--app-surface-soft);
+  padding: 14px;
+}
+
+.approval-comment__meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--app-text-muted);
+  font-size: 12px;
+}
+
+.approval-comment p {
+  margin: 8px 0 0;
+  color: var(--app-text);
+  font-size: 14px;
+  line-height: 1.6;
+}

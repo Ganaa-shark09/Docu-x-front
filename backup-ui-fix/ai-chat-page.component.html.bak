@@ -1,0 +1,65 @@
+<section class="ai-chat-workspace">
+  <aside class="ai-chat-sidebar">
+    <div class="ai-chat-sidebar__brand">
+      <div class="ai-chat-logo">D</div>
+      <div>
+        <div class="ai-chat-brand-title">DocuX AI</div>
+        <div class="ai-chat-brand-subtitle">Private workspace</div>
+      </div>
+    </div>
+
+    <app-conversation-list
+      [conversations]="conversations"
+      [activeConversationUuid]="activeConversationUuid"
+      [isLoading]="isLoadingConversations"
+      (newChat)="startNewChat()"
+      (refresh)="loadConversations()"
+      (selected)="selectConversation($event)"
+    />
+
+    <div class="ai-chat-sidebar__footer">
+      <button type="button" class="ai-chat-exit-button" (click)="exitChat()">
+        Exit AI Chat
+      </button>
+    </div>
+  </aside>
+
+  <main class="ai-chat-main">
+    <header class="ai-chat-header">
+      <div>
+        <h1>AI Chat</h1>
+        <p>Ask questions across your private document library.</p>
+      </div>
+
+      <button type="button" class="ai-chat-exit-button ai-chat-exit-button--mobile" (click)="exitChat()">
+        Exit
+      </button>
+    </header>
+
+    <div *ngIf="errorMessage" class="ai-chat-error">
+      {{ errorMessage }}
+    </div>
+
+    <section class="ai-chat-thread">
+      <div *ngIf="isLoadingConversation" class="ai-chat-loading">
+        Loading selected conversation...
+      </div>
+
+      <app-chat-message-list
+        [messages]="messages"
+        [isSending]="isSending"
+      />
+    </section>
+
+    <footer class="ai-chat-composer">
+      <app-chat-input
+        [isSending]="isSending"
+        (sendMessage)="sendMessage($event)"
+      />
+
+      <p class="ai-chat-hint">
+        Press Enter to send. Press Shift + Enter for a new line.
+      </p>
+    </footer>
+  </main>
+</section>

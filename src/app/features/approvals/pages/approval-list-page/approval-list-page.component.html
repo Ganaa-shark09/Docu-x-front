@@ -1,0 +1,95 @@
+<section class="approval-list-page">
+  <div class="approval-list-page__header">
+    <div>
+      <h1>Approvals</h1>
+      <p>Review assigned document approvals, extraction results, and correction requests.</p>
+    </div>
+
+    <button type="button" (click)="loadApprovals()">
+      Refresh
+    </button>
+  </div>
+
+  <form class="approval-filters" [formGroup]="filtersForm" (ngSubmit)="loadApprovals()">
+    <label>
+      Search
+      <input
+        type="search"
+        formControlName="search"
+        placeholder="Search document or approval title"
+      />
+    </label>
+
+    <label>
+      Status
+      <select formControlName="status">
+        <option value="">All</option>
+        <option value="pending">Pending</option>
+        <option value="approved">Approved</option>
+        <option value="rejected">Rejected</option>
+        <option value="changes_requested">Changes requested</option>
+      </select>
+    </label>
+
+    <div class="approval-filters__actions">
+      <button type="submit">Apply</button>
+      <button type="button" (click)="resetFilters()">Reset</button>
+    </div>
+  </form>
+
+  <div *ngIf="errorMessage" class="approval-error">
+    {{ errorMessage }}
+  </div>
+
+  <section class="approval-table-card">
+    <div class="approval-table-card__header">
+      <div>
+        <h2>Approval Queue</h2>
+        <p *ngIf="!isLoading">{{ approvals.length }} approval requests found</p>
+        <p *ngIf="isLoading">Loading approval requests...</p>
+      </div>
+    </div>
+
+    <div *ngIf="isLoading" class="approval-empty">
+      Loading approvals...
+    </div>
+
+    <div *ngIf="!isLoading && !approvals.length" class="approval-empty">
+      No approval requests found.
+    </div>
+
+    <div *ngIf="!isLoading && approvals.length" class="approval-table">
+      <div class="approval-table__row approval-table__row--head">
+        <div>Document</div>
+        <div>Status</div>
+        <div>Requester</div>
+        <div>Reviewer</div>
+        <div>Created</div>
+        <div>Action</div>
+      </div>
+
+      <div class="approval-table__row" *ngFor="let approval of approvals">
+        <div>
+          <strong>{{ getDocumentTitle(approval) }}</strong>
+          <span>{{ getDocumentFileLabel(approval) }}</span>
+        </div>
+
+        <div>
+          <app-approval-status-badge [status]="approval.status" />
+        </div>
+
+        <div>{{ approval.requester_name || approval.requested_by_email || approval.created_by_name || '-' }}</div>
+
+        <div>{{ approval.assigned_reviewer_name || approval.assigned_to_email || '-' }}</div>
+
+        <div>{{ approval.created_at | date: 'mediumDate' }}</div>
+
+        <div>
+          <a [routerLink]="[approval.uuid]" class="approval-open-link">
+            Open
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+</section>

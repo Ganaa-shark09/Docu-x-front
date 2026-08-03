@@ -1,0 +1,919 @@
+
+/* AI Chat route should behave like an app workspace, not a scrolling page */
+body.ai-chat-no-page-scroll {
+  overflow: hidden;
+}
+
+body.ai-chat-no-page-scroll app-root {
+  height: 100dvh;
+  overflow: hidden;
+}
+
+/* AI Chat typography normalization */
+app-ai-chat-page,
+app-ai-chat-page * {
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Arial,
+    sans-serif !important;
+  letter-spacing: normal !important;
+}
+
+app-ai-chat-page h1,
+app-ai-chat-page h2,
+app-ai-chat-page h3 {
+  font-weight: 700 !important;
+}
+
+app-ai-chat-page p,
+app-ai-chat-page span,
+app-ai-chat-page div,
+app-ai-chat-page textarea,
+app-ai-chat-page input {
+  font-weight: 400 !important;
+}
+
+app-ai-chat-page button,
+app-ai-chat-page strong,
+app-ai-chat-page .conversation-item__title,
+app-ai-chat-page .message-meta strong,
+app-ai-chat-page .source-card__title,
+app-ai-chat-page .source-item__title,
+app-ai-chat-page .firewall-card__eyebrow,
+app-ai-chat-page .firewall-action__top,
+app-ai-chat-page .conversation-panel__header h3 {
+  font-weight: 600 !important;
+}
+
+app-ai-chat-page .empty-state__card h3,
+app-ai-chat-page .ai-chat-topbar h2 {
+  font-weight: 700 !important;
+}
+
+app-ai-chat-page .message-bubble__content,
+app-ai-chat-page .source-item__preview,
+app-ai-chat-page .firewall-action__reason {
+  font-weight: 400 !important;
+}
+
+/* AI Chat final typography override: simple, non-bold text */
+app-ai-chat-page,
+app-ai-chat-page * {
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Arial,
+    sans-serif !important;
+  font-weight: 400 !important;
+  letter-spacing: normal !important;
+}
+
+app-ai-chat-page h1,
+app-ai-chat-page h2,
+app-ai-chat-page h3,
+app-ai-chat-page h4,
+app-ai-chat-page p,
+app-ai-chat-page span,
+app-ai-chat-page div,
+app-ai-chat-page button,
+app-ai-chat-page strong,
+app-ai-chat-page textarea,
+app-ai-chat-page input,
+app-ai-chat-page label {
+  font-weight: 400 !important;
+}
+
+/* Keep only main title slightly stronger, not bold-heavy */
+app-ai-chat-page .ai-chat-topbar h2 {
+  font-weight: 500 !important;
+}
+
+/* Keep buttons readable but not bold */
+app-ai-chat-page button,
+app-ai-chat-page .conversation-panel__new,
+app-ai-chat-page .chat-input__send {
+  font-weight: 500 !important;
+}
+
+/* Chat messages should look natural */
+app-ai-chat-page .message-bubble__content,
+app-ai-chat-page .conversation-item__title,
+app-ai-chat-page .message-meta,
+app-ai-chat-page .message-meta strong,
+app-ai-chat-page .source-item__title,
+app-ai-chat-page .firewall-action__top {
+  font-weight: 400 !important;
+}
+
+/* Final AI Chat professional typography */
+app-ai-chat-page,
+app-ai-chat-page * {
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    Arial,
+    sans-serif !important;
+  letter-spacing: normal !important;
+}
+
+app-ai-chat-page h1,
+app-ai-chat-page h2,
+app-ai-chat-page h3,
+app-ai-chat-page h4,
+app-ai-chat-page p,
+app-ai-chat-page span,
+app-ai-chat-page div,
+app-ai-chat-page button,
+app-ai-chat-page strong,
+app-ai-chat-page textarea,
+app-ai-chat-page input,
+app-ai-chat-page label {
+  font-weight: 400 !important;
+}
+
+app-ai-chat-page .ai-chat-topbar h2,
+app-ai-chat-page .conversation-panel__title,
+app-ai-chat-page .message-author,
+app-ai-chat-page .source-card__title,
+app-ai-chat-page .firewall-card__eyebrow {
+  font-weight: 500 !important;
+}
+
+/* Automatic system theme support */
+:root {
+  color-scheme: light dark;
+
+  --dx-bg: #ffffff;
+  --dx-bg-soft: #f8fafc;
+  --dx-panel: #ffffff;
+  --dx-panel-soft: #f3f4f6;
+  --dx-border: #e5e7eb;
+  --dx-border-strong: #d1d5db;
+  --dx-text: #111827;
+  --dx-text-muted: #6b7280;
+  --dx-text-soft: #9ca3af;
+  --dx-primary: #111827;
+  --dx-primary-hover: #1f2937;
+  --dx-primary-text: #ffffff;
+  --dx-danger-bg: #fef2f2;
+  --dx-danger-border: #fecaca;
+  --dx-danger-text: #b91c1c;
+  --dx-success-bg: #dcfce7;
+  --dx-success-text: #047857;
+  --dx-warning-bg: #fef3c7;
+  --dx-warning-text: #b45309;
+  --dx-purple-bg: #f3e8ff;
+  --dx-purple-text: #7e22ce;
+  --dx-shadow: rgba(15, 23, 42, 0.08);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --dx-bg: #0b1020;
+    --dx-bg-soft: #111827;
+    --dx-panel: #151b2d;
+    --dx-panel-soft: #1f2937;
+    --dx-border: #2b3548;
+    --dx-border-strong: #3b465a;
+    --dx-text: #f8fafc;
+    --dx-text-muted: #cbd5e1;
+    --dx-text-soft: #94a3b8;
+    --dx-primary: #f8fafc;
+    --dx-primary-hover: #e5e7eb;
+    --dx-primary-text: #111827;
+    --dx-danger-bg: #3b1216;
+    --dx-danger-border: #7f1d1d;
+    --dx-danger-text: #fecaca;
+    --dx-success-bg: #063d2e;
+    --dx-success-text: #86efac;
+    --dx-warning-bg: #3d2d05;
+    --dx-warning-text: #fde68a;
+    --dx-purple-bg: #2e174c;
+    --dx-purple-text: #d8b4fe;
+    --dx-shadow: rgba(0, 0, 0, 0.35);
+  }
+}
+
+body.ai-chat-no-page-scroll {
+  overflow: hidden;
+  background: var(--dx-bg);
+}
+
+body.ai-chat-no-page-scroll app-root {
+  height: 100dvh;
+  overflow: hidden;
+}
+
+body.ai-chat-no-page-scroll {
+  overflow: hidden !important;
+}
+
+body.ai-chat-no-page-scroll app-root {
+  height: 100dvh !important;
+  overflow: hidden !important;
+}
+
+/* =========================================================
+   DocuX Global System Theme
+   Automatically follows browser/system light or dark mode.
+   No manual toggle required.
+   ========================================================= */
+
+:root {
+  color-scheme: light;
+
+  --app-bg: #f7f7f8;
+  --app-sidebar: #ffffff;
+  --app-surface: #ffffff;
+  --app-surface-soft: #f3f4f6;
+  --app-hover: #f1f5f9;
+  --app-border: #e5e7eb;
+  --app-border-strong: #cbd5e1;
+
+  --app-text: #111827;
+  --app-text-muted: #64748b;
+  --app-text-soft: #94a3b8;
+
+  --app-primary: #111827;
+  --app-primary-hover: #1f2937;
+  --app-on-primary: #ffffff;
+
+  --app-danger-bg: #fef2f2;
+  --app-danger-border: #fecaca;
+  --app-danger-text: #b91c1c;
+
+  --app-success-bg: #dcfce7;
+  --app-success-text: #047857;
+
+  --app-warning-bg: #fef3c7;
+  --app-warning-text: #b45309;
+
+  --app-purple-bg: #f3e8ff;
+  --app-purple-text: #7e22ce;
+
+  --app-shadow: rgba(15, 23, 42, 0.08);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    /* ChatGPT-like dark, not pure black */
+    --app-bg: #212121;
+    --app-sidebar: #171717;
+    --app-surface: #2f2f2f;
+    --app-surface-soft: #262626;
+    --app-hover: #343541;
+    --app-border: #3f3f46;
+    --app-border-strong: #565869;
+
+    --app-text: #ececf1;
+    --app-text-muted: #c5c5d2;
+    --app-text-soft: #8e8ea0;
+
+    --app-primary: #343541;
+    --app-primary-hover: #40414f;
+    --app-on-primary: #ffffff;
+
+    --app-danger-bg: #3b1216;
+    --app-danger-border: #7f1d1d;
+    --app-danger-text: #fecaca;
+
+    --app-success-bg: #063d2e;
+    --app-success-text: #86efac;
+
+    --app-warning-bg: #3d2d05;
+    --app-warning-text: #fde68a;
+
+    --app-purple-bg: #2e174c;
+    --app-purple-text: #d8b4fe;
+
+    --app-shadow: rgba(0, 0, 0, 0.35);
+  }
+}
+
+html,
+body {
+  background: var(--app-bg) !important;
+  color: var(--app-text) !important;
+}
+
+body,
+button,
+input,
+textarea,
+select {
+  font-family: Arial, Helvetica, sans-serif !important;
+}
+
+/* Page and layout backgrounds */
+body .bg-white,
+body .bg-white\/90,
+body .bg-white\/95 {
+  background-color: var(--app-surface) !important;
+}
+
+body .bg-slate-50,
+body .bg-gray-50 {
+  background-color: var(--app-bg) !important;
+}
+
+body .bg-slate-100,
+body .bg-gray-100 {
+  background-color: var(--app-surface-soft) !important;
+}
+
+body .bg-slate-900,
+body .bg-slate-950 {
+  background-color: var(--app-primary) !important;
+}
+
+body .hover\:bg-slate-100:hover,
+body .hover\:bg-gray-100:hover {
+  background-color: var(--app-hover) !important;
+}
+
+body .hover\:bg-slate-800:hover,
+body .hover\:bg-slate-900:hover {
+  background-color: var(--app-primary-hover) !important;
+}
+
+/* Borders */
+body .border-slate-100,
+body .border-slate-200,
+body .border-slate-300,
+body .border-gray-100,
+body .border-gray-200,
+body .border-gray-300 {
+  border-color: var(--app-border) !important;
+}
+
+body .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+body .divide-slate-200 > :not([hidden]) ~ :not([hidden]),
+body .divide-gray-100 > :not([hidden]) ~ :not([hidden]),
+body .divide-gray-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--app-border) !important;
+}
+
+/* Text */
+body .text-slate-950,
+body .text-slate-900,
+body .text-gray-950,
+body .text-gray-900 {
+  color: var(--app-text) !important;
+}
+
+body .text-slate-700,
+body .text-slate-600,
+body .text-slate-500,
+body .text-slate-400,
+body .text-gray-700,
+body .text-gray-600,
+body .text-gray-500,
+body .text-gray-400 {
+  color: var(--app-text-muted) !important;
+}
+
+body .text-white {
+  color: var(--app-on-primary) !important;
+}
+
+/* Inputs */
+body input,
+body textarea,
+body select {
+  background-color: var(--app-surface) !important;
+  border-color: var(--app-border-strong) !important;
+  color: var(--app-text) !important;
+}
+
+body input::placeholder,
+body textarea::placeholder {
+  color: var(--app-text-soft) !important;
+}
+
+/* Cards, tables, panels */
+body table,
+body thead,
+body tbody,
+body tr {
+  background-color: transparent !important;
+}
+
+body thead.bg-slate-50,
+body thead.bg-gray-50 {
+  background-color: var(--app-surface-soft) !important;
+}
+
+/* Status colors */
+body .bg-red-50,
+body .bg-red-100 {
+  background-color: var(--app-danger-bg) !important;
+}
+
+body .border-red-200,
+body .border-red-300 {
+  border-color: var(--app-danger-border) !important;
+}
+
+body .text-red-600,
+body .text-red-700 {
+  color: var(--app-danger-text) !important;
+}
+
+body .bg-emerald-50,
+body .bg-emerald-100 {
+  background-color: var(--app-success-bg) !important;
+}
+
+body .text-emerald-600,
+body .text-emerald-700 {
+  color: var(--app-success-text) !important;
+}
+
+body .bg-amber-50,
+body .bg-amber-100 {
+  background-color: var(--app-warning-bg) !important;
+}
+
+body .text-amber-600,
+body .text-amber-700 {
+  color: var(--app-warning-text) !important;
+}
+
+body .bg-purple-50,
+body .bg-purple-100 {
+  background-color: var(--app-purple-bg) !important;
+}
+
+body .text-purple-600,
+body .text-purple-700 {
+  color: var(--app-purple-text) !important;
+}
+
+/* AI Chat must behave like an app workspace */
+body.ai-chat-no-page-scroll {
+  overflow: hidden !important;
+  background: var(--app-bg) !important;
+}
+
+body.ai-chat-no-page-scroll app-root {
+  height: 100dvh !important;
+  overflow: hidden !important;
+}
+
+/* DOCUX_THEME_START */
+/* =========================================================
+   DocuX Global System Theme
+   Follows browser/system appearance automatically
+   ChatGPT-like neutral dark theme
+   ========================================================= */
+
+:root {
+  color-scheme: light;
+
+  --app-bg: #f7f7f8;
+  --app-sidebar: #ffffff;
+  --app-surface: #ffffff;
+  --app-surface-soft: #f3f4f6;
+  --app-hover: #eceff3;
+  --app-border: #e5e7eb;
+  --app-border-strong: #cbd5e1;
+
+  --app-text: #111827;
+  --app-text-muted: #64748b;
+  --app-text-soft: #94a3b8;
+
+  --app-primary: #111827;
+  --app-primary-hover: #1f2937;
+  --app-on-primary: #ffffff;
+
+  --app-danger-bg: #fef2f2;
+  --app-danger-border: #fecaca;
+  --app-danger-text: #b91c1c;
+
+  --app-success-bg: #dcfce7;
+  --app-success-text: #047857;
+
+  --app-warning-bg: #fef3c7;
+  --app-warning-text: #b45309;
+
+  --app-purple-bg: #f3e8ff;
+  --app-purple-text: #7e22ce;
+
+  --app-shadow: rgba(15, 23, 42, 0.08);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    /* ChatGPT-style dark gray theme */
+    --app-bg: #212121;
+    --app-sidebar: #171717;
+    --app-surface: #2f2f2f;
+    --app-surface-soft: #262626;
+    --app-hover: #343541;
+    --app-border: #3f3f46;
+    --app-border-strong: #565869;
+
+    --app-text: #ececf1;
+    --app-text-muted: #c5c5d2;
+    --app-text-soft: #8e8ea0;
+
+    --app-primary: #343541;
+    --app-primary-hover: #40414f;
+    --app-on-primary: #ffffff;
+
+    --app-danger-bg: #3b1216;
+    --app-danger-border: #7f1d1d;
+    --app-danger-text: #fecaca;
+
+    --app-success-bg: #063d2e;
+    --app-success-text: #86efac;
+
+    --app-warning-bg: #3d2d05;
+    --app-warning-text: #fde68a;
+
+    --app-purple-bg: #2e174c;
+    --app-purple-text: #d8b4fe;
+
+    --app-shadow: rgba(0, 0, 0, 0.35);
+  }
+}
+
+html,
+body,
+app-root {
+  background: var(--app-bg) !important;
+  color: var(--app-text) !important;
+}
+
+body,
+button,
+input,
+textarea,
+select {
+  font-family: Arial, Helvetica, sans-serif !important;
+}
+
+body input,
+body textarea,
+body select {
+  background: var(--app-surface) !important;
+  color: var(--app-text) !important;
+  border-color: var(--app-border-strong) !important;
+}
+
+body input::placeholder,
+body textarea::placeholder {
+  color: var(--app-text-soft) !important;
+}
+
+/* Utility background overrides */
+body .bg-white,
+body .bg-white\/90,
+body .bg-white\/95 {
+  background-color: var(--app-surface) !important;
+}
+
+body .bg-slate-50,
+body .bg-slate-100,
+body .bg-gray-50,
+body .bg-gray-100 {
+  background-color: var(--app-surface-soft) !important;
+}
+
+body .bg-slate-900,
+body .bg-slate-950,
+body .bg-gray-900 {
+  background-color: var(--app-primary) !important;
+}
+
+/* Utility text overrides */
+body .text-slate-950,
+body .text-slate-900,
+body .text-gray-950,
+body .text-gray-900 {
+  color: var(--app-text) !important;
+}
+
+body .text-slate-700,
+body .text-slate-600,
+body .text-slate-500,
+body .text-slate-400,
+body .text-gray-700,
+body .text-gray-600,
+body .text-gray-500,
+body .text-gray-400 {
+  color: var(--app-text-muted) !important;
+}
+
+body .text-white {
+  color: var(--app-on-primary) !important;
+}
+
+/* Borders */
+body .border-slate-100,
+body .border-slate-200,
+body .border-slate-300,
+body .border-gray-100,
+body .border-gray-200,
+body .border-gray-300 {
+  border-color: var(--app-border) !important;
+}
+
+body .shadow,
+body .shadow-sm,
+body .shadow-md,
+body .shadow-lg {
+  box-shadow: 0 1px 2px var(--app-shadow) !important;
+}
+
+/* Status */
+body .bg-red-50,
+body .bg-red-100 {
+  background-color: var(--app-danger-bg) !important;
+}
+body .text-red-600,
+body .text-red-700 {
+  color: var(--app-danger-text) !important;
+}
+body .border-red-200,
+body .border-red-300 {
+  border-color: var(--app-danger-border) !important;
+}
+
+body .bg-emerald-50,
+body .bg-emerald-100 {
+  background-color: var(--app-success-bg) !important;
+}
+body .text-emerald-600,
+body .text-emerald-700 {
+  color: var(--app-success-text) !important;
+}
+
+body .bg-amber-50,
+body .bg-amber-100 {
+  background-color: var(--app-warning-bg) !important;
+}
+body .text-amber-600,
+body .text-amber-700 {
+  color: var(--app-warning-text) !important;
+}
+
+body .bg-purple-50,
+body .bg-purple-100 {
+  background-color: var(--app-purple-bg) !important;
+}
+body .text-purple-600,
+body .text-purple-700 {
+  color: var(--app-purple-text) !important;
+}
+
+body.ai-chat-no-page-scroll {
+  overflow: hidden !important;
+  background: var(--app-bg) !important;
+}
+
+body.ai-chat-no-page-scroll app-root {
+  height: 100dvh !important;
+  overflow: hidden !important;
+}
+/* DOCUX_THEME_END */
+
+/* =========================================================
+   DOCUX FINAL GLOBAL THEME
+   Automatic light/dark based on browser/system appearance
+   ========================================================= */
+
+:root,
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --app-bg: #f7f7f8;
+  --app-sidebar: #ffffff;
+  --app-surface: #ffffff;
+  --app-surface-soft: #f3f4f6;
+  --app-hover: #eceff3;
+  --app-border: #e5e7eb;
+  --app-border-strong: #cbd5e1;
+
+  --app-text: #111827;
+  --app-text-muted: #64748b;
+  --app-text-soft: #94a3b8;
+
+  --app-primary: #111827;
+  --app-primary-hover: #1f2937;
+  --app-on-primary: #ffffff;
+
+  --app-danger-bg: #fef2f2;
+  --app-danger-border: #fecaca;
+  --app-danger-text: #b91c1c;
+
+  --app-success-bg: #dcfce7;
+  --app-success-text: #047857;
+
+  --app-warning-bg: #fef3c7;
+  --app-warning-text: #b45309;
+
+  --app-purple-bg: #f3e8ff;
+  --app-purple-text: #7e22ce;
+
+  --app-shadow: rgba(15, 23, 42, 0.08);
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  /* ChatGPT-like dark gray */
+  --app-bg: #212121;
+  --app-sidebar: #171717;
+  --app-surface: #2f2f2f;
+  --app-surface-soft: #262626;
+  --app-hover: #343541;
+  --app-border: #3f3f46;
+  --app-border-strong: #565869;
+
+  --app-text: #ececf1;
+  --app-text-muted: #c5c5d2;
+  --app-text-soft: #8e8ea0;
+
+  --app-primary: #343541;
+  --app-primary-hover: #40414f;
+  --app-on-primary: #ffffff;
+
+  --app-danger-bg: #3b1216;
+  --app-danger-border: #7f1d1d;
+  --app-danger-text: #fecaca;
+
+  --app-success-bg: #063d2e;
+  --app-success-text: #86efac;
+
+  --app-warning-bg: #3d2d05;
+  --app-warning-text: #fde68a;
+
+  --app-purple-bg: #2e174c;
+  --app-purple-text: #d8b4fe;
+
+  --app-shadow: rgba(0, 0, 0, 0.35);
+}
+
+html,
+body,
+app-root {
+  background: var(--app-bg) !important;
+  color: var(--app-text) !important;
+}
+
+body,
+button,
+input,
+textarea,
+select {
+  font-family: Arial, Helvetica, sans-serif !important;
+}
+
+body input,
+body textarea,
+body select {
+  background: var(--app-surface) !important;
+  color: var(--app-text) !important;
+  border-color: var(--app-border-strong) !important;
+}
+
+body input::placeholder,
+body textarea::placeholder {
+  color: var(--app-text-soft) !important;
+}
+
+/* Tailwind background overrides */
+body .bg-white,
+body .bg-white\/90,
+body .bg-white\/95 {
+  background-color: var(--app-surface) !important;
+}
+
+body .bg-slate-50,
+body .bg-slate-100,
+body .bg-gray-50,
+body .bg-gray-100 {
+  background-color: var(--app-bg) !important;
+}
+
+body .bg-slate-900,
+body .bg-slate-950,
+body .bg-gray-900 {
+  background-color: var(--app-primary) !important;
+}
+
+body .hover\:bg-slate-50:hover,
+body .hover\:bg-slate-100:hover,
+body .hover\:bg-gray-50:hover,
+body .hover\:bg-gray-100:hover {
+  background-color: var(--app-hover) !important;
+}
+
+/* Text overrides */
+body .text-slate-950,
+body .text-slate-900,
+body .text-gray-950,
+body .text-gray-900 {
+  color: var(--app-text) !important;
+}
+
+body .text-slate-700,
+body .text-slate-600,
+body .text-slate-500,
+body .text-slate-400,
+body .text-gray-700,
+body .text-gray-600,
+body .text-gray-500,
+body .text-gray-400 {
+  color: var(--app-text-muted) !important;
+}
+
+body .text-white {
+  color: var(--app-on-primary) !important;
+}
+
+/* Borders */
+body .border-slate-100,
+body .border-slate-200,
+body .border-slate-300,
+body .border-gray-100,
+body .border-gray-200,
+body .border-gray-300 {
+  border-color: var(--app-border) !important;
+}
+
+body .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+body .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--app-border) !important;
+}
+
+/* Shadows */
+body .shadow,
+body .shadow-sm,
+body .shadow-md,
+body .shadow-lg {
+  box-shadow: 0 1px 2px var(--app-shadow) !important;
+}
+
+/* Status colors */
+body .bg-red-50,
+body .bg-red-100 {
+  background-color: var(--app-danger-bg) !important;
+}
+
+body .border-red-200,
+body .border-red-300 {
+  border-color: var(--app-danger-border) !important;
+}
+
+body .text-red-600,
+body .text-red-700 {
+  color: var(--app-danger-text) !important;
+}
+
+body .bg-emerald-50,
+body .bg-emerald-100 {
+  background-color: var(--app-success-bg) !important;
+}
+
+body .text-emerald-600,
+body .text-emerald-700 {
+  color: var(--app-success-text) !important;
+}
+
+body .bg-amber-50,
+body .bg-amber-100 {
+  background-color: var(--app-warning-bg) !important;
+}
+
+body .text-amber-600,
+body .text-amber-700 {
+  color: var(--app-warning-text) !important;
+}
+
+body.ai-chat-no-page-scroll {
+  overflow: hidden !important;
+  background: var(--app-bg) !important;
+}
+
+body.ai-chat-no-page-scroll app-root {
+  height: 100dvh !important;
+  overflow: hidden !important;
+}

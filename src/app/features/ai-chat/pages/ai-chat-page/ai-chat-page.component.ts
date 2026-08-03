@@ -2,12 +2,12 @@ import { NgIf } from '@angular/common';
 import {
   ChangeDetectorRef,
   Component,
-  ElementRef,
   NgZone,
   OnDestroy,
   ViewChild,
   inject,
 } from '@angular/core';
+import { Router } from '@angular/router';
 import { finalize } from 'rxjs';
 
 import {
@@ -24,7 +24,12 @@ import { ConversationListComponent } from '../../components/conversation-list/co
 @Component({
   selector: 'app-ai-chat-page',
   standalone: true,
-  imports: [ChatInputComponent, ChatMessageListComponent, ConversationListComponent, NgIf],
+  imports: [
+    ChatInputComponent,
+    ChatMessageListComponent,
+    ConversationListComponent,
+    NgIf,
+  ],
   templateUrl: './ai-chat-page.component.html',
   styleUrl: './ai-chat-page.component.scss',
 })
@@ -32,8 +37,8 @@ export class AiChatPageComponent implements OnDestroy {
   private readonly aiChatService = inject(AiChatService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly ngZone = inject(NgZone);
+  private readonly router = inject(Router);
 
-  @ViewChild('chatShell') private chatShell?: ElementRef<HTMLElement>;
   @ViewChild(ChatMessageListComponent) private messageList?: ChatMessageListComponent;
 
   conversations: AiConversation[] = [];
@@ -44,40 +49,20 @@ export class AiChatPageComponent implements OnDestroy {
   isLoadingConversations = false;
   isLoadingConversation = false;
   isSending = false;
-  isFullscreen = false;
 
   errorMessage = '';
 
-  private readonly fullscreenChangeHandler = () => {
-    this.ngZone.run(() => {
-      this.isFullscreen = Boolean(document.fullscreenElement);
-      this.cdr.markForCheck();
-      this.scrollMessagesToBottom();
-    });
-  };
-
   constructor() {
     document.body.classList.add('ai-chat-no-page-scroll');
-
-    document.addEventListener('fullscreenchange', this.fullscreenChangeHandler);
     this.loadConversations();
   }
 
   ngOnDestroy(): void {
     document.body.classList.remove('ai-chat-no-page-scroll');
-    document.removeEventListener('fullscreenchange', this.fullscreenChangeHandler);
   }
 
-  toggleFullscreen(): void {
-    this.isFullscreen = !this.isFullscreen;
-    this.cdr.markForCheck();
-    this.scrollMessagesToBottom();
-
-    /*
-      Native browser fullscreen can behave inconsistently inside Angular layouts.
-      So we use CSS fullscreen mode first. This gives predictable UX.
-      Browser fullscreen API can be added later if needed.
-    */
+  exitChat(): void {
+    this.router.navigate(['/dashboard']);
   }
 
   startNewChat(): void {
@@ -147,7 +132,9 @@ export class AiChatPageComponent implements OnDestroy {
         },
         error: (error) => {
           this.ngZone.run(() => {
-            this.errorMessage = error?.error?.detail || 'Unable to load conversation.';
+            this.errorMessage =
+              error?.error?.detail ||
+              'Unable to load conversation.';
             this.cdr.markForCheck();
           });
         },
@@ -171,7 +158,9 @@ export class AiChatPageComponent implements OnDestroy {
     const payload: AiChatRequest = {
       message,
       top_k: 5,
-      ...(this.activeConversationUuid ? { conversation_uuid: this.activeConversationUuid } : {}),
+      ...(this.activeConversationUuid
+        ? { conversation_uuid: this.activeConversationUuid }
+        : {}),
     };
 
     this.aiChatService
@@ -214,7 +203,6 @@ export class AiChatPageComponent implements OnDestroy {
               error?.error?.detail ||
               error?.error?.conversation_uuid?.[0] ||
               'Unable to send message. Please confirm documents are processed and backend is running.';
-
             this.cdr.markForCheck();
           });
         },

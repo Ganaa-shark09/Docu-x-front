@@ -1,0 +1,63 @@
+.extraction-review {
+  border: 1px solid var(--app-border);
+  border-radius: 18px;
+  background: var(--app-surface);
+  padding: 20px;
+}
+
+.extraction-review__header h3 {
+  margin: 0;
+  color: var(--app-text);
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.extraction-review__header p {
+  margin: 6px 0 18px;
+  color: var(--app-text-muted);
+  font-size: 14px;
+}
+
+.extraction-review__empty {
+  color: var(--app-text-muted);
+  font-size: 14px;
+}
+
+.extraction-review__fields,
+.extraction-review__raw {
+  display: grid;
+  gap: 12px;
+}
+
+.extraction-field {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid var(--app-border);
+  border-radius: 14px;
+  background: var(--app-surface-soft);
+  padding: 14px;
+}
+
+.extraction-field__label {
+  color: var(--app-text-muted);
+  font-size: 12px;
+  text-transform: capitalize;
+}
+
+.extraction-field__value {
+  margin-top: 5px;
+  color: var(--app-text);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.extraction-field__confidence {
+  flex-shrink: 0;
+  align-self: flex-start;
+  border-radius: 999px;
+  background: var(--app-surface);
+  padding: 5px 9px;
+  color: var(--app-text-muted);
+  font-size: 12px;
+}

@@ -5,7 +5,9 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 @Component({
   selector: 'app-chat-input',
   standalone: true,
-  imports: [NgIf, ReactiveFormsModule],
+  imports: [
+    // NgIf, 
+    ReactiveFormsModule],
   templateUrl: './chat-input.component.html',
   styleUrl: './chat-input.component.scss',
 })

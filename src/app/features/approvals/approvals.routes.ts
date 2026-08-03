@@ -1,11 +1,18 @@
 import { Routes } from '@angular/router';
 
-import { PlaceholderPageComponent } from '../../shared/components/placeholder-page.component';
-
 export const APPROVALS_ROUTES: Routes = [
   {
     path: '',
-    component: PlaceholderPageComponent,
-    data: { title: 'Approvals' },
+    loadComponent: () =>
+      import('./pages/approval-list-page/approval-list-page.component').then(
+        (m) => m.ApprovalListPageComponent,
+      ),
+  },
+  {
+    path: ':uuid',
+    loadComponent: () =>
+      import('./pages/approval-detail-page/approval-detail-page.component').then(
+        (m) => m.ApprovalDetailPageComponent,
+      ),
   },
 ];

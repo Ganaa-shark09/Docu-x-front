@@ -1,0 +1,30 @@
+.extraction-status {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: var(--app-surface-soft);
+  padding: 5px 10px;
+  color: var(--app-text-muted);
+  font-size: 12px;
+  text-transform: capitalize;
+}
+
+.extraction-status--success,
+.extraction-status--completed,
+.extraction-status--approved {
+  background: var(--app-success-bg);
+  color: var(--app-success-text);
+}
+
+.extraction-status--pending,
+.extraction-status--running,
+.extraction-status--review_required {
+  background: var(--app-warning-bg);
+  color: var(--app-warning-text);
+}
+
+.extraction-status--failed,
+.extraction-status--rejected {
+  background: var(--app-danger-bg);
+  color: var(--app-danger-text);
+}

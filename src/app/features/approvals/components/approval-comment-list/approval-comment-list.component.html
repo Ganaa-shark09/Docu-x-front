@@ -1,0 +1,18 @@
+<section class="approval-comments">
+  <h3>Review comments</h3>
+
+  <div *ngIf="!comments.length" class="approval-comments__empty">
+    No comments added yet.
+  </div>
+
+  <div class="approval-comments__list" *ngIf="comments.length">
+    <article class="approval-comment" *ngFor="let comment of comments">
+      <div class="approval-comment__meta">
+        <span>{{ comment.created_by_name || comment.user_name || 'Reviewer' }}</span>
+        <span>{{ comment.created_at | date: 'medium' }}</span>
+      </div>
+
+      <p>{{ comment.comment || comment.message }}</p>
+    </article>
+  </div>
+</section>

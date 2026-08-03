@@ -1,0 +1,52 @@
+<section class="extraction-review">
+  <div class="extraction-review__header">
+    <h3>Extraction review</h3>
+    <p>Review AI-extracted fields before approval.</p>
+  </div>
+
+  <div *ngIf="!hasStructuredFields && !hasRawData" class="extraction-review__empty">
+    No structured extraction data available for this approval.
+  </div>
+
+  <div *ngIf="hasStructuredFields" class="extraction-review__fields">
+    <article class="extraction-field" *ngFor="let field of fields">
+      <div>
+        <div class="extraction-field__label">
+          {{ field.label || formatLabel(field.field_name) }}
+        </div>
+
+        <div class="extraction-field__value">
+          {{ formatValue(field.value) }}
+        </div>
+      </div>
+
+      <div
+        class="extraction-field__confidence"
+        *ngIf="field.confidence !== null && field.confidence !== undefined"
+      >
+        {{ field.confidence }}%
+      </div>
+    </article>
+  </div>
+
+  <div *ngIf="!hasStructuredFields && hasRawData" class="extraction-review__raw">
+    <article class="extraction-field" *ngFor="let item of extractedData | keyvalue">
+      <div>
+        <div class="extraction-field__label">
+          {{ formatLabel(item.key) }}
+        </div>
+
+        <div class="extraction-field__value">
+          {{ formatValue(item.value) }}
+        </div>
+      </div>
+
+      <div
+        class="extraction-field__confidence"
+        *ngIf="hasConfidence(item.value)"
+      >
+        {{ formatConfidence(item.value) }}
+      </div>
+    </article>
+  </div>
+</section>
