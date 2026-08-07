@@ -8,9 +8,9 @@
   inset: 0;
   z-index: 9999;
   display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
   width: 100vw;
   height: 100dvh;
-  grid-template-columns: 292px minmax(0, 1fr);
   overflow: hidden;
   background: var(--app-bg);
   color: var(--app-text);
@@ -33,21 +33,18 @@
 }
 
 .ai-chat-logo {
-  display: flex;
+  display: grid;
   width: 36px;
   height: 36px;
-  align-items: center;
-  justify-content: center;
+  place-items: center;
   border: 1px solid var(--app-border);
   border-radius: 10px;
   background: var(--app-surface);
-  color: var(--app-text);
-  font-size: 15px;
 }
 
 .ai-chat-brand__title {
-  color: var(--app-text);
   font-size: 15px;
+  font-weight: 600;
 }
 
 .ai-chat-brand__subtitle {
@@ -61,6 +58,15 @@
   padding: 12px;
 }
 
+.ai-chat-exit {
+  width: 100%;
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  background: var(--app-surface);
+  padding: 10px 12px;
+  color: var(--app-text);
+}
+
 .ai-chat-main {
   position: relative;
   min-width: 0;
@@ -69,37 +75,10 @@
   background: var(--app-bg);
 }
 
-.ai-chat-header {
-  position: absolute;
-  inset: 0 0 auto 0;
-  z-index: 3;
-  display: flex;
-  height: 68px;
-  align-items: center;
-  justify-content: space-between;
-  border-bottom: 1px solid var(--app-border);
-  background: var(--app-bg);
-  padding: 14px 28px;
-}
-
-.ai-chat-header h1 {
-  margin: 0;
-  color: var(--app-text);
-  font-size: 20px;
-  font-weight: 500;
-}
-
-.ai-chat-header p {
-  margin: 4px 0 0;
-  color: var(--app-text-muted);
-  font-size: 13px;
-}
-
 .ai-chat-thread {
   position: absolute;
-  inset: 68px 0 94px 0;
+  inset: 0 0 104px 0;
   overflow: hidden;
-  background: var(--app-bg);
 }
 
 .ai-chat-composer {
@@ -113,71 +92,81 @@
 
 .ai-chat-hint {
   margin: 8px auto 0;
-  width: min(860px, 100%);
+  width: min(900px, 100%);
   color: var(--app-text-soft);
   font-size: 12px;
   text-align: center;
 }
 
-.ai-chat-exit {
-  width: 100%;
-  border: 1px solid var(--app-border);
-  border-radius: 10px;
-  background: var(--app-surface);
-  padding: 10px 12px;
-  color: var(--app-text);
-  font-size: 14px;
-}
-
-.ai-chat-exit:hover {
-  background: var(--app-hover);
-}
-
-.ai-chat-exit--mobile {
-  display: none;
-  width: auto;
-}
-
-.ai-chat-error {
+.ai-chat-error,
+.ai-chat-loading {
   position: absolute;
-  top: 80px;
+  top: 88px;
   left: 50%;
   z-index: 4;
   width: min(860px, calc(100% - 48px));
   transform: translateX(-50%);
-  border: 1px solid var(--app-danger-border);
-  border-radius: 10px;
-  background: var(--app-danger-bg);
+  border-radius: 12px;
   padding: 10px 12px;
-  color: var(--app-danger-text);
   font-size: 13px;
 }
 
+.ai-chat-error {
+  border: 1px solid var(--app-danger-border);
+  background: var(--app-danger-bg);
+  color: var(--app-danger-text);
+}
+
 .ai-chat-loading {
+  border: 1px solid var(--app-border);
+  background: var(--app-surface);
+  color: var(--app-text-muted);
+}
+
+.ai-scope-tabs {
   position: absolute;
   top: 16px;
   left: 50%;
-  z-index: 2;
-  width: min(860px, calc(100% - 48px));
+  z-index: 50;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: min(250px, calc(100% - 48px));
   transform: translateX(-50%);
+  overflow: hidden;
   border: 1px solid var(--app-border);
-  border-radius: 10px;
+  border-radius: 999px;
   background: var(--app-surface);
-  padding: 10px 12px;
+  padding: 4px;
+}
+
+.ai-scope-tabs::before {
+  content: '';
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  z-index: 0;
+  width: calc(50% - 6px);
+  border-radius: 999px;
+  background: var(--app-primary);
+  transition: left 180ms ease;
+}
+
+.ai-scope-tabs--switching-right::before {
+  left: calc(50% + 2px);
+}
+
+.ai-scope-tabs__button {
+  position: relative;
+  z-index: 1;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  padding: 10px 14px;
   color: var(--app-text-muted);
   font-size: 13px;
 }
 
-@media (max-width: 900px) {
-  .ai-chat-workspace {
-    grid-template-columns: 1fr;
-  }
-
-  .ai-chat-sidebar {
-    display: none;
-  }
-
-  .ai-chat-exit--mobile {
-    display: inline-flex;
-  }
+.ai-scope-tabs__button--active {
+  color: var(--app-on-primary);
 }

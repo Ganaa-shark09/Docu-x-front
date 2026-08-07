@@ -3,14 +3,14 @@
     <div class="ai-chat-brand">
       <div class="ai-chat-logo">D</div>
       <div>
-        <div class="ai-chat-brand__title">DocuX AI</div>
+        <div class="ai-chat-brand__title">DocuX Internal AI</div>
         <div class="ai-chat-brand__subtitle">Private workspace</div>
       </div>
     </div>
 
     <app-conversation-list
-      [conversations]="conversations"
-      [activeConversationUuid]="activeConversationUuid"
+      [conversations]="internalConversations"
+      [activeConversationUuid]="activeInternalConversationUuid"
       [isLoading]="isLoadingConversations"
       (newChat)="startNewChat()"
       (refresh)="loadConversations()"
@@ -25,16 +25,18 @@
   </aside>
 
   <main class="ai-chat-main">
-    <header class="ai-chat-header">
-      <div>
-        <h1>AI Chat</h1>
-        <p>Ask questions across your private document library.</p>
-      </div>
-
-      <button type="button" class="ai-chat-exit ai-chat-exit--mobile" (click)="exitChat()">
-        Exit
+    <div
+      class="ai-scope-tabs"
+      [class.ai-scope-tabs--switching-right]="isSwitchingToExternal"
+    >
+      <button type="button" class="ai-scope-tabs__button ai-scope-tabs__button--active">
+        Internal AI
       </button>
-    </header>
+
+      <button type="button" class="ai-scope-tabs__button" (click)="openExternalAi()">
+        External AI
+      </button>
+    </div>
 
     <div *ngIf="errorMessage" class="ai-chat-error">
       {{ errorMessage }}
@@ -42,11 +44,11 @@
 
     <section class="ai-chat-thread">
       <div *ngIf="isLoadingConversation" class="ai-chat-loading">
-        Loading selected conversation...
+        Loading internal conversation...
       </div>
 
       <app-chat-message-list
-        [messages]="messages"
+        [messages]="internalMessages"
         [isSending]="isSending"
       />
     </section>

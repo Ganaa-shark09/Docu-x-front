@@ -1,0 +1,207 @@
+<section
+  class="external-ai-workspace"
+  [class.external-ai-workspace--documents-open]="documentsPanelOpen"
+  [class.external-ai-workspace--drag-over]="isDragOver"
+  (dragover)="onDragOver($event)"
+  (dragleave)="onDragLeave($event)"
+  (drop)="onDrop($event)"
+>
+  <aside class="external-ai-sidebar">
+    <div class="external-ai-brand">
+      <div class="external-ai-logo">E</div>
+      <div>
+        <div class="external-ai-brand__title">External AI</div>
+        <div class="external-ai-brand__subtitle">Personal workspace</div>
+      </div>
+    </div>
+
+    <app-conversation-list
+      [conversations]="externalConversations"
+      [activeConversationUuid]="activeExternalConversationUuid"
+      [isLoading]="isLoadingConversations"
+      (newChat)="startNewChat()"
+      (refresh)="loadExternalConversations()"
+      (selected)="selectExternalConversation($event)"
+    />
+
+    <div class="external-ai-footer">
+      <button type="button" class="external-ai-exit" (click)="exitChat()">
+        Exit External AI
+      </button>
+    </div>
+  </aside>
+
+  <main class="external-ai-main">
+    <div
+      class="external-ai-scope-tabs"
+      [class.external-ai-scope-tabs--switching-left]="isSwitchingToInternal"
+    >
+      <button type="button" class="external-ai-scope-tabs__button" (click)="openInternalAi()">
+        Internal AI
+      </button>
+
+      <button type="button" class="external-ai-scope-tabs__button external-ai-scope-tabs__button--active">
+        External AI
+      </button>
+    </div>
+
+    <button
+      type="button"
+      class="external-doc-toggle"
+      title="Attached files"
+      (click)="toggleDocumentsPanel()"
+    >
+      {{ documentsPanelOpen ? '📂' : '📁' }}
+    </button>
+
+    <div *ngIf="errorMessage" class="external-ai-error">
+      {{ errorMessage }}
+    </div>
+
+    <div class="external-drop-overlay" *ngIf="isDragOver">
+      <div>
+        <strong>Drop files here</strong>
+        <span>Files will be added to the message composer.</span>
+      </div>
+    </div>
+
+    <section class="external-ai-thread">
+      <div *ngIf="isLoadingConversation" class="external-ai-loading">
+        Loading external conversation...
+      </div>
+
+      <app-chat-message-list
+        [messages]="externalMessages"
+        [isSending]="isSending"
+      />
+    </section>
+
+    <footer class="external-ai-composer">
+      <input
+        #fileInput
+        type="file"
+        hidden
+        multiple
+        accept=".pdf,.docx,.xlsx,.txt,.csv,.png,.jpg,.jpeg,.webp,.bmp,.tiff,.tif"
+        (change)="handleFileSelected($event)"
+      />
+
+      <div class="pending-files" *ngIf="pendingFiles.length">
+        <article class="pending-file" *ngFor="let pendingFile of pendingFiles">
+          <span class="pending-file__icon">📄</span>
+
+          <span class="pending-file__meta">
+            <strong>{{ pendingFile.name }}</strong>
+            <small>{{ formatFileSize(pendingFile.size) }}</small>
+          </span>
+
+          <button type="button" (click)="removePendingFile(pendingFile.id)">
+            ×
+          </button>
+        </article>
+      </div>
+
+      <div class="external-composer-box">
+        <button
+          type="button"
+          class="external-composer-plus"
+          [disabled]="isUploading"
+          title="Attach files"
+          (click)="openUploadPicker()"
+        >
+          +
+        </button>
+
+        <textarea
+          [(ngModel)]="messageText"
+          rows="1"
+          placeholder="Message External AI..."
+          [disabled]="isSending || isUploading"
+          (paste)="handlePaste($event)"
+          (keydown)="handleComposerKeydown($event)"
+        ></textarea>
+
+        <button
+          type="button"
+          class="external-composer-send"
+          [disabled]="isSending || isUploading || (!messageText.trim() && !pendingFiles.length)"
+          (click)="sendCurrentMessage()"
+        >
+          ↑
+        </button>
+      </div>
+
+      <p class="external-ai-hint">
+        Attach files with +, paste, or drag and drop. Files are uploaded only after you send the message.
+      </p>
+    </footer>
+  </main>
+
+  <aside class="external-documents-panel" *ngIf="documentsPanelOpen">
+    <div class="external-documents-panel__header">
+      <div>
+        <h2>Attached files</h2>
+        <p>Current external conversation only</p>
+      </div>
+
+      <!-- <button type="button" title="Collapse files" (click)="toggleDocumentsPanel()">
+        📁
+      </button> -->
+    </div>
+
+    <div class="external-documents__hint">
+      No file selected means all attached files will be used.
+    </div>
+
+    <div class="external-documents__hint" *ngIf="selectedDocumentCount > 0">
+      {{ selectedDocumentCount }} selected. External AI will use only selected files for the next message.
+    </div>
+
+    <div *ngIf="!activeExternalConversationUuid" class="external-documents__empty">
+      Upload a file or send a message to start an external conversation.
+    </div>
+
+    <div *ngIf="activeExternalConversationUuid && isLoadingDocuments" class="external-documents__empty">
+      Loading attached files...
+    </div>
+
+    <div
+      *ngIf="activeExternalConversationUuid && !isLoadingDocuments && !externalAttachedDocuments.length"
+      class="external-documents__empty"
+    >
+      No files attached to this conversation.
+    </div>
+
+    <div class="external-documents__list" *ngIf="externalAttachedDocuments.length">
+      <article class="external-document" *ngFor="let document of externalAttachedDocuments">
+        <label>
+          <input
+            type="checkbox"
+            [checked]="isDocumentSelected(document.uuid)"
+            (change)="toggleDocument(document.uuid)"
+          />
+
+          <span>
+            <strong>{{ document.title }}</strong>
+            <small>
+              {{ document.original_filename || document.filename || document.document_type || 'External file' }}
+            </small>
+
+            <em [ngClass]="getDocumentStatusClass(document)">
+              <span class="external-processing-spinner" *ngIf="isDocumentProcessing(document)"></span>
+              {{ getDocumentStatusLabel(document) }}
+            </em>
+          </span>
+        </label>
+
+        <p *ngIf="document.processing_error" class="external-document__error">
+          {{ document.processing_error }}
+        </p>
+
+        <button type="button" (click)="deleteDocument(document)">
+          Delete
+        </button>
+      </article>
+    </div>
+  </aside>
+</section>

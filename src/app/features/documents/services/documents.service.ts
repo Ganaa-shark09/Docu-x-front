@@ -3,120 +3,73 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 
 import { environment } from '../../../../environments/environment';
-import { API_ENDPOINTS } from '../../../core/config/api-endpoints';
-import { PaginatedResponse } from '../../../shared/models/api-response.model';
-import {
-  DepartmentOption,
-  DocumentDetail,
-  DocumentFilters,
-  DocumentListItem,
-  DocumentProcessingJob,
-} from '../models/document.model';
+
+type DocumentScope = 'internal' | 'external';
 
 @Injectable({
   providedIn: 'root',
 })
 export class DocumentsService {
   private readonly http = inject(HttpClient);
+  private readonly apiBaseUrl = environment.apiBaseUrl;
 
-  listDocuments(filters: DocumentFilters = {}): Observable<PaginatedResponse<DocumentListItem>> {
-    return this.http
-      .get<PaginatedResponse<DocumentListItem> | DocumentListItem[]>(
-        `${environment.apiBaseUrl}${API_ENDPOINTS.documents.base}`,
-        {
-          params: this.buildParams(filters),
-        },
-      )
-      .pipe(
-        map((response) => this.normalizePaginatedResponse<DocumentListItem>(response)),
-      );
-  }
-
-  getDocument(uuid: string): Observable<DocumentDetail> {
-    return this.http.get<DocumentDetail>(
-      `${environment.apiBaseUrl}${API_ENDPOINTS.documents.base}${uuid}/`,
-    );
-  }
-
-  uploadDocument(payload: {
-    title: string;
-    description?: string;
-    document_type: string;
-    sensitivity_label: string;
-    department?: string;
-    file: File;
-  }): Observable<DocumentDetail> {
-    const formData = new FormData();
-
-    formData.append('title', payload.title);
-    formData.append('description', payload.description || '');
-    formData.append('document_type', payload.document_type);
-    formData.append('sensitivity_label', payload.sensitivity_label);
-    formData.append('file', payload.file);
-
-    if (payload.department) {
-      formData.append('department', payload.department);
+  getDocuments(
+    scope: DocumentScope = 'internal',
+    filters: Record<string, string | null | undefined> = {},
+  ): Observable<any[]> {
+    if (scope === 'external') {
+      return this.http
+        .get<any>(`${this.apiBaseUrl}/ai/external-documents/`)
+        .pipe(map((response) => this.normalizeList(response)));
     }
 
-    return this.http.post<DocumentDetail>(
-      `${environment.apiBaseUrl}${API_ENDPOINTS.documents.base}`,
-      formData,
-    );
+    let params = new HttpParams().set('scope', 'internal');
+
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value) {
+        params = params.set(key, value);
+      }
+    });
+
+    return this.http
+      .get<any>(`${this.apiBaseUrl}/documents/`, { params })
+      .pipe(map((response) => this.normalizeList(response)));
   }
 
-  retryProcessing(uuid: string): Observable<{ detail: string; document_uuid: string }> {
-    return this.http.post<{ detail: string; document_uuid: string }>(
-      `${environment.apiBaseUrl}${API_ENDPOINTS.documents.base}${uuid}/retry-processing/`,
+  getDocument(uuid: string): Observable<any> {
+    return this.http.get<any>(`${this.apiBaseUrl}/documents/${uuid}/`);
+  }
+
+  uploadInternalDocument(formData: FormData): Observable<any> {
+    return this.http.post<any>(`${this.apiBaseUrl}/documents/`, formData);
+  }
+
+  uploadDocument(formData: FormData): Observable<any> {
+    return this.uploadInternalDocument(formData);
+  }
+
+  deleteDocument(uuid: string): Observable<void> {
+    return this.http.delete<void>(`${this.apiBaseUrl}/documents/${uuid}/`);
+  }
+
+  getProcessingJobs(uuid: string): Observable<any[]> {
+    return this.http
+      .get<any>(`${this.apiBaseUrl}/documents/${uuid}/processing-jobs/`)
+      .pipe(map((response) => this.normalizeList(response)));
+  }
+
+  retryProcessing(uuid: string): Observable<any> {
+    return this.http.post<any>(
+      `${this.apiBaseUrl}/documents/${uuid}/retry-processing/`,
       {},
     );
   }
 
-  getProcessingJobs(uuid: string): Observable<DocumentProcessingJob[]> {
-    return this.http.get<DocumentProcessingJob[]>(
-      `${environment.apiBaseUrl}${API_ENDPOINTS.documents.base}${uuid}/processing-jobs/`,
-    );
-  }
-
-  deleteDocument(uuid: string): Observable<void> {
-    return this.http.delete<void>(
-      `${environment.apiBaseUrl}${API_ENDPOINTS.documents.base}${uuid}/`,
-    );
-  }
-
-  listDepartments(): Observable<PaginatedResponse<DepartmentOption>> {
-    return this.http
-      .get<PaginatedResponse<DepartmentOption> | DepartmentOption[]>(
-        `${environment.apiBaseUrl}${API_ENDPOINTS.workspaces.departments}`,
-      )
-      .pipe(
-        map((response) => this.normalizePaginatedResponse<DepartmentOption>(response)),
-      );
-  }
-
-  private normalizePaginatedResponse<T>(
-    response: PaginatedResponse<T> | T[],
-  ): PaginatedResponse<T> {
+  private normalizeList(response: any): any[] {
     if (Array.isArray(response)) {
-      return {
-        count: response.length,
-        next: null,
-        previous: null,
-        results: response,
-      };
+      return response;
     }
 
-    return response;
-  }
-
-  private buildParams(filters: DocumentFilters): HttpParams {
-    let params = new HttpParams();
-
-    Object.entries(filters).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== '') {
-        params = params.set(key, String(value));
-      }
-    });
-
-    return params;
+    return response?.results || response?.documents || response?.data || response?.items || [];
   }
 }

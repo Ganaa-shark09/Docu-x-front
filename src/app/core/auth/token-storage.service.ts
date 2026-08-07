@@ -1,62 +1,46 @@
 import { Injectable } from '@angular/core';
 
-import { AuthTokens, UserProfile } from './models/auth.model';
+const ACCESS_TOKEN_KEY = 'docux_access_token';
+const REFRESH_TOKEN_KEY = 'docux_refresh_token';
 
 @Injectable({
   providedIn: 'root',
 })
 export class TokenStorageService {
-  private readonly accessTokenKey = 'docux_access_token';
-  private readonly refreshTokenKey = 'docux_refresh_token';
-  private readonly userKey = 'docux_user';
+  setAccessToken(token: string): void {
+    localStorage.setItem(ACCESS_TOKEN_KEY, token);
+  }
 
   getAccessToken(): string | null {
-    return this.storage?.getItem(this.accessTokenKey) ?? null;
+    return localStorage.getItem(ACCESS_TOKEN_KEY);
+  }
+
+  setRefreshToken(token: string): void {
+    localStorage.setItem(REFRESH_TOKEN_KEY, token);
   }
 
   getRefreshToken(): string | null {
-    return this.storage?.getItem(this.refreshTokenKey) ?? null;
+    return localStorage.getItem(REFRESH_TOKEN_KEY);
   }
 
-  saveTokens(tokens: AuthTokens): void {
-    this.storage?.setItem(this.accessTokenKey, tokens.access);
-    this.storage?.setItem(this.refreshTokenKey, tokens.refresh);
-  }
+  setTokens(accessToken: string, refreshToken?: string | null): void {
+    this.setAccessToken(accessToken);
 
-  saveUser(user: UserProfile): void {
-    this.storage?.setItem(this.userKey, JSON.stringify(user));
-  }
-
-  getUser(): UserProfile | null {
-    const value = this.storage?.getItem(this.userKey);
-
-    if (!value) {
-      return null;
-    }
-
-    try {
-      return JSON.parse(value) as UserProfile;
-    } catch {
-      this.clear();
-      return null;
+    if (refreshToken) {
+      this.setRefreshToken(refreshToken);
     }
   }
 
-  hasAccessToken(): boolean {
-    return Boolean(this.getAccessToken());
+  clearTokens(): void {
+    localStorage.removeItem(ACCESS_TOKEN_KEY);
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
   }
 
-  clear(): void {
-    this.storage?.removeItem(this.accessTokenKey);
-    this.storage?.removeItem(this.refreshTokenKey);
-    this.storage?.removeItem(this.userKey);
+  hasRefreshToken(): boolean {
+    return !!this.getRefreshToken();
   }
 
-  private get storage(): Storage | null {
-    if (typeof window === 'undefined') {
-      return null;
-    }
-
-    return window.localStorage;
+  isAuthenticated(): boolean {
+    return !!this.getAccessToken() && !!this.getRefreshToken();
   }
 }

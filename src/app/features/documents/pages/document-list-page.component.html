@@ -1,269 +1,171 @@
-    <section class="space-y-6">
-      <div class="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h2 class="text-2xl font-bold text-slate-950">Documents</h2>
-          <p class="text-sm text-slate-500">
-            Upload, filter, review processing status, and open document details.
-          </p>
-        </div>
+<section class="document-list-page">
+  <div class="document-list-page__top">
+    <div>
+      <h1>Documents</h1>
+      <p>
+        {{
+          isInternalScope
+            ? 'Company-managed documents used by Internal AI.'
+            : 'External user-level documents used only by External AI.'
+        }}
+      </p>
+    </div>
 
-        <button
-          type="button"
-          (click)="toggleUpload()"
-          class="rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
-        >
-          {{ showUpload ? 'Hide Upload' : 'Upload Document' }}
-        </button>
-      </div>
-
-      <app-document-upload-form
-        *ngIf="showUpload"
-        [departments]="departments"
-        (uploaded)="handleUploaded()"
-      />
-
-      <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <form
-          [formGroup]="filtersForm"
-          (ngSubmit)="applyFilters()"
-          class="grid gap-4 lg:grid-cols-6"
-        >
-          <div class="lg:col-span-2">
-            <label class="mb-1 block text-sm font-medium text-slate-700">Search</label>
-            <input
-              type="text"
-              formControlName="search"
-              class="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-slate-900"
-              placeholder="Search title or filename"
-            />
-          </div>
-
-          <div>
-            <label class="mb-1 block text-sm font-medium text-slate-700">Status</label>
-            <select
-              formControlName="status"
-              class="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-slate-900"
-            >
-              <option value="">All</option>
-              <option value="uploaded">Uploaded</option>
-              <option value="processing">Processing</option>
-              <option value="ready">Ready</option>
-              <option value="failed">Failed</option>
-              <option value="archived">Archived</option>
-            </select>
-          </div>
-
-          <div>
-            <label class="mb-1 block text-sm font-medium text-slate-700">Type</label>
-            <select
-              formControlName="document_type"
-              class="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-slate-900"
-            >
-              <option value="">All</option>
-              <option value="invoice">Invoice</option>
-              <option value="contract">Contract</option>
-              <option value="policy">Policy</option>
-              <option value="resume">Resume</option>
-              <option value="purchase_order">Purchase Order</option>
-              <option value="report">Report</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
-
-          <div>
-            <label class="mb-1 block text-sm font-medium text-slate-700">Sensitivity</label>
-            <select
-              formControlName="sensitivity_label"
-              class="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-slate-900"
-            >
-              <option value="">All</option>
-              <option value="public">Public</option>
-              <option value="internal">Internal</option>
-              <option value="confidential">Confidential</option>
-              <option value="highly_confidential">Highly Confidential</option>
-              <option value="restricted">Restricted</option>
-            </select>
-          </div>
-
-          <div>
-            <label class="mb-1 block text-sm font-medium text-slate-700">AI Ready</label>
-            <select
-              formControlName="is_ai_ready"
-              class="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-slate-900"
-            >
-              <option value="">All</option>
-              <option value="true">AI Ready</option>
-              <option value="false">Not Ready</option>
-            </select>
-          </div>
-
-          <div class="flex items-end gap-2 lg:col-span-6">
-            <button
-              type="submit"
-              class="rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
-            >
-              Apply Filters
-            </button>
-
-            <button
-              type="button"
-              (click)="resetFilters()"
-              class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100"
-            >
-              Reset
-            </button>
-          </div>
-        </form>
-      </div>
-
-      <div
-        *ngIf="errorMessage"
-        class="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+    <div class="document-scope-tabs">
+      <button
+        type="button"
+        [class.document-scope-tabs__button--active]="isInternalScope"
+        (click)="switchScope('internal')"
       >
-        {{ errorMessage }}
+        Internal Documents
+      </button>
+
+      <button
+        type="button"
+        [class.document-scope-tabs__button--active]="isExternalScope"
+        (click)="switchScope('external')"
+      >
+        External Documents
+      </button>
+    </div>
+  </div>
+
+  <div *ngIf="isInternalScope" class="internal-upload-note">
+    Internal upload remains available from the existing backend Documents API.
+  </div>
+
+  <div *ngIf="isExternalScope" class="external-documents-note">
+    External documents are uploaded from External AI chat and do not mix with Internal AI.
+  </div>
+
+  <form class="document-filters" [formGroup]="filtersForm" (ngSubmit)="loadDocuments()">
+    <label>
+      Search
+      <input
+        type="search"
+        formControlName="search"
+        placeholder="Search title or filename"
+      />
+    </label>
+
+    <label>
+      Status
+      <select formControlName="status">
+        <option value="">All</option>
+        <option value="ready">Ready</option>
+        <option value="processing">Processing</option>
+        <option value="failed">Failed</option>
+      </select>
+    </label>
+
+    <label>
+      Type
+      <select formControlName="document_type">
+        <option value="">All</option>
+        <option value="invoice">Invoice</option>
+        <option value="policy">Policy</option>
+        <option value="contract">Contract</option>
+        <option value="other">Other</option>
+      </select>
+    </label>
+
+    <label *ngIf="isInternalScope">
+      Sensitivity
+      <select formControlName="sensitivity_label">
+        <option value="">All</option>
+        <option value="internal">Internal</option>
+        <option value="confidential">Confidential</option>
+        <option value="restricted">Restricted</option>
+      </select>
+    </label>
+
+    <label *ngIf="isInternalScope">
+      AI Ready
+      <select formControlName="ai_ready">
+        <option value="">All</option>
+        <option value="true">Ready</option>
+        <option value="false">Pending</option>
+      </select>
+    </label>
+
+    <div class="document-filters__actions">
+      <button type="submit">Apply Filters</button>
+      <button type="button" (click)="resetFilters()">Reset</button>
+    </div>
+  </form>
+
+  <div *ngIf="errorMessage" class="document-error">
+    {{ errorMessage }}
+  </div>
+
+  <section class="document-table-card">
+    <div class="document-table-card__header">
+      <div>
+        <h2>{{ isInternalScope ? 'Internal Document Library' : 'External Document Library' }}</h2>
+        <p *ngIf="!isLoading">{{ documents.length }} documents found</p>
+        <p *ngIf="isLoading">Loading documents...</p>
       </div>
 
-      <div class="rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div class="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-          <div>
-            <h3 class="font-semibold text-slate-950">Document Library</h3>
-            <p class="text-sm text-slate-500">{{ totalCount }} documents found</p>
-          </div>
+      <button type="button" (click)="loadDocuments()">Refresh</button>
+    </div>
 
+    <div *ngIf="isLoading" class="document-empty">
+      Loading documents...
+    </div>
+
+    <div *ngIf="!isLoading && !documents.length" class="document-empty">
+      No documents found.
+    </div>
+
+    <div *ngIf="!isLoading && documents.length" class="document-table">
+      <div class="document-table__row document-table__row--head">
+        <div>Document</div>
+        <div>Status</div>
+        <div>Type</div>
+        <div *ngIf="isInternalScope">Sensitivity</div>
+        <div *ngIf="isInternalScope">AI</div>
+        <div>Created</div>
+        <div>Action</div>
+      </div>
+
+      <div class="document-table__row" *ngFor="let document of documents">
+        <div>
+          <strong>{{ getDocumentTitle(document) }}</strong>
+          <span>
+            {{ getDocumentFilename(document) }}
+            <ng-container *ngIf="getDocumentSize(document)">
+              · {{ getDocumentSize(document) }}
+            </ng-container>
+          </span>
+        </div>
+
+        <div>
+          <span class="document-pill">{{ getDocumentStatus(document) }}</span>
+        </div>
+
+        <div>{{ document.document_type || 'other' }}</div>
+
+        <div *ngIf="isInternalScope">
+          {{ document.sensitivity_label || 'internal' }}
+        </div>
+
+        <div *ngIf="isInternalScope">
+          <span class="document-pill">{{ getAiStatus(document) }}</span>
+        </div>
+
+        <div>{{ document.created_at | date: 'mediumDate' }}</div>
+
+        <div>
           <button
             type="button"
-            (click)="loadDocuments()"
-            [disabled]="isLoading"
-            class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+            class="document-open-button"
+            [disabled]="isExternalScope"
+            (click)="openDocument(document)"
           >
-            {{ isLoading ? 'Refreshing...' : 'Refresh' }}
-          </button>
-        </div>
-
-        <div *ngIf="isLoading && !documents.length" class="p-8 text-center text-sm text-slate-500">
-          Loading documents...
-        </div>
-
-        <div *ngIf="!isLoading && !documents.length" class="p-8 text-center text-sm text-slate-500">
-          No documents found.
-        </div>
-
-        <div *ngIf="documents.length" class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-slate-200">
-            <thead class="bg-slate-50">
-              <tr>
-                <th
-                  class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500"
-                >
-                  Document
-                </th>
-                <th
-                  class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500"
-                >
-                  Status
-                </th>
-                <th
-                  class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500"
-                >
-                  Type
-                </th>
-                <th
-                  class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500"
-                >
-                  Sensitivity
-                </th>
-                <th
-                  class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500"
-                >
-                  AI
-                </th>
-                <th
-                  class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500"
-                >
-                  Created
-                </th>
-                <th
-                  class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500"
-                >
-                  Action
-                </th>
-              </tr>
-            </thead>
-
-            <tbody class="divide-y divide-slate-100 bg-white">
-              <tr *ngFor="let document of documents" class="hover:bg-slate-50">
-                <td class="px-5 py-4">
-                  <div class="font-medium text-slate-950">{{ document.title }}</div>
-                  <div class="text-xs text-slate-500">
-                    {{ document.original_filename }} · {{ formatFileSize(document.file_size) }}
-                  </div>
-                  <div *ngIf="document.department_name" class="mt-1 text-xs text-slate-400">
-                    {{ document.department_name }}
-                  </div>
-                </td>
-
-                <td class="px-5 py-4">
-                  <app-document-status-badge [status]="document.status" />
-                </td>
-
-                <td class="px-5 py-4 text-sm text-slate-600">
-                  {{ formatLabel(document.document_type) }}
-                </td>
-
-                <td class="px-5 py-4 text-sm text-slate-600">
-                  {{ formatLabel(document.sensitivity_label) }}
-                </td>
-
-                <td class="px-5 py-4">
-                  <span
-                    class="rounded-full px-2.5 py-1 text-xs font-semibold"
-                    [class.bg-emerald-100]="document.is_ai_ready"
-                    [class.text-emerald-700]="document.is_ai_ready"
-                    [class.bg-slate-100]="!document.is_ai_ready"
-                    [class.text-slate-600]="!document.is_ai_ready"
-                  >
-                    {{ document.is_ai_ready ? 'Ready' : 'Not Ready' }}
-                  </span>
-                </td>
-
-                <td class="px-5 py-4 text-sm text-slate-500">
-                  {{ document.created_at | date: 'mediumDate' }}
-                </td>
-
-                <td class="px-5 py-4 text-right">
-                  <a
-                    [routerLink]="['/documents', document.uuid]"
-                    class="rounded-xl bg-slate-950 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800"
-                  >
-                    Open
-                  </a>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div class="flex items-center justify-between border-t border-slate-200 px-5 py-4">
-          <button
-            type="button"
-            (click)="previousPage()"
-            [disabled]="!previousUrl || isLoading"
-            class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Previous
-          </button>
-
-          <span class="text-sm text-slate-500"> Page {{ currentPage }} </span>
-
-          <button
-            type="button"
-            (click)="nextPage()"
-            [disabled]="!nextUrl || isLoading"
-            class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Next
+            {{ isExternalScope ? 'External' : 'Open' }}
           </button>
         </div>
       </div>
-    </section>
-  
+    </div>
+  </section>
+</section>

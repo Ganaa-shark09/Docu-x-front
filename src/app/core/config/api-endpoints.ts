@@ -1,7 +1,7 @@
 export const API_ENDPOINTS = {
   auth: {
     login: '/auth/login/',
-    refresh: '/auth/refresh/',
+    refresh: '/auth/token/refresh/',
     logout: '/auth/logout/',
     profile: '/auth/profile/',
   },
@@ -26,7 +26,10 @@ export const API_ENDPOINTS = {
 
   ai: {
     chat: '/ai/chat/',
+    externalChat: '/ai/external-chat/',
     conversations: '/ai/conversations/',
+    externalDocuments: '/ai/external-documents/',
+    externalDocumentsBulkUpload: '/ai/external-documents/bulk-upload/',
     llmProviders: '/ai/llm-providers/',
   },
 

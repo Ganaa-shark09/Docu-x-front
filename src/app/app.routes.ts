@@ -18,6 +18,11 @@ export const routes: Routes = [
    * It opens as a full-screen assistant workspace.
    */
   {
+    path: 'ai',
+    loadChildren: () =>
+      import('./features/ai-chat/ai.routes').then((m) => m.AI_ROUTES),
+  },
+  {
     path: 'ai-chat',
     canActivate: [authGuard],
     loadChildren: () =>

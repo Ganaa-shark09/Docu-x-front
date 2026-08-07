@@ -1,25 +1,23 @@
-<div *ngIf="hasFirewallData" class="firewall-card">
+<section class="firewall-card" *ngIf="hasMetadata">
   <div class="firewall-card__header">
     <div>
-      <div class="firewall-card__eyebrow">
-        AI Data Firewall
-      </div>
-
-      <!-- <div class="firewall-card__provider">
-        Provider:
-        <span>{{ formatLabel(firewall?.effective_provider_type) }}</span>
-      </div> -->
+      <h4>Data firewall</h4>
+      <p>Internal AI access policy applied to retrieved context.</p>
     </div>
 
-    <span
-      *ngIf="firewall?.forced_local"
-      class="firewall-card__routed"
-    >
-      Routed Local
+    <span class="firewall-card__mode">
+      {{ firewallModeLabel }}
     </span>
   </div>
 
-  <div class="firewall-card__stats">
+  <div
+    class="firewall-card__notice"
+    *ngIf="firewall?.forced_local || firewall?.local_only"
+  >
+    Response was forced to local/internal context.
+  </div>
+
+  <div class="firewall-stats">
     <div>
       <span>Allowed</span>
       <strong>{{ firewall?.allowed_count ?? 0 }}</strong>
@@ -36,22 +34,22 @@
     </div>
   </div>
 
-  <div *ngIf="actions.length" class="firewall-card__actions">
-    <div
-      *ngFor="let item of actions"
-      class="firewall-action"
-    >
-      <div class="firewall-action__top">
-        <span>{{ item.document_title || 'Document context' }}</span>
-
-        <strong [ngClass]="actionClass(item.action)">
-          {{ formatLabel(item.action) }}
-        </strong>
+  <div class="firewall-actions" *ngIf="policyActions.length">
+    <article class="firewall-action-row" *ngFor="let item of policyActions">
+      <div>
+        <span>{{ getDocumentTitle(item) }}</span>
+        <p *ngIf="getReason(item)">
+          {{ formatLabel(getReason(item)) }}
+        </p>
       </div>
 
-      <div class="firewall-action__reason">
-        {{ formatLabel(item.reason) }}
-      </div>
-    </div>
+      <strong [ngClass]="actionClass(getAction(item))">
+        {{ formatLabel(getAction(item)) }}
+      </strong>
+    </article>
   </div>
-</div>
+
+  <div class="firewall-card__reason" *ngIf="firewall?.blocked_reason || firewall?.reason">
+    {{ firewall?.blocked_reason || firewall?.reason }}
+  </div>
+</section>

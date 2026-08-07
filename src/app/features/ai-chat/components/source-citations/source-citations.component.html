@@ -1,31 +1,60 @@
-<div *ngIf="sources.length" class="source-card">
-  <div class="source-card__title">
-    Source Citations
+<section class="source-card" *ngIf="visibleSources.length || warningSources.length">
+  <div class="source-card__title" *ngIf="visibleSources.length">
+    Sources
   </div>
 
-  <div class="source-card__list">
-    <div
-      *ngFor="let source of sources; let index = index"
-      class="source-item"
-    >
+  <div class="source-card__list" *ngIf="visibleSources.length">
+    <article class="source-item" *ngFor="let source of visibleSources; let i = index">
       <div class="source-item__top">
-        <div class="source-item__title">
-          {{ index + 1 }}. {{ source.document_title || 'Untitled Document' }}
+        <div>
+          <span
+            class="source-item__badge"
+            [class.source-item__badge--failed]="source.source_type === 'failed_document'"
+            [class.source-item__badge--processing]="source.source_type === 'processing_document'"
+          >
+            {{ getSourceLabel(source) }}
+          </span>
+
+          <div class="source-item__title">
+            {{ getTitle(source) }}
+          </div>
         </div>
 
-        <div class="source-item__score">
-          {{ formatScore(source.score) }}
-        </div>
+        <a
+          *ngIf="source.url"
+          [href]="source.url"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="source-item__link"
+        >
+          Open
+        </a>
       </div>
 
-      <div class="source-item__meta">
-        Chunk {{ source.chunk_index ?? '-' }}
-        <span *ngIf="source.department_name"> · {{ source.department_name }}</span>
-      </div>
-
-      <p *ngIf="source.content_preview" class="source-item__preview">
-        {{ source.content_preview }}
+      <p
+        class="source-item__preview"
+        [class.source-item__preview--expanded]="isExpanded(source, i)"
+        *ngIf="getPreview(source)"
+      >
+        {{ getPreview(source) }}
       </p>
-    </div>
+
+      <button
+        type="button"
+        class="source-item__expand"
+        *ngIf="isLongPreview(source)"
+        (click)="togglePreview(source, i)"
+      >
+        {{ isExpanded(source, i) ? 'Collapse preview' : 'Expand preview' }}
+      </button>
+    </article>
   </div>
-</div>
+
+  <div class="source-warnings" *ngIf="warningSources.length">
+    <div class="source-warnings__title">Info</div>
+
+    <p *ngFor="let warning of warningSources">
+      {{ getWarningText(warning) }}
+    </p>
+  </div>
+</section>

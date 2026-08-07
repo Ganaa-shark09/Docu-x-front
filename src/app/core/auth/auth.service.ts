@@ -1,98 +1,146 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
+import { Router } from '@angular/router';
 import { BehaviorSubject, Observable, map, tap } from 'rxjs';
 
-import { environment } from '../../../environments/environment';
 import { API_ENDPOINTS } from '../config/api-endpoints';
-import { AuthTokens, LoginRequest, LoginResponse, UserProfile } from './models/auth.model';
+import { environment } from '../../../environments/environment';
 import { TokenStorageService } from './token-storage.service';
+
+export interface LoginPayload {
+  username?: string;
+  email?: string;
+  email_or_username?: string;
+  password: string;
+}
+
+export interface LoginResponse {
+  access?: string;
+  refresh?: string;
+  access_token?: string;
+  refresh_token?: string;
+  tokens?: {
+    access?: string;
+    refresh?: string;
+  };
+  user?: unknown;
+}
+
+export interface RefreshTokenResponse {
+  access?: string;
+  refresh?: string;
+  tokens?: {
+    access?: string;
+    refresh?: string;
+  };
+}
 
 @Injectable({
   providedIn: 'root',
 })
 export class AuthService {
   private readonly http = inject(HttpClient);
+  private readonly router = inject(Router);
   private readonly tokenStorage = inject(TokenStorageService);
+  private readonly apiBaseUrl = environment.apiBaseUrl;
 
-  private readonly currentUserSubject = new BehaviorSubject<UserProfile | null>(
-    this.tokenStorage.getUser(),
+  private readonly authenticatedSubject = new BehaviorSubject<boolean>(
+    this.tokenStorage.isAuthenticated(),
   );
 
-  readonly currentUser$ = this.currentUserSubject.asObservable();
+  readonly authenticated$ = this.authenticatedSubject.asObservable();
 
-  login(request: LoginRequest): Observable<UserProfile> {
-    const url = `${environment.apiBaseUrl}${API_ENDPOINTS.auth.login}`;
+  login(payload: LoginPayload): Observable<LoginResponse> {
+    return this.http
+      .post<LoginResponse>(
+        `${this.apiBaseUrl}${API_ENDPOINTS.auth.login}`,
+        payload,
+      )
+      .pipe(
+        tap((response) => {
+          const accessToken =
+            response.access ||
+            response.access_token ||
+            response.tokens?.access;
 
-    return this.http.post<LoginResponse>(url, request).pipe(
-      tap((response) => {
-        const tokens = this.extractTokens(response);
-        const user = this.extractUser(response);
+          const refreshToken =
+            response.refresh ||
+            response.refresh_token ||
+            response.tokens?.refresh;
 
-        this.tokenStorage.saveTokens(tokens);
-        this.tokenStorage.saveUser(user);
-        this.currentUserSubject.next(user);
-      }),
-      map((response) => this.extractUser(response)),
-    );
+          if (!accessToken || !refreshToken) {
+            throw new Error('Login response did not include access and refresh tokens.');
+          }
+
+          this.tokenStorage.setTokens(accessToken, refreshToken);
+          this.authenticatedSubject.next(true);
+        }),
+      );
   }
 
-  fetchProfile(): Observable<UserProfile> {
-    const url = `${environment.apiBaseUrl}${API_ENDPOINTS.auth.profile}`;
+  refreshAccessToken(): Observable<string> {
+    const refreshToken = this.tokenStorage.getRefreshToken();
 
-    return this.http.get<UserProfile>(url).pipe(
-      tap((user) => {
-        this.tokenStorage.saveUser(user);
-        this.currentUserSubject.next(user);
-      }),
-    );
-  }
+    if (!refreshToken) {
+      this.forceLogout();
+      throw new Error('Refresh token not available.');
+    }
 
-  refreshToken(): Observable<AuthTokens> {
-    const refresh = this.tokenStorage.getRefreshToken();
-    const url = `${environment.apiBaseUrl}${API_ENDPOINTS.auth.refresh}`;
+    return this.http
+      .post<RefreshTokenResponse>(
+        `${this.apiBaseUrl}${API_ENDPOINTS.auth.refresh}`,
+        {
+          refresh: refreshToken,
+        },
+      )
+      .pipe(
+        tap((response) => {
+          const accessToken = response.access || response.tokens?.access;
+          const rotatedRefreshToken = response.refresh || response.tokens?.refresh;
 
-    return this.http.post<AuthTokens>(url, { refresh }).pipe(
-      tap((tokens) => {
-        this.tokenStorage.saveTokens(tokens);
-      }),
-    );
+          if (!accessToken) {
+            throw new Error('Refresh response did not include access token.');
+          }
+
+          this.tokenStorage.setAccessToken(accessToken);
+
+          if (rotatedRefreshToken) {
+            this.tokenStorage.setRefreshToken(rotatedRefreshToken);
+          }
+
+          this.authenticatedSubject.next(true);
+        }),
+        map((response) => {
+          const accessToken = response.access || response.tokens?.access;
+
+          if (!accessToken) {
+            throw new Error('Refresh response did not include access token.');
+          }
+
+          return accessToken;
+        }),
+      );
   }
 
   logout(): void {
-    this.tokenStorage.clear();
-    this.currentUserSubject.next(null);
+    this.forceLogout();
   }
 
-  isAuthenticated(): boolean {
-    return this.tokenStorage.hasAccessToken();
+  forceLogout(): void {
+    this.tokenStorage.clearTokens();
+    this.authenticatedSubject.next(false);
+    this.router.navigate(['/login']);
   }
 
   getAccessToken(): string | null {
     return this.tokenStorage.getAccessToken();
   }
 
-  private extractTokens(response: LoginResponse): AuthTokens {
-    if (response.tokens?.access && response.tokens?.refresh) {
-      return response.tokens;
-    }
-
-    if (response.access && response.refresh) {
-      return {
-        access: response.access,
-        refresh: response.refresh,
-      };
-    }
-
-    throw new Error('Login response does not contain access and refresh tokens.');
+  getRefreshToken(): string | null {
+    return this.tokenStorage.getRefreshToken();
   }
 
-  private extractUser(response: LoginResponse): UserProfile {
-    const user = response.user ?? response.profile;
-
-    if (!user) {
-      throw new Error('Login response does not contain user profile.');
-    }
-
-    return user;
+  isAuthenticated(): boolean {
+    return this.tokenStorage.isAuthenticated();
   }
 }

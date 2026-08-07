@@ -1,76 +1,94 @@
 import { DatePipe, NgFor, NgIf } from '@angular/common';
-import { ChangeDetectorRef, Component, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
-// import { finalize } from 'rxjs';
+import { finalize } from 'rxjs';
 
-import {
-  DepartmentOption,
-  DocumentFilters,
-  DocumentListItem,
-} from '../models/document.model';
-import { DocumentStatusBadgeComponent } from '../components/document-status-badge.component';
-import { DocumentUploadFormComponent } from '../components/document-upload-form.component';
 import { DocumentsService } from '../services/documents.service';
+
+type DocumentScope = 'internal' | 'external';
 
 @Component({
   selector: 'app-document-list-page',
   standalone: true,
-  imports: [
-    DatePipe,
-    DocumentStatusBadgeComponent,
-    DocumentUploadFormComponent,
-    NgFor,
-    NgIf,
-    ReactiveFormsModule,
-    RouterLink,
-  ],
+  imports: [DatePipe, NgFor, NgIf, ReactiveFormsModule],
   templateUrl: './document-list-page.component.html',
-  styleUrls: ['./document-list-page.component.scss'],
+  styleUrl: './document-list-page.component.scss',
 })
-export class DocumentListPageComponent {
-  private readonly fb = inject(FormBuilder);
+export class DocumentListPageComponent implements OnInit {
   private readonly documentsService = inject(DocumentsService);
+  private readonly fb = inject(FormBuilder);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly cdr = inject(ChangeDetectorRef);
 
-  documents: DocumentListItem[] = [];
-  departments: DepartmentOption[] = [];
-
+  documents: any[] = [];
   isLoading = false;
-  showUpload = false;
   errorMessage = '';
 
-  totalCount = 0;
-  nextUrl: string | null = null;
-  previousUrl: string | null = null;
-  currentPage = 1;
+  scope: DocumentScope = 'internal';
 
-  readonly filtersForm = this.fb.nonNullable.group({
+  filtersForm = this.fb.nonNullable.group({
     search: [''],
     status: [''],
     document_type: [''],
     sensitivity_label: [''],
-    is_ai_ready: [''],
+    ai_ready: [''],
   });
 
-  constructor() {
-    this.loadDepartments();
-    this.loadDocuments();
+  ngOnInit(): void {
+    this.route.data.subscribe((data) => {
+      this.scope = (data['scope'] || 'internal') as DocumentScope;
+      this.loadDocuments();
+    });
   }
 
-  toggleUpload(): void {
-    this.showUpload = !this.showUpload;
+  get isInternalScope(): boolean {
+    return this.scope === 'internal';
   }
 
-  handleUploaded(): void {
-    this.showUpload = false;
-    this.currentPage = 1;
-    this.loadDocuments();
+  get isExternalScope(): boolean {
+    return this.scope === 'external';
   }
 
-  applyFilters(): void {
-    this.currentPage = 1;
-    this.loadDocuments();
+  switchScope(scope: DocumentScope): void {
+    this.router.navigate(['/documents', scope]);
+  }
+
+  loadDocuments(): void {
+    this.isLoading = true;
+    this.errorMessage = '';
+    this.cdr.markForCheck();
+
+    const rawFilters = this.filtersForm.getRawValue();
+    const filters: Record<string, string> = {};
+
+    Object.entries(rawFilters).forEach(([key, value]) => {
+      if (value) {
+        filters[key] = value;
+      }
+    });
+
+    this.documentsService
+      .getDocuments(this.scope, filters)
+      .pipe(
+        finalize(() => {
+          this.isLoading = false;
+          this.cdr.markForCheck();
+        }),
+      )
+      .subscribe({
+        next: (documents) => {
+          this.documents = documents;
+          this.cdr.markForCheck();
+        },
+        error: (error) => {
+          console.error('Documents load error:', error);
+          this.errorMessage = 'Unable to load documents.';
+          this.documents = [];
+          this.cdr.markForCheck();
+        },
+      });
   }
 
   resetFilters(): void {
@@ -79,96 +97,55 @@ export class DocumentListPageComponent {
       status: '',
       document_type: '',
       sensitivity_label: '',
-      is_ai_ready: '',
+      ai_ready: '',
     });
-    this.currentPage = 1;
+
     this.loadDocuments();
   }
 
-  nextPage(): void {
-    if (!this.nextUrl) {
+  openDocument(document: any): void {
+    if (this.isExternalScope) {
       return;
     }
 
-    this.currentPage += 1;
-    this.loadDocuments();
+    this.router.navigate(['/documents/detail', document.uuid]);
   }
 
-  previousPage(): void {
-    if (!this.previousUrl || this.currentPage <= 1) {
-      return;
-    }
-
-    this.currentPage -= 1;
-    this.loadDocuments();
+  getDocumentTitle(document: any): string {
+    return document.title || document.document_title || document.original_filename || document.filename || 'Untitled document';
   }
 
-  loadDocuments(): void {
-  this.isLoading = true;
-  this.errorMessage = '';
-
-  const filters: DocumentFilters = {
-    ...this.filtersForm.getRawValue(),
-    page: this.currentPage,
-    ordering: '-created_at',
-  };
-
-  this.documentsService.listDocuments(filters).subscribe({
-    next: (response) => {
-      console.log('Documents loaded:', response);
-
-      this.documents = Array.isArray(response.results) ? [...response.results] : [];
-      this.totalCount = Number(response.count || this.documents.length || 0);
-      this.nextUrl = response.next ?? null;
-      this.previousUrl = response.previous ?? null;
-      this.isLoading = false;
-
-      this.cdr.detectChanges();
-    },
-    error: (error) => {
-      console.error('Document list API failed:', error);
-
-      this.documents = [];
-      this.totalCount = 0;
-      this.nextUrl = null;
-      this.previousUrl = null;
-      this.isLoading = false;
-
-      this.errorMessage =
-        error?.error?.detail ||
-        JSON.stringify(error?.error || {}) ||
-        'Unable to load documents. Please confirm backend is running.';
-
-      this.cdr.detectChanges();
-    },
-  });
-}
-
-  private loadDepartments(): void {
-    this.documentsService.listDepartments().subscribe({
-      next: (response) => {
-        this.departments = response.results;
-      },
-      error: () => {
-        this.departments = [];
-      },
-    });
+  getDocumentFilename(document: any): string {
+    return document.original_filename || document.filename || document.file_name || 'Document';
   }
 
-  formatLabel(value: string): string {
-    return value
-      .replaceAll('_', ' ')
-      .replaceAll('-', ' ')
-      .replace(/\b\w/g, (character) => character.toUpperCase());
-  }
+  getDocumentSize(document: any): string {
+    const size = document.file_size || document.size;
 
-  formatFileSize(size: number): string {
     if (!size) {
-      return '0 B';
+      return '';
     }
 
-    const units = ['B', 'KB', 'MB', 'GB'];
-    const index = Math.floor(Math.log(size) / Math.log(1024));
-    return `${(size / Math.pow(1024, index)).toFixed(2)} ${units[index]}`;
+    if (size < 1024) {
+      return `${size} B`;
+    }
+
+    return `${(size / 1024).toFixed(2)} KB`;
+  }
+
+  getDocumentStatus(document: any): string {
+    return document.status || document.processing_status || 'ready';
+  }
+
+  getAiStatus(document: any): string {
+    if (document.ai_ready === true || document.is_indexed === true) {
+      return 'Ready';
+    }
+
+    if (document.ai_ready === false || document.is_indexed === false) {
+      return 'Pending';
+    }
+
+    return 'Ready';
   }
 }

@@ -1,55 +1,80 @@
-<div
-  #messageScrollContainer
-  class="message-list"
-  (scroll)="onScroll()"
->
-  <div *ngIf="!messages.length" class="chat-empty">
-    <div class="chat-empty__content">
-      <h2>How can I help?</h2>
-      <p>Ask anything about your uploaded documents.</p>
+<div #scrollContainer class="chat-message-list">
+  <section class="chat-empty-state" *ngIf="!messages.length && !isSending">
+    <h2>How can I help?</h2>
+    <p>Ask anything about your uploaded documents.</p>
 
-      <div class="chat-suggestions">
-        <button type="button">What is the payment term?</button>
-        <button type="button">Summarize this document</button>
-        <button type="button">List key risks</button>
-      </div>
+    <div class="chat-suggestions">
+      <span>What is the payment term?</span>
+      <span>Summarize this document</span>
+      <span>List key risks</span>
     </div>
-  </div>
+  </section>
 
   <div
-    *ngFor="let message of messages"
     class="message-row"
-    [class.message-row--user]="message.role === 'user'"
-    [class.message-row--assistant]="message.role === 'assistant'"
+    *ngFor="let message of messages"
+    [ngClass]="{
+      'message-row--user': message.role === 'user',
+      'message-row--assistant': message.role === 'assistant'
+    }"
   >
-    <div class="message-content">
-      <div class="message-bubble">
-        <div class="message-text">
-          {{ message.content }}
-        </div>
-
-        <app-source-citations
-          *ngIf="message.role === 'assistant'"
-          [sources]="message.sources || []"
-        />
-
-        <app-firewall-metadata
-          *ngIf="message.role === 'assistant'"
-          [firewall]="message.firewall"
-        />
-
-        <div class="message-time">
-          {{ message.created_at | date: 'd/M/yy, h:mm a' }}
-        </div>
+    <article
+      class="message-bubble"
+      [class.message-bubble--attachment-only]="!message.content && message.attachments?.length"
+    >
+      <div class="message-content" *ngIf="message.content">
+        {{ message.content }}
       </div>
-    </div>
+
+      <div class="chat-attachments" *ngIf="message.attachments?.length">
+        <article class="chat-attachment" *ngFor="let attachment of message.attachments">
+          <div class="chat-attachment__icon">📄</div>
+
+          <div class="chat-attachment__body">
+            <strong>{{ attachment.title || attachment.original_filename || attachment.filename }}</strong>
+
+            <small>
+              <ng-container *ngIf="formatFileSize(attachment.file_size)">
+                {{ formatFileSize(attachment.file_size) }} 
+              </ng-container>
+
+              <span [ngClass]="getAttachmentStatusClass(attachment)">
+                <span class="chat-attachment__spinner" *ngIf="isAttachmentProcessing(attachment)"></span>
+                {{ getAttachmentStatusLabel(attachment) }}
+              </span>
+            </small>
+
+            <p *ngIf="attachment.processing_error">
+              {{ attachment.processing_error }}
+            </p>
+          </div>
+        </article>
+      </div>
+
+      <app-firewall-metadata
+        *ngIf="message.firewall"
+        [firewall]="message.firewall"
+      />
+
+      <app-source-citations
+        *ngIf="message.sources?.length"
+        [sources]="message.sources || []"
+      />
+
+      <span class="message-time">
+        {{ message.created_at | date: 'MMM d, y, h:mm:ss a' }}
+      </span>
+    </article>
   </div>
 
-  <div *ngIf="isSending" class="message-row message-row--assistant">
-    <div class="message-content">
-      <div class="message-bubble message-bubble--thinking">
-        Thinking with private document context...
-      </div>
-    </div>
+  <div class="message-row message-row--assistant" *ngIf="isSending">
+    <article class="message-bubble message-bubble--thinking-text">
+      <span class="thinking-text">Thinking</span>
+      <span class="thinking-dots">
+        <span>.</span>
+        <span>.</span>
+        <span>.</span>
+      </span>
+    </article>
   </div>
 </div>

@@ -8,7 +8,6 @@ import {
   inject,
 } from '@angular/core';
 import { Router } from '@angular/router';
-import { finalize } from 'rxjs';
 
 import {
   AiChatRequest,
@@ -41,16 +40,27 @@ export class AiChatPageComponent implements OnDestroy {
 
   @ViewChild(ChatMessageListComponent) private messageList?: ChatMessageListComponent;
 
-  conversations: AiConversation[] = [];
-  messages: LocalChatMessage[] = [];
-
-  activeConversationUuid: string | null = null;
+  internalConversations: AiConversation[] = [];
+  internalMessages: LocalChatMessage[] = [];
+  activeInternalConversationUuid: string | null = null;
 
   isLoadingConversations = false;
   isLoadingConversation = false;
   isSending = false;
-
   errorMessage = '';
+  isSwitchingToExternal = false;
+
+  get conversations(): AiConversation[] {
+    return this.internalConversations;
+  }
+
+  get messages(): LocalChatMessage[] {
+    return this.internalMessages;
+  }
+
+  get activeConversationUuid(): string | null {
+    return this.activeInternalConversationUuid;
+  }
 
   constructor() {
     document.body.classList.add('ai-chat-no-page-scroll');
@@ -61,13 +71,22 @@ export class AiChatPageComponent implements OnDestroy {
     document.body.classList.remove('ai-chat-no-page-scroll');
   }
 
+  openExternalAi(): void {
+    this.isSwitchingToExternal = true;
+    this.cdr.markForCheck();
+
+    window.setTimeout(() => {
+      this.router.navigate(['/ai/external']);
+    }, 180);
+  }
+
   exitChat(): void {
     this.router.navigate(['/dashboard']);
   }
 
   startNewChat(): void {
-    this.activeConversationUuid = null;
-    this.messages = [];
+    this.activeInternalConversationUuid = null;
+    this.internalMessages = [];
     this.errorMessage = '';
     this.cdr.markForCheck();
   }
@@ -76,69 +95,50 @@ export class AiChatPageComponent implements OnDestroy {
     this.isLoadingConversations = true;
     this.cdr.markForCheck();
 
-    this.aiChatService
-      .listConversations()
-      .pipe(
-        finalize(() => {
-          this.ngZone.run(() => {
-            this.isLoadingConversations = false;
-            this.cdr.markForCheck();
-          });
-        }),
-      )
-      .subscribe({
-        next: (conversations) => {
-          this.ngZone.run(() => {
-            this.conversations = conversations;
-            this.cdr.markForCheck();
-          });
-        },
-        error: () => {
-          this.ngZone.run(() => {
-            this.conversations = [];
-            this.cdr.markForCheck();
-          });
-        },
-      });
+    this.aiChatService.listConversations('internal').subscribe({
+      next: (conversations) => {
+        this.ngZone.run(() => {
+          this.internalConversations = conversations;
+          this.isLoadingConversations = false;
+          this.cdr.detectChanges();
+        });
+      },
+      error: () => {
+        this.ngZone.run(() => {
+          this.internalConversations = [];
+          this.isLoadingConversations = false;
+          this.cdr.detectChanges();
+        });
+      },
+    });
   }
 
   selectConversation(uuid: string): void {
-    this.activeConversationUuid = uuid;
+    this.activeInternalConversationUuid = uuid;
     this.isLoadingConversation = true;
     this.errorMessage = '';
     this.cdr.markForCheck();
 
-    this.aiChatService
-      .getConversation(uuid)
-      .pipe(
-        finalize(() => {
-          this.ngZone.run(() => {
-            this.isLoadingConversation = false;
-            this.cdr.markForCheck();
-            this.scrollMessagesToBottom();
-          });
-        }),
-      )
-      .subscribe({
-        next: (conversation) => {
-          this.ngZone.run(() => {
-            this.messages = (conversation.messages || [])
-              .filter((message) => message.role === 'user' || message.role === 'assistant')
-              .map((message) => this.mapConversationMessage(message));
+    this.aiChatService.getConversation(uuid).subscribe({
+      next: (conversation) => {
+        this.ngZone.run(() => {
+          this.internalMessages = (conversation.messages || [])
+            .filter((message) => message.role === 'user' || message.role === 'assistant')
+            .map((message) => this.mapConversationMessage(message));
 
-            this.cdr.markForCheck();
-            this.scrollMessagesToBottom();
-          });
-        },
-        error: (error) => {
-          this.ngZone.run(() => {
-            this.errorMessage =
-              error?.error?.detail ||
-              'Unable to load conversation.';
-            this.cdr.markForCheck();
-          });
-        },
-      });
+          this.isLoadingConversation = false;
+          this.cdr.detectChanges();
+          this.scrollMessagesToBottom();
+        });
+      },
+      error: (error) => {
+        this.ngZone.run(() => {
+          this.errorMessage = error?.error?.detail || 'Unable to load internal conversation.';
+          this.isLoadingConversation = false;
+          this.cdr.detectChanges();
+        });
+      },
+    });
   }
 
   sendMessage(message: string): void {
@@ -150,7 +150,7 @@ export class AiChatPageComponent implements OnDestroy {
       created_at: new Date().toISOString(),
     };
 
-    this.messages = [...this.messages, userMessage];
+    this.internalMessages = [...this.internalMessages, userMessage];
     this.isSending = true;
     this.cdr.markForCheck();
     this.scrollMessagesToBottom();
@@ -158,61 +158,48 @@ export class AiChatPageComponent implements OnDestroy {
     const payload: AiChatRequest = {
       message,
       top_k: 5,
-      ...(this.activeConversationUuid
-        ? { conversation_uuid: this.activeConversationUuid }
+      ...(this.activeInternalConversationUuid
+        ? { conversation_uuid: this.activeInternalConversationUuid }
         : {}),
     };
 
-    this.aiChatService
-      .sendMessage(payload)
-      .pipe(
-        finalize(() => {
-          this.ngZone.run(() => {
-            this.isSending = false;
-            this.cdr.markForCheck();
-            this.scrollMessagesToBottom();
-          });
-        }),
-      )
-      .subscribe({
-        next: (response) => {
-          this.ngZone.run(() => {
-            this.activeConversationUuid = response.conversation_uuid;
+    this.aiChatService.sendInternalChatMessage(payload).subscribe({
+      next: (response) => {
+        this.ngZone.run(() => {
+          this.activeInternalConversationUuid = response.conversation_uuid;
 
-            const assistantMessage: LocalChatMessage = {
-              role: 'assistant',
-              content: response.answer,
-              created_at: new Date().toISOString(),
-              sources: response.sources || [],
-              firewall: response.firewall,
-              model_provider: response.model_provider,
-              model_name: response.model_name,
-              usage: response.usage,
-            };
+          const assistantMessage: LocalChatMessage = {
+            role: 'assistant',
+            content: response.answer,
+            created_at: new Date().toISOString(),
+            sources: response.sources || [],
+            firewall: response.firewall,
+            model_provider: response.model_provider,
+            model_name: response.model_name,
+            usage: response.usage,
+          };
 
-            this.messages = [...this.messages, assistantMessage];
-
-            this.cdr.markForCheck();
-            this.scrollMessagesToBottom();
-            this.loadConversations();
-          });
-        },
-        error: (error) => {
-          this.ngZone.run(() => {
-            this.errorMessage =
-              error?.error?.detail ||
-              error?.error?.conversation_uuid?.[0] ||
-              'Unable to send message. Please confirm documents are processed and backend is running.';
-            this.cdr.markForCheck();
-          });
-        },
-      });
+          this.internalMessages = [...this.internalMessages, assistantMessage];
+          this.isSending = false;
+          this.cdr.detectChanges();
+          this.scrollMessagesToBottom();
+          this.loadConversations();
+        });
+      },
+      error: (error) => {
+        this.ngZone.run(() => {
+          this.errorMessage =
+            error?.error?.detail ||
+            'Unable to send internal AI message.';
+          this.isSending = false;
+          this.cdr.detectChanges();
+        });
+      },
+    });
   }
 
   private scrollMessagesToBottom(): void {
-    setTimeout(() => {
-      this.messageList?.scrollToBottom();
-    }, 0);
+    setTimeout(() => this.messageList?.scrollToBottom(), 0);
   }
 
   private mapConversationMessage(message: AiConversationMessage): LocalChatMessage {
@@ -220,8 +207,8 @@ export class AiChatPageComponent implements OnDestroy {
       role: message.role === 'assistant' ? 'assistant' : 'user',
       content: message.content,
       created_at: message.created_at,
-      sources: message.retrieved_sources || [],
-      firewall: message.metadata?.firewall_enforcement,
+      sources: message.retrieved_sources || message.sources || [],
+      firewall: message.metadata?.firewall_enforcement || null,
       model_provider: message.model_provider,
       model_name: message.model_name,
       usage: {
