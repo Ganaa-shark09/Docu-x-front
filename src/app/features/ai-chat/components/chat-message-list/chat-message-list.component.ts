@@ -7,19 +7,19 @@ import {
 } from '@angular/core';
 
 import { LocalChatAttachment, LocalChatMessage } from '../../models/ai-chat.model';
+import { AssistantResponseComponent } from '../assistant-response/assistant-response.component';
 import { FirewallMetadataComponent } from '../firewall-metadata/firewall-metadata.component';
-import { SourceCitationsComponent } from '../source-citations/source-citations.component';
 
 @Component({
   selector: 'app-chat-message-list',
   standalone: true,
   imports: [
+    AssistantResponseComponent,
     DatePipe,
     FirewallMetadataComponent,
     NgClass,
     NgFor,
     NgIf,
-    SourceCitationsComponent,
   ],
   templateUrl: './chat-message-list.component.html',
   styleUrl: './chat-message-list.component.scss',
@@ -29,6 +29,20 @@ export class ChatMessageListComponent {
   @Input() isSending = false;
 
   @ViewChild('scrollContainer') private scrollContainer?: ElementRef<HTMLDivElement>;
+
+  trackMessage = (index: number, message: LocalChatMessage): string => {
+    const attachmentKey = (message.attachments || [])
+      .map((attachment) => attachment.uuid || attachment.local_id || attachment.title)
+      .join('|');
+
+    return [
+      message.role,
+      message.created_at,
+      message.content || '',
+      attachmentKey,
+      index,
+    ].join('::');
+  };
 
   scrollToBottom(): void {
     const element = this.scrollContainer?.nativeElement;
@@ -48,14 +62,14 @@ export class ChatMessageListComponent {
     }
 
     if (attachment.is_ai_ready || status === 'ready') {
-      return '';
+      return 'Ready';
     }
 
     if (status === 'pending_upload') {
       return 'Uploading...';
     }
 
-    return 'Uploading...';
+    return 'Processing...';
   }
 
   getAttachmentStatusClass(attachment: LocalChatAttachment): string {

@@ -12,19 +12,32 @@
 
   <div
     class="message-row"
-    *ngFor="let message of messages"
+    *ngFor="let message of messages; let i = index; trackBy: trackMessage"
     [ngClass]="{
       'message-row--user': message.role === 'user',
       'message-row--assistant': message.role === 'assistant'
     }"
   >
     <article
-      class="message-bubble"
-      [class.message-bubble--attachment-only]="!message.content && message.attachments?.length"
+      class="message-shell"
+      [ngClass]="{
+        'message-shell--user': message.role === 'user',
+        'message-shell--assistant': message.role === 'assistant',
+        'message-shell--attachment-only': !message.content && !!message.attachments?.length
+      }"
     >
-      <div class="message-content" *ngIf="message.content">
-        {{ message.content }}
-      </div>
+      <ng-container *ngIf="message.role === 'assistant'; else userMessageTemplate">
+        <app-assistant-response
+          *ngIf="message.content"
+          [message]="message"
+        ></app-assistant-response>
+      </ng-container>
+
+      <ng-template #userMessageTemplate>
+        <div class="message-content" *ngIf="message.content">
+          {{ message.content }}
+        </div>
+      </ng-template>
 
       <div class="chat-attachments" *ngIf="message.attachments?.length">
         <article class="chat-attachment" *ngFor="let attachment of message.attachments">
@@ -35,7 +48,7 @@
 
             <small>
               <ng-container *ngIf="formatFileSize(attachment.file_size)">
-                {{ formatFileSize(attachment.file_size) }} 
+                {{ formatFileSize(attachment.file_size) }} ·
               </ng-container>
 
               <span [ngClass]="getAttachmentStatusClass(attachment)">
@@ -54,12 +67,7 @@
       <app-firewall-metadata
         *ngIf="message.firewall"
         [firewall]="message.firewall"
-      />
-
-      <app-source-citations
-        *ngIf="message.sources?.length"
-        [sources]="message.sources || []"
-      />
+      ></app-firewall-metadata>
 
       <span class="message-time">
         {{ message.created_at | date: 'MMM d, y, h:mm:ss a' }}
@@ -68,7 +76,7 @@
   </div>
 
   <div class="message-row message-row--assistant" *ngIf="isSending">
-    <article class="message-bubble message-bubble--thinking-text">
+    <article class="message-shell message-shell--assistant message-shell--thinking">
       <span class="thinking-text">Thinking</span>
       <span class="thinking-dots">
         <span>.</span>

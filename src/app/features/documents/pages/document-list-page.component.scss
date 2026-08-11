@@ -208,3 +208,27 @@
     align-items: stretch;
   }
 }
+
+
+.document-page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.document-upload-button {
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  background: var(--app-primary);
+  padding: 10px 14px;
+  color: var(--app-on-primary);
+  font-size: 14px;
+}
+
+.document-upload-panel {
+  border: 1px solid var(--app-border);
+  border-radius: 18px;
+  background: var(--app-surface);
+  padding: 18px;
+}

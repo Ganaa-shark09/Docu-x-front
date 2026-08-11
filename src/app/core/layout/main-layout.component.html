@@ -1,86 +1,134 @@
-<div class="min-h-screen bg-slate-50 text-slate-950">
-  <aside class="fixed left-0 top-0 z-30 h-screen w-64 border-r border-slate-200 bg-white px-5 py-6">
-    <div class="mb-10">
-      <h1 class="text-xl font-bold tracking-tight">DocuX AI</h1>
-      <p class="mt-1 text-sm text-slate-500">Private Document Intelligence</p>
+<div class="docux-shell">
+  <aside class="docux-sidebar">
+    <div class="docux-brand" title="Hover to expand sidebar">
+      <span class="docux-brand__mark">D</span>
+
+      <span class="docux-brand__text">
+        <strong>DocuX AI</strong>
+        <small>Private Document Intelligence</small>
+      </span>
     </div>
 
-    <nav class="space-y-2">
+    <nav class="docux-sidebar__nav" aria-label="Main navigation">
       <a
-        routerLink="/dashboard"
-        routerLinkActive="active"
-        class="block rounded-xl px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-100"
+        *ngFor="let item of navItems"
+        [routerLink]="item.path"
+        routerLinkActive="is-active"
+        class="docux-sidebar__link"
+        [title]="item.label"
       >
-        Dashboard
-      </a>
+        <span class="docux-sidebar__icon" [ngSwitch]="item.icon">
+          <svg *ngSwitchCase="'dashboard'" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 11.5 12 5l8 6.5"></path>
+            <path d="M6.5 10.5V19h11v-8.5"></path>
+            <path d="M10 19v-5h4v5"></path>
+          </svg>
 
-      <a
-        routerLink="/documents/internal"
-        routerLinkActive="active"
-        class="block rounded-xl px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-100"
-      >
-        Documents
-      </a>
+          <svg *ngSwitchCase="'documents'" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M7 3.5h7l3 3V20.5H7z"></path>
+            <path d="M14 3.5v4h4"></path>
+            <path d="M9.5 11h5"></path>
+            <path d="M9.5 14h5"></path>
+            <path d="M9.5 17h3"></path>
+          </svg>
 
-      <a
-        routerLink="/ai/internal"
-        routerLinkActive="active"
-        class="block rounded-xl px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-100"
-      >
-        AI Chat
-      </a>
+          <svg *ngSwitchCase="'approvals'" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 12.5 9.2 17 19 7"></path>
+          </svg>
 
-      <a
-        routerLink="/approvals"
-        routerLinkActive="active"
-        class="block rounded-xl px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-100"
-      >
-        Approvals
-      </a>
+          <svg *ngSwitchCase="'workflows'" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M7 7h7a4 4 0 0 1 0 8H8"></path>
+            <path d="M10 4 7 7l3 3"></path>
+            <path d="M14 20l3-3-3-3"></path>
+          </svg>
 
-      <a
-        routerLink="/workflows"
-        routerLinkActive="active"
-        class="block rounded-xl px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-100"
-      >
-        Workflows
-      </a>
+          <svg *ngSwitchCase="'notifications'" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M18 9a6 6 0 0 0-12 0c0 7-2.5 7-2.5 7h17S18 16 18 9"></path>
+            <path d="M10 20h4"></path>
+          </svg>
 
-      <a
-        routerLink="/notifications"
-        routerLinkActive="active"
-        class="block rounded-xl px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-100"
-      >
-        Notifications
+          <svg *ngSwitchDefault viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 12h14"></path>
+          </svg>
+        </span>
+
+        <span class="docux-sidebar__label">{{ item.label }}</span>
       </a>
     </nav>
   </aside>
 
-  <div class="min-h-screen pl-64">
-    <header class="flex items-center justify-between border-b border-slate-200 bg-white px-8 py-5">
+  <div class="docux-main">
+    <header class="docux-header">
       <div>
-        <h2 class="text-xl font-semibold">DocuX Workspace</h2>
-        <p class="text-sm text-slate-500">Secure AI document processing and review</p>
+        <h2>DocuX Workspace</h2>
+        <p>Secure AI document processing and review</p>
       </div>
 
-      <div class="flex items-center gap-4">
-        <div class="text-right text-sm">
-          <div class="font-semibold">admin</div>
-          <div class="text-slate-500">company_admin</div>
+      <div class="docux-header__actions">
+        <div class="docux-header__user">
+          <strong>admin</strong>
+          <span>company_admin</span>
         </div>
 
-        <button
-          type="button"
-          class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium"
-          (click)="logout()"
-        >
+        <button type="button" class="docux-header__logout" (click)="logout()">
           Logout
         </button>
       </div>
     </header>
 
-    <main class="p-8">
-      <router-outlet />
+    <main class="docux-content">
+      <router-outlet></router-outlet>
     </main>
   </div>
+
+  <button
+    type="button"
+    class="docux-ai-fab"
+    aria-label="Open DocuX AI"
+    title="Open DocuX AI"
+    (click)="openAiChat()"
+    (mouseenter)="handleAiFabMouseEnter()"
+    (mouseleave)="handleAiFabMouseLeave()"
+  >
+    <span class="docux-ai-fab__glow"></span>
+
+    <span class="docux-ai-fab__icon-stage" aria-hidden="true">
+      <ng-container
+        *ngFor="
+          let visual of floatingAiVisuals;
+          let i = index;
+          trackBy: trackFloatingAiVisual
+        "
+      >
+        <span
+          class="docux-ai-fab__icon-layer"
+          [class.docux-ai-fab__icon-layer--active]="
+            i === activeFloatingAiVisualIndex
+          "
+        >
+          <img
+            *ngIf="visual.kind === 'image'"
+            [src]="visual.value"
+            [alt]="visual.alt"
+            class="docux-ai-fab__image"
+          />
+
+          <span
+            *ngIf="visual.kind === 'emoji'"
+            class="docux-ai-fab__emoji"
+            [attr.aria-label]="visual.alt"
+          >
+            {{ visual.value }}
+          </span>
+        </span>
+      </ng-container>
+    </span>
+
+    <span class="docux-ai-fab__popup">
+      <span class="docux-ai-fab__popup-title">DocuX AI</span>
+      <span class="docux-ai-fab__popup-subtitle">
+        Smart document assistant
+      </span>
+    </span>
+  </button>
 </div>

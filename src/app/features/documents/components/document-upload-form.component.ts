@@ -1,17 +1,18 @@
-import { NgIf } from '@angular/common';
+import { NgFor, NgIf } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 
 @Component({
   selector: 'app-document-upload-form',
   standalone: true,
-  imports: [NgIf, ReactiveFormsModule],
+  imports: [NgFor, NgIf, ReactiveFormsModule],
   templateUrl: './document-upload-form.component.html',
   styleUrl: './document-upload-form.component.scss',
 })
 export class DocumentUploadFormComponent {
   @Input() isUploading = false;
   @Input() errorMessage = '';
+  @Input() departments: Array<{ uuid: string; name: string }> = [];
 
   @Output() upload = new EventEmitter<FormData>();
   @Output() cancelled = new EventEmitter<void>();
@@ -22,6 +23,7 @@ export class DocumentUploadFormComponent {
 
   form = this.fb.nonNullable.group({
     title: ['', [Validators.required]],
+    description: [''],
     document_type: ['other', [Validators.required]],
     sensitivity_label: ['internal', [Validators.required]],
     department: [''],
@@ -50,6 +52,10 @@ export class DocumentUploadFormComponent {
 
     const formData = new FormData();
     formData.append('title', values.title);
+
+    if (values.description) {
+      formData.append('description', values.description);
+    }
     formData.append('document_type', values.document_type);
     formData.append('sensitivity_label', values.sensitivity_label);
     formData.append('file', this.selectedFile);

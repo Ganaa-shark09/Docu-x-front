@@ -11,32 +11,53 @@
       </p>
     </div>
 
-    <div class="document-scope-tabs">
-      <button
-        type="button"
-        [class.document-scope-tabs__button--active]="isInternalScope"
-        (click)="switchScope('internal')"
-      >
-        Internal Documents
-      </button>
+    <div class="document-page-actions">
+      <div class="document-scope-tabs">
+        <button
+          type="button"
+          [class.document-scope-tabs__button--active]="isInternalScope"
+          (click)="switchScope('internal')"
+        >
+          Internal Documents
+        </button>
+
+        <button
+          type="button"
+          [class.document-scope-tabs__button--active]="isExternalScope"
+          (click)="switchScope('external')"
+        >
+          External Documents
+        </button>
+      </div>
 
       <button
+        *ngIf="isInternalScope"
         type="button"
-        [class.document-scope-tabs__button--active]="isExternalScope"
-        (click)="switchScope('external')"
+        class="document-upload-button"
+        (click)="openUploadModal()"
       >
-        External Documents
+        + Upload Internal Document
       </button>
     </div>
   </div>
 
   <div *ngIf="isInternalScope" class="internal-upload-note">
-    Internal upload remains available from the existing backend Documents API.
+    Internal documents are uploaded here and become available to Internal AI only.
   </div>
 
   <div *ngIf="isExternalScope" class="external-documents-note">
     External documents are uploaded from External AI chat and do not mix with Internal AI.
   </div>
+
+  <section *ngIf="isUploadOpen && isInternalScope" class="document-upload-panel">
+    <app-document-upload-form
+      [departments]="departments"
+      [isUploading]="isUploadingDocument"
+      [errorMessage]="uploadErrorMessage"
+      (upload)="uploadInternalDocument($event)"
+      (cancelled)="closeUploadModal()"
+    />
+  </section>
 
   <form class="document-filters" [formGroup]="filtersForm" (ngSubmit)="loadDocuments()">
     <label>
@@ -162,7 +183,7 @@
             [disabled]="isExternalScope"
             (click)="openDocument(document)"
           >
-            {{ isExternalScope ? 'External' : 'Open' }}
+            {{ isExternalScope ? 'External' : 'Details' }}
           </button>
         </div>
       </div>

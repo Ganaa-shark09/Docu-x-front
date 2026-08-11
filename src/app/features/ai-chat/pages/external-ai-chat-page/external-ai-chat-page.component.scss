@@ -394,3 +394,19 @@
     transform: rotate(360deg);
   }
 }
+
+
+.external-composer-send svg {
+  width: 20px;
+  height: 20px;
+}
+
+.external-composer-send svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}

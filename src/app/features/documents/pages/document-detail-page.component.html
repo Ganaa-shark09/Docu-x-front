@@ -1,261 +1,207 @@
-    <section class="w-full max-w-none space-y-6">
-      <div class="flex flex-wrap items-start justify-between gap-4">
+<section class="document-detail-page">
+  <div class="document-detail-page__header">
+    <div>
+      <a routerLink="/documents/internal" class="document-detail-page__back">
+        ← Back to documents
+      </a>
+
+      <h1>{{ getDocumentTitle() }}</h1>
+      <p>{{ getDocumentFilename() }}</p>
+    </div>
+
+    <div class="document-detail-page__actions">
+      <a
+        *ngIf="getDocumentFileUrl()"
+        [href]="getDocumentFileUrl()"
+        target="_blank"
+        rel="noreferrer"
+        class="document-detail-page__button document-detail-page__button--ghost"
+      >
+        Open File
+      </a>
+
+      <button
+        type="button"
+        class="document-detail-page__button"
+        (click)="retryProcessing()"
+        [disabled]="isRetrying || !document"
+      >
+        {{ isRetrying ? 'Retrying...' : 'Retry Processing' }}
+      </button>
+
+      <button
+        type="button"
+        class="document-detail-page__button document-detail-page__button--danger"
+        (click)="deleteDocument()"
+        [disabled]="isDeleting || !document"
+      >
+        {{ isDeleting ? 'Deleting...' : 'Delete' }}
+      </button>
+    </div>
+  </div>
+
+  <div *ngIf="errorMessage" class="document-detail-alert document-detail-alert--error">
+    {{ errorMessage }}
+  </div>
+
+  <div *ngIf="successMessage" class="document-detail-alert document-detail-alert--success">
+    {{ successMessage }}
+  </div>
+
+  <div *ngIf="isLoading" class="document-detail-empty">
+    Loading document details...
+  </div>
+
+  <ng-container *ngIf="document">
+    <div class="document-detail-stats">
+      <article class="document-stat-card">
+        <span>Status</span>
+        <app-document-status-badge [status]="document.status"></app-document-status-badge>
+      </article>
+
+      <article class="document-stat-card">
+        <span>AI Ready</span>
+        <strong>{{ getStatusLabel(document.is_ai_ready) }}</strong>
+      </article>
+
+      <article class="document-stat-card">
+        <span>Indexed</span>
+        <strong>{{ getStatusLabel(document.is_indexed) }}</strong>
+      </article>
+
+      <article class="document-stat-card">
+        <span>OCR Completed</span>
+        <strong>{{ getStatusLabel(document.is_ocr_completed) }}</strong>
+      </article>
+    </div>
+
+    <div class="document-detail-grid">
+      <section class="document-detail-card document-detail-card--wide">
+        <h2>Document Information</h2>
+
+        <div class="document-info-grid">
+          <div>
+            <span>Document Type</span>
+            <strong>{{ formatLabel(document.document_type) }}</strong>
+          </div>
+
+          <div>
+            <span>Sensitivity</span>
+            <strong>{{ formatLabel(document.sensitivity_label) }}</strong>
+          </div>
+
+          <div>
+            <span>Department</span>
+            <strong>{{ document.department_name || '-' }}</strong>
+          </div>
+
+          <div>
+            <span>Uploaded By</span>
+            <strong>{{ document.uploaded_by_email || '-' }}</strong>
+          </div>
+
+          <div>
+            <span>File Size</span>
+            <strong>{{ formatFileSize(document.file_size) }}</strong>
+          </div>
+
+          <div>
+            <span>MIME Type</span>
+            <strong>{{ document.mime_type || '-' }}</strong>
+          </div>
+
+          <div>
+            <span>Created</span>
+            <strong>{{ document.created_at | date: 'medium' }}</strong>
+          </div>
+
+          <div>
+            <span>Updated</span>
+            <strong>{{ document.updated_at | date: 'medium' }}</strong>
+          </div>
+        </div>
+
+        <div *ngIf="document.description" class="document-description">
+          <span>Description</span>
+          <p>{{ document.description }}</p>
+        </div>
+
+        <div
+          *ngIf="document.processing_error"
+          class="document-detail-alert document-detail-alert--error"
+        >
+          {{ document.processing_error }}
+        </div>
+      </section>
+
+      <section class="document-detail-card">
+        <h2>Processing Flags</h2>
+
+        <div class="document-flags">
+          <div>
+            <span>Current Access</span>
+            <strong>{{ document.current_user_access || '-' }}</strong>
+          </div>
+
+          <div>
+            <span>Page Count</span>
+            <strong>{{ document.page_count || '-' }}</strong>
+          </div>
+
+          <div>
+            <span>Language</span>
+            <strong>{{ document.language || '-' }}</strong>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <section class="document-detail-card">
+      <div class="document-section-heading">
         <div>
-          <a
-            routerLink="/documents"
-            class="mb-3 inline-block text-sm font-medium text-slate-500 hover:text-slate-900"
-          >
-            ← Back to documents
-          </a>
-
-          <h2 class="text-2xl font-bold text-slate-950">
-            {{ document?.title || 'Document Detail' }}
-          </h2>
-
-          <p class="text-sm text-slate-500">
-            {{ document?.original_filename }}
-          </p>
+          <h2>Processing Pipeline</h2>
+          <p>{{ processingJobs.length }} jobs found</p>
         </div>
 
-        <div class="flex gap-2">
-          <button
-            type="button"
-            (click)="retryProcessing()"
-            [disabled]="isRetrying || !document"
-            class="rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
-          >
-            {{ isRetrying ? 'Retrying...' : 'Retry Processing' }}
-          </button>
-
-          <button
-            type="button"
-            (click)="deleteDocument()"
-            [disabled]="isDeleting || !document"
-            class="rounded-xl border border-red-300 px-4 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {{ isDeleting ? 'Deleting...' : 'Delete' }}
-          </button>
-        </div>
+        <button
+          type="button"
+          class="document-detail-page__button document-detail-page__button--ghost"
+          (click)="loadProcessingJobs()"
+        >
+          Refresh Jobs
+        </button>
       </div>
 
-      <div
-        *ngIf="errorMessage"
-        class="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"
-      >
-        {{ errorMessage }}
-      </div>
-
-      <div
-        *ngIf="successMessage"
-        class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700"
-      >
-        {{ successMessage }}
-      </div>
-
-      <div
-        *ngIf="isLoading"
-        class="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500 shadow-sm"
-      >
-        Loading document...
-      </div>
-
-      <ng-container *ngIf="document">
-        <div class="grid gap-4 lg:grid-cols-4">
-          <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p class="text-sm font-medium text-slate-500">Status</p>
-            <div class="mt-3">
-              <app-document-status-badge [status]="document.status" />
-            </div>
-          </div>
-
-          <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p class="text-sm font-medium text-slate-500">AI Ready</p>
-            <p class="mt-2 text-2xl font-bold text-slate-950">
-              {{ document.is_ai_ready ? 'Yes' : 'No' }}
-            </p>
-          </div>
-
-          <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p class="text-sm font-medium text-slate-500">Indexed</p>
-            <p class="mt-2 text-2xl font-bold text-slate-950">
-              {{ document.is_indexed ? 'Yes' : 'No' }}
-            </p>
-          </div>
-
-          <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p class="text-sm font-medium text-slate-500">OCR Completed</p>
-            <p class="mt-2 text-2xl font-bold text-slate-950">
-              {{ document.is_ocr_completed ? 'Yes' : 'No' }}
-            </p>
-          </div>
-        </div>
-        <!-- <div class="rounded-2xl border border-slate-200 bg-white shadow-sm"> -->
-        <div class="w-full max-w-none">
-          <app-document-processing-pipeline
-            [jobs]="processingJobs"
-            (refresh)="loadProcessingJobs()"
-          />
-        </div>
-
-        <div class="grid gap-6 xl:grid-cols-3">
-          <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-2">
-            <h3 class="mb-4 font-semibold text-slate-950">Document Information</h3>
-
-            <div class="grid gap-4 md:grid-cols-2">
-              <div>
-                <p class="text-xs font-semibold uppercase text-slate-400">Document Type</p>
-                <p class="mt-1 text-sm text-slate-700">{{ formatLabel(document.document_type) }}</p>
-              </div>
-
-              <div>
-                <p class="text-xs font-semibold uppercase text-slate-400">Sensitivity</p>
-                <p class="mt-1 text-sm text-slate-700">
-                  {{ formatLabel(document.sensitivity_label) }}
-                </p>
-              </div>
-
-              <div>
-                <p class="text-xs font-semibold uppercase text-slate-400">Department</p>
-                <p class="mt-1 text-sm text-slate-700">{{ document.department_name || '-' }}</p>
-              </div>
-
-              <div>
-                <p class="text-xs font-semibold uppercase text-slate-400">Uploaded By</p>
-                <p class="mt-1 text-sm text-slate-700">{{ document.uploaded_by_email || '-' }}</p>
-              </div>
-
-              <div>
-                <p class="text-xs font-semibold uppercase text-slate-400">File Size</p>
-                <p class="mt-1 text-sm text-slate-700">{{ formatFileSize(document.file_size) }}</p>
-              </div>
-
-              <div>
-                <p class="text-xs font-semibold uppercase text-slate-400">MIME Type</p>
-                <p class="mt-1 text-sm text-slate-700">{{ document.mime_type || '-' }}</p>
-              </div>
-
-              <div>
-                <p class="text-xs font-semibold uppercase text-slate-400">Created</p>
-                <p class="mt-1 text-sm text-slate-700">
-                  {{ document.created_at | date: 'medium' }}
-                </p>
-              </div>
-
-              <div>
-                <p class="text-xs font-semibold uppercase text-slate-400">Updated</p>
-                <p class="mt-1 text-sm text-slate-700">
-                  {{ document.updated_at | date: 'medium' }}
-                </p>
-              </div>
-            </div>
-
-            <div *ngIf="document.description" class="mt-5">
-              <p class="text-xs font-semibold uppercase text-slate-400">Description</p>
-              <p class="mt-1 text-sm text-slate-700">{{ document.description }}</p>
-            </div>
-
-            <div
-              *ngIf="document.processing_error"
-              class="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"
-            >
-              {{ document.processing_error }}
-            </div>
-          </div>
-
-          <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h3 class="mb-4 font-semibold text-slate-950">Processing Flags</h3>
-
-            <div class="space-y-3 text-sm">
-              <div class="flex justify-between">
-                <span class="text-slate-500">Current access</span>
-                <span class="font-medium text-slate-900">{{
-                  document.current_user_access || '-'
-                }}</span>
-              </div>
-
-              <div class="flex justify-between">
-                <span class="text-slate-500">Page count</span>
-                <span class="font-medium text-slate-900">{{ document.page_count || '-' }}</span>
-              </div>
-
-              <div class="flex justify-between">
-                <span class="text-slate-500">Language</span>
-                <span class="font-medium text-slate-900">{{ document.language || '-' }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <!-- <div class="w-full max-w-none">
-            <app-document-processing-pipeline
-              [jobs]="processingJobs"
-              (refresh)="loadProcessingJobs()"
-            />
-          </div> -->
-
-          <div *ngIf="!processingJobs.length" class="p-6 text-sm text-slate-500">
-            No processing jobs found.
-          </div>
-
-          <div *ngIf="processingJobs.length" class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-slate-200">
-              <thead class="bg-slate-50">
-                <tr>
-                  <th
-                    class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500"
-                  >
-                    Job
-                  </th>
-                  <th
-                    class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500"
-                  >
-                    Status
-                  </th>
-                  <th
-                    class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500"
-                  >
-                    Started
-                  </th>
-                  <th
-                    class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500"
-                  >
-                    Completed
-                  </th>
-                  <th
-                    class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500"
-                  >
-                    Error
-                  </th>
-                </tr>
-              </thead>
-
-              <tbody class="divide-y divide-slate-100">
-                <tr *ngFor="let job of processingJobs">
-                  <td class="px-5 py-4 text-sm font-medium text-slate-900">
-                    {{ formatLabel(job.job_type) }}
-                  </td>
-
-                  <td class="px-5 py-4 text-sm text-slate-600">
-                    {{ formatLabel(job.status) }}
-                  </td>
-
-                  <td class="px-5 py-4 text-sm text-slate-500">
-                    {{ job.started_at ? (job.started_at | date: 'medium') : '-' }}
-                  </td>
-
-                  <td class="px-5 py-4 text-sm text-slate-500">
-                    {{ job.completed_at ? (job.completed_at | date: 'medium') : '-' }}
-                  </td>
-
-                  <td class="px-5 py-4 text-sm text-red-600">
-                    {{ job.error_message || '-' }}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </ng-container>
+      <app-document-processing-pipeline
+        [jobs]="processingJobs"
+        (refresh)="loadProcessingJobs()"
+      ></app-document-processing-pipeline>
     </section>
-  
+
+    <section class="document-detail-card">
+      <h2>Processing Jobs</h2>
+
+      <div *ngIf="!processingJobs.length" class="document-detail-empty document-detail-empty--small">
+        No processing jobs found.
+      </div>
+
+      <div *ngIf="processingJobs.length" class="document-jobs-table">
+        <div class="document-jobs-table__row document-jobs-table__row--head">
+          <div>Job</div>
+          <div>Status</div>
+          <div>Started</div>
+          <div>Completed</div>
+          <div>Error</div>
+        </div>
+
+        <div class="document-jobs-table__row" *ngFor="let job of processingJobs">
+          <div>{{ formatLabel(job.job_type) }}</div>
+          <div>{{ formatLabel(job.status) }}</div>
+          <div>{{ job.started_at ? (job.started_at | date: 'medium') : '-' }}</div>
+          <div>{{ job.completed_at ? (job.completed_at | date: 'medium') : '-' }}</div>
+          <div class="document-jobs-table__error">{{ job.error_message || '-' }}</div>
+        </div>
+      </div>
+    </section>
+  </ng-container>
+</section>

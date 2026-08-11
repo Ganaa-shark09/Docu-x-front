@@ -1,150 +1,110 @@
-:host {
-  display: block;
-}
-
-.firewall-card {
-  margin-top: 14px;
+.firewall-panel {
+  margin-top: 18px;
   border: 1px solid var(--app-border);
   border-radius: 14px;
-  background: var(--app-surface-soft);
-  padding: 13px;
+  background: rgba(255, 255, 255, 0.025);
+  padding: 12px 14px;
 }
 
-.firewall-card__header {
+.firewall-panel__summary {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
+  cursor: pointer;
+  list-style: none;
 }
 
-.firewall-card__eyebrow {
-  color: var(--app-text-muted);
-  font-size: 11px;
-  font-weight: 400;
-  letter-spacing: normal;
-  text-transform: uppercase;
+.firewall-panel__summary::-webkit-details-marker {
+  display: none;
 }
 
-.firewall-card__provider {
-  margin-top: 5px;
-  color: var(--app-text-muted);
-  font-size: 12px;
-}
-
-.firewall-card__provider span {
+.firewall-panel__title {
   color: var(--app-text);
-  font-weight: 400;
+  font-size: 14px;
+  font-weight: 700;
 }
 
-.firewall-card__routed {
+.firewall-panel__status {
   border-radius: 999px;
-  background: var(--app-purple-bg);
-  padding: 5px 10px;
-  color: var(--app-purple-text);
+  background: rgba(99, 102, 241, 0.12);
+  padding: 4px 9px;
+  color: #dbeafe;
   font-size: 11px;
-  font-weight: 400;
+  font-weight: 650;
 }
 
-.firewall-card__stats {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  margin-top: 13px;
-}
-
-.firewall-card__stats div {
-  border: 1px solid var(--app-border);
-  border-radius: 12px;
-  background: var(--app-surface);
-  padding: 10px;
-}
-
-.firewall-card__stats span {
-  display: block;
+.firewall-panel__description {
+  margin: 10px 0 0;
   color: var(--app-text-muted);
-  font-size: 11px;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
-.firewall-card__stats strong {
-  display: block;
-  margin-top: 4px;
-  color: var(--app-text);
-  font-size: 18px;
-  font-weight: 400;
-}
-
-.firewall-card__actions {
-  display: grid;
+.firewall-panel__metrics {
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: 12px;
 }
 
-.firewall-action {
-  border: 1px solid var(--app-border);
-  border-radius: 12px;
-  background: var(--app-surface);
-  padding: 10px;
-}
-
-.firewall-action__top {
-  display: flex;
+.firewall-panel__metrics span {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  color: var(--app-text);
-  font-size: 12px;
-  font-weight: 400;
-}
-
-.firewall-action__top strong {
+  gap: 6px;
+  border: 1px solid var(--app-border);
   border-radius: 999px;
-  padding: 4px 8px;
-  font-size: 10px;
-  font-weight: 400;
+  background: var(--app-surface-soft);
+  padding: 6px 10px;
+  color: var(--app-text-muted);
+  font-size: 12px;
 }
 
-.firewall-action__reason {
-  margin-top: 5px;
+.firewall-panel__metrics strong {
+  color: var(--app-text);
+}
+
+.firewall-panel__section {
+  margin-top: 14px;
+}
+
+.firewall-panel__section h4 {
+  margin: 0 0 8px;
   color: var(--app-text-muted);
   font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
-.bg-red-100 {
-  background: var(--app-danger-bg);
+.firewall-panel__item {
+  display: grid;
+  gap: 3px;
+  border-left: 3px solid var(--app-border);
+  padding: 8px 0 8px 10px;
 }
 
-.text-red-700 {
-  color: var(--app-danger-text);
+.firewall-panel__item + .firewall-panel__item {
+  margin-top: 6px;
 }
 
-.bg-amber-100 {
-  background: var(--app-warning-bg);
-}
-
-.text-amber-700 {
-  color: var(--app-warning-text);
-}
-
-.bg-purple-100 {
-  background: var(--app-purple-bg);
-}
-
-.text-purple-700 {
-  color: var(--app-purple-text);
-}
-
-.bg-emerald-100 {
-  background: var(--app-success-bg);
-}
-
-.text-emerald-700 {
-  color: var(--app-success-text);
-}
-
-.bg-slate-100 {
-  background: var(--app-hover);
-}
-
-.text-slate-700 {
+.firewall-panel__item strong {
+  overflow: hidden;
   color: var(--app-text);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.firewall-panel__item span {
+  color: var(--app-text-muted);
+  font-size: 12px;
+}
+
+.firewall-panel__item--blocked {
+  border-left-color: var(--app-danger-border);
+}
+
+.firewall-panel__item--allowed {
+  border-left-color: var(--app-success-border, rgba(16, 185, 129, 0.55));
 }

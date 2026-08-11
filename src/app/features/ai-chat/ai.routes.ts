@@ -14,7 +14,21 @@ export const AI_ROUTES: Routes = [
       ),
   },
   {
+    path: 'internal/:conversationUuid',
+    loadComponent: () =>
+      import('./pages/ai-chat-page/ai-chat-page.component').then(
+        (m) => m.AiChatPageComponent,
+      ),
+  },
+  {
     path: 'external',
+    loadComponent: () =>
+      import('./pages/external-ai-chat-page/external-ai-chat-page.component').then(
+        (m) => m.ExternalAiChatPageComponent,
+      ),
+  },
+  {
+    path: 'external/:conversationUuid',
     loadComponent: () =>
       import('./pages/external-ai-chat-page/external-ai-chat-page.component').then(
         (m) => m.ExternalAiChatPageComponent,

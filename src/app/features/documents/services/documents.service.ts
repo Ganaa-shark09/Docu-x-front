@@ -44,6 +44,12 @@ export class DocumentsService {
     return this.http.post<any>(`${this.apiBaseUrl}/documents/`, formData);
   }
 
+  getDepartments(): Observable<any[]> {
+    return this.http
+      .get<any>(`${this.apiBaseUrl}/workspaces/departments/`)
+      .pipe(map((response) => this.normalizeList(response)));
+  }
+
   uploadDocument(formData: FormData): Observable<any> {
     return this.uploadInternalDocument(formData);
   }
@@ -70,6 +76,22 @@ export class DocumentsService {
       return response;
     }
 
-    return response?.results || response?.documents || response?.data || response?.items || [];
+    if (Array.isArray(response?.results)) {
+      return response.results;
+    }
+
+    if (Array.isArray(response?.documents)) {
+      return response.documents;
+    }
+
+    if (Array.isArray(response?.data)) {
+      return response.data;
+    }
+
+    if (Array.isArray(response?.items)) {
+      return response.items;
+    }
+
+    return [];
   }
 }

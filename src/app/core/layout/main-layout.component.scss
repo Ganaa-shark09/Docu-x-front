@@ -1,38 +1,490 @@
 :host {
   display: block;
-  min-height: 100dvh;
-  background: var(--app-bg);
-  color: var(--app-text);
+  min-height: 100vh;
 }
 
-:host ::ng-deep aside {
-  background: var(--app-sidebar) !important;
-  color: var(--app-text) !important;
-  border-right-color: var(--app-border) !important;
+.docux-shell {
+  --sidebar-width: 258px;
+  --sidebar-collapsed-width: 64px;
+
+  min-height: 100vh;
+  background: var(--app-bg, #f8fafc);
+  color: var(--app-text, #111827);
 }
 
-:host ::ng-deep header {
-  background: var(--app-surface) !important;
-  color: var(--app-text) !important;
-  border-bottom-color: var(--app-border) !important;
-}
-
-:host ::ng-deep main {
-  background: var(--app-bg) !important;
-  color: var(--app-text) !important;
-}
-
-.nav-group {
+.docux-sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 45;
   display: grid;
-  gap: 6px;
-  margin: 10px 0;
+  width: var(--sidebar-collapsed-width);
+  grid-template-rows: auto 1fr;
+  overflow: hidden;
+  border-right: 1px solid var(--app-border, rgba(148, 163, 184, 0.24));
+  background: var(--app-surface, #ffffff);
+  color: var(--app-text, #111827);
+  transition:
+    width 520ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 520ms ease,
+    background 240ms ease;
 }
 
-.nav-group__label {
-  padding: 8px 16px 2px;
-  color: var(--app-text-soft);
-  font-size: 11px;
+.docux-sidebar:hover {
+  width: var(--sidebar-width);
+  box-shadow: 14px 0 34px rgba(15, 23, 42, 0.10);
+}
+
+.docux-main {
+  min-height: 100vh;
+  padding-left: var(--sidebar-collapsed-width);
+  transition: padding-left 520ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.docux-sidebar:hover ~ .docux-main {
+  padding-left: var(--sidebar-width);
+}
+
+.docux-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 102px;
+  border-bottom: 1px solid var(--app-border, rgba(148, 163, 184, 0.24));
+  padding: 20px 11px;
+}
+
+.docux-brand__mark {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--app-border, rgba(148, 163, 184, 0.28));
+  border-radius: 14px;
+  background: var(--app-surface-soft, rgba(148, 163, 184, 0.12));
+  color: var(--app-text, #111827);
+  font-size: 14px;
   font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+}
+
+.docux-brand__text {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+  opacity: 0;
+  transform: translateX(-12px);
+  transition:
+    opacity 320ms ease 110ms,
+    transform 320ms ease 110ms;
+}
+
+.docux-sidebar:hover .docux-brand__text {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.docux-brand__text strong {
+  overflow: hidden;
+  color: var(--app-text, #111827);
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.docux-brand__text small {
+  overflow: hidden;
+  color: var(--app-text-muted, #64748b);
+  font-size: 14px;
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.docux-sidebar__nav {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  padding: 16px 9px;
+}
+
+.docux-sidebar__link {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  min-height: 44px;
+  border: 1px solid transparent;
+  border-radius: 13px;
+  padding: 0 8px;
+  color: var(--app-text, #111827);
+  text-decoration: none;
+  transition:
+    background 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease;
+}
+
+.docux-sidebar__link:hover {
+  border-color: var(--app-border, rgba(148, 163, 184, 0.24));
+  background: var(--app-surface-soft, rgba(148, 163, 184, 0.12));
+}
+
+.docux-sidebar__link.is-active {
+  border-color: var(--app-border, rgba(148, 163, 184, 0.28));
+  background: var(--app-surface-soft, rgba(148, 163, 184, 0.14));
+  color: var(--app-text, #111827);
+}
+
+.docux-sidebar__icon {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 11px;
+  background: var(--app-bg, #f8fafc);
+  color: var(--app-text, #111827);
+}
+
+.docux-sidebar__icon svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.85;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.docux-sidebar__label {
+  overflow: hidden;
+  color: var(--app-text, #111827);
+  font-size: 15px;
+  font-weight: 500;
+  opacity: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transform: translateX(-12px);
+  transition:
+    opacity 320ms ease 110ms,
+    transform 320ms ease 110ms;
+}
+
+.docux-sidebar:hover .docux-sidebar__label {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.docux-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  min-height: 104px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  border-bottom: 1px solid var(--app-border, rgba(148, 163, 184, 0.24));
+  background: color-mix(in srgb, var(--app-bg, #ffffff) 90%, transparent);
+  padding: 22px 32px;
+  backdrop-filter: blur(14px);
+}
+
+.docux-header h2 {
+  margin: 0;
+  color: var(--app-text, #111827);
+  font-size: 25px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.docux-header p {
+  margin: 6px 0 0;
+  color: var(--app-text-muted, #64748b);
+  font-size: 15px;
+}
+
+.docux-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.docux-header__user {
+  display: grid;
+  gap: 2px;
+  text-align: right;
+}
+
+.docux-header__user strong {
+  color: var(--app-text, #111827);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.docux-header__user span {
+  color: var(--app-text-muted, #64748b);
+  font-size: 13px;
+}
+
+.docux-header__logout {
+  min-height: 44px;
+  border: 1px solid var(--app-border, rgba(148, 163, 184, 0.28));
+  border-radius: 14px;
+  background: var(--app-surface, #ffffff);
+  padding: 0 16px;
+  color: var(--app-text, #111827);
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.docux-header__logout:hover {
+  background: var(--app-surface-soft, rgba(148, 163, 184, 0.12));
+}
+
+.docux-content {
+  padding: 32px;
+}
+
+/* Floating DocuX AI launcher: clean icon only */
+.docux-ai-fab {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 1200;
+  display: grid;
+  width: 54px;
+  height: 54px;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
+  cursor: pointer;
+  padding: 0;
+  transition:
+    transform 260ms ease,
+    filter 260ms ease;
+}
+
+.docux-ai-fab:hover {
+  transform: translateY(-2px) scale(1.04);
+  filter: drop-shadow(0 14px 28px rgba(0, 0, 0, 0.28));
+}
+
+.docux-ai-fab:focus-visible {
+  outline: 2px solid rgba(124, 92, 255, 0.72);
+  outline-offset: 4px;
+}
+
+/* No visible outer layer */
+.docux-ai-fab__glow {
+  display: none;
+}
+
+.docux-ai-fab__icon-stage {
+  position: relative;
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 999px;
+  background: #09090b;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
+}
+
+.docux-ai-fab__icon-layer {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  transform: rotateY(80deg) scale(0.92);
+  backface-visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 1100ms ease,
+    transform 1100ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.docux-ai-fab__icon-layer--active {
+  opacity: 1;
+  transform: rotateY(0deg) scale(1);
+}
+
+.docux-ai-fab__image {
+  display: block;
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 7px rgba(124, 255, 190, 0.18));
+}
+
+.docux-ai-fab__emoji {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.docux-ai-fab__popup {
+  position: absolute;
+  right: 50%;
+  bottom: calc(100% + 12px);
+  min-width: 178px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  background: rgba(12, 14, 22, 0.96);
+  box-shadow:
+    0 18px 42px rgba(0, 0, 0, 0.34),
+    0 0 0 1px rgba(124, 92, 255, 0.08);
+  padding: 13px 14px;
+  color: #f8fafc;
+  opacity: 0;
+  pointer-events: none;
+  text-align: left;
+  transform: translateX(50%) translateY(8px);
+  transition:
+    opacity 260ms ease,
+    transform 260ms ease,
+    visibility 260ms ease;
+  visibility: hidden;
+}
+
+.docux-ai-fab:hover .docux-ai-fab__popup,
+.docux-ai-fab:focus-visible .docux-ai-fab__popup {
+  opacity: 1;
+  transform: translateX(50%) translateY(0);
+  visibility: visible;
+}
+
+.docux-ai-fab__popup::after {
+  content: '';
+  position: absolute;
+  right: 50%;
+  bottom: -6px;
+  width: 12px;
+  height: 12px;
+  background: rgba(12, 14, 22, 0.96);
+  transform: translateX(50%) rotate(45deg);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.docux-ai-fab__popup-title {
+  display: block;
+  margin-bottom: 3px;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.docux-ai-fab__popup-subtitle {
+  display: block;
+  color: rgba(226, 232, 240, 0.82);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+  .docux-sidebar,
+  .docux-main,
+  .docux-brand__text,
+  .docux-sidebar__label,
+  .docux-ai-fab__icon-layer {
+    transition: none;
+  }
+}
+
+@media (max-width: 920px) {
+  .docux-shell {
+    --sidebar-collapsed-width: 58px;
+    --sidebar-width: 230px;
+  }
+
+  .docux-brand {
+    min-height: 90px;
+    padding-inline: 8px;
+  }
+
+  .docux-brand__mark {
+    width: 40px;
+    height: 40px;
+  }
+
+  .docux-sidebar__nav {
+    padding-inline: 7px;
+  }
+
+  .docux-sidebar__icon {
+    width: 31px;
+    height: 31px;
+  }
+
+  .docux-header {
+    min-height: 88px;
+    padding: 18px 22px;
+  }
+
+  .docux-header p,
+  .docux-header__user {
+    display: none;
+  }
+
+  .docux-content {
+    padding: 22px;
+  }
+  .docux-ai-fab {
+    right: 18px;
+    bottom: 18px;
+    width: 50px;
+    height: 50px;
+  }
+
+  .docux-ai-fab__icon-stage {
+    width: 42px;
+    height: 42px;
+  }
+
+  .docux-ai-fab__image {
+    width: 31px;
+    height: 31px;
+  }
+
+  .docux-ai-fab__emoji {
+    font-size: 22px;
+  }
+
+  .docux-ai-fab__popup {
+    min-width: 160px;
+  }
+}
+
+@media (max-width: 640px) {
+  .docux-sidebar {
+    display: none;
+  }
+
+  .docux-main,
+  .docux-sidebar:hover ~ .docux-main {
+    padding-left: 0;
+  }
+
+  .docux-header {
+    display: grid;
+  }
+
+  .docux-header__actions {
+    justify-content: space-between;
+  }
+
+  .docux-content {
+    padding: 18px;
+  }
 }

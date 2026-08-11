@@ -49,13 +49,13 @@
 }
 
 .conversation-item {
-  display: block;
+  position: relative;
+  display: flex;
+  align-items: stretch;
   width: 100%;
   border: 1px solid transparent;
   border-radius: 12px;
   background: transparent;
-  padding: 9px 10px;
-  text-align: left;
 }
 
 .conversation-item + .conversation-item {
@@ -69,6 +69,42 @@
 .conversation-item--active {
   border-color: var(--app-border);
   background: var(--app-surface);
+}
+
+.conversation-item__select {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  background: transparent;
+  padding: 9px 38px 9px 10px;
+  text-align: left;
+  color: inherit;
+}
+
+.conversation-item__delete {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  width: 26px;
+  height: 26px;
+  transform: translateY(-50%);
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--app-text-muted);
+  opacity: 0;
+  cursor: pointer;
+}
+
+.conversation-item:hover .conversation-item__delete,
+.conversation-item--active .conversation-item__delete,
+.conversation-item__delete:focus-visible {
+  opacity: 1;
+}
+
+.conversation-item__delete:hover {
+  background: var(--app-surface);
+  color: var(--app-text);
 }
 
 .conversation-title {

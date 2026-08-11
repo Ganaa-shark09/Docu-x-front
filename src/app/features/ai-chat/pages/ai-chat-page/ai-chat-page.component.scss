@@ -170,3 +170,21 @@
 .ai-scope-tabs__button--active {
   color: var(--app-on-primary);
 }
+
+.ai-chat-main {
+  position: relative;
+}
+
+.ai-scope-tabs {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  z-index: 10;
+  width: min(300px, calc(100% - 48px));
+  transform: translateX(-50%);
+}
+
+app-chat-message-list {
+  display: block;
+  height: 100%;
+}

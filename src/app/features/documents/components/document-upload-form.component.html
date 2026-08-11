@@ -1,112 +1,98 @@
-    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div class="mb-5">
-        <h3 class="font-semibold text-slate-950">Upload Document</h3>
-        <p class="text-sm text-slate-500">
-          Upload PDF, image, text, CSV, or business document for AI processing.
-        </p>
-      </div>
-
-      <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-4">
-        <div>
-          <label class="mb-1 block text-sm font-medium text-slate-700">Title</label>
-          <input
-            type="text"
-            formControlName="title"
-            class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-slate-900"
-            placeholder="Invoice March 2026"
-          />
-        </div>
-
-        <div>
-          <label class="mb-1 block text-sm font-medium text-slate-700">Description</label>
-          <textarea
-            formControlName="description"
-            rows="3"
-            class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-slate-900"
-            placeholder="Optional document notes"
-          ></textarea>
-        </div>
-
-        <div class="grid gap-4 md:grid-cols-3">
-          <div>
-            <label class="mb-1 block text-sm font-medium text-slate-700">Document Type</label>
-            <select
-              formControlName="document_type"
-              class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-slate-900"
-              style="color:#0f172a !important; background-color:#ffffff !important;"
-            >
-              <option style="color:#0f172a;background:#ffffff;" value="invoice">Invoice</option>
-              <option style="color:#0f172a;background:#ffffff;" value="contract">Contract</option>
-              <option style="color:#0f172a;background:#ffffff;" value="policy">Policy</option>
-              <option style="color:#0f172a;background:#ffffff;" value="resume">Resume</option>
-              <option style="color:#0f172a;background:#ffffff;" value="purchase_order">Purchase Order</option>
-              <option style="color:#0f172a;background:#ffffff;" value="report">Report</option>
-              <option style="color:#0f172a;background:#ffffff;" value="other">Other</option>
-            </select>
-          </div>
-
-          <div>
-            <label class="mb-1 block text-sm font-medium text-slate-700">Sensitivity</label>
-            <select
-              formControlName="sensitivity_label"
-              class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-slate-900"
-              style="color:#0f172a !important; background-color:#ffffff !important;"
-            >
-              <option style="color:#0f172a;background:#ffffff;" value="public">Public</option>
-              <option style="color:#0f172a;background:#ffffff;" value="internal">Internal</option>
-              <option style="color:#0f172a;background:#ffffff;" value="confidential">Confidential</option>
-              <option style="color:#0f172a;background:#ffffff;" value="highly_confidential">Highly Confidential</option>
-              <option style="color:#0f172a;background:#ffffff;" value="restricted">Restricted</option>
-            </select>
-          </div>
-
-          <div>
-            <label class="mb-1 block text-sm font-medium text-slate-700">Department</label>
-            <select
-              formControlName="department"
-              class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-slate-900"
-              style="color:#0f172a !important; background-color:#ffffff !important;"
-            >
-              <option style="color:#0f172a;background:#ffffff;" value="">No department</option>
-              <option
-                *ngFor="let department of departments"
-                style="color:#0f172a;background:#ffffff;"
-                [value]="department.uuid"
-              >
-                {{ department.name }}
-              </option>
-            </select>
-          </div>
-        </div>
-
-        <div>
-          <label class="mb-1 block text-sm font-medium text-slate-700">File</label>
-          <input
-            type="file"
-            (change)="onFileSelected($event)"
-            class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 file:mr-4 file:rounded-lg file:border-0 file:bg-slate-950 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white"
-          />
-
-          <p *ngIf="selectedFile" class="mt-2 text-xs text-slate-500">
-            Selected: {{ selectedFile.name }} · {{ formatFileSize(selectedFile.size) }}
-          </p>
-        </div>
-
-        <div
-          *ngIf="errorMessage"
-          class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
-        >
-          {{ errorMessage }}
-        </div>
-
-        <button
-          type="submit"
-          [disabled]="form.invalid || !selectedFile || isUploading"
-          class="inline-flex min-w-[180px] items-center justify-center rounded-xl bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400 disabled:text-white"
-          style="color:#ffffff !important;"
-        >
-          {{ isUploading ? 'Uploading...' : 'Upload Document' }}
-        </button>
-      </form>
+<div class="upload-form-card">
+  <div class="upload-form-card__header">
+    <div>
+      <h3>Upload Internal Document</h3>
+      <p>Upload company documents for Internal AI processing.</p>
     </div>
-  
+
+    <button type="button" class="upload-form-card__close" (click)="cancel()">
+      ×
+    </button>
+  </div>
+
+  <form [formGroup]="form" (ngSubmit)="submit()" class="upload-form">
+    <label>
+      Title
+      <input
+        type="text"
+        formControlName="title"
+        placeholder="Invoice March 2026"
+      />
+    </label>
+
+    <label>
+      Description
+      <textarea
+        formControlName="description"
+        rows="3"
+        placeholder="Optional document notes"
+      ></textarea>
+    </label>
+
+    <div class="upload-form__grid">
+      <label>
+        Document Type
+        <select formControlName="document_type">
+          <option value="invoice">Invoice</option>
+          <option value="contract">Contract</option>
+          <option value="policy">Policy</option>
+          <option value="resume">Resume</option>
+          <option value="purchase_order">Purchase Order</option>
+          <option value="report">Report</option>
+          <option value="other">Other</option>
+        </select>
+      </label>
+
+      <label>
+        Sensitivity
+        <select formControlName="sensitivity_label">
+          <option value="public">Public</option>
+          <option value="internal">Internal</option>
+          <option value="confidential">Confidential</option>
+          <option value="highly_confidential">Highly Confidential</option>
+          <option value="restricted">Restricted</option>
+        </select>
+      </label>
+
+      <label>
+        Department
+        <select formControlName="department">
+          <option value="">No department</option>
+          <option *ngFor="let department of departments" [value]="department.uuid">
+            {{ department.name }}
+          </option>
+        </select>
+      </label>
+    </div>
+
+    <label>
+      File
+      <input
+        type="file"
+        (change)="onFileSelected($event)"
+      />
+    </label>
+
+    <p *ngIf="selectedFile" class="upload-form__selected-file">
+      Selected: {{ selectedFile.name }} · {{ formatFileSize(selectedFile.size) }}
+    </p>
+
+    <div *ngIf="errorMessage" class="upload-form__error">
+      {{ errorMessage }}
+    </div>
+
+    <div class="upload-form__actions">
+      <button type="button" class="upload-form__secondary" (click)="cancel()">
+        Cancel
+      </button>
+
+      <button
+        type="submit"
+        class="upload-form__primary"
+        [disabled]="form.invalid || !selectedFile || isUploading"
+      >
+        {{ isUploading ? 'Uploading...' : 'Upload Document' }}
+      </button>
+    </div>
+  </form>
+</div>

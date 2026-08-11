@@ -1,55 +1,48 @@
-<section class="firewall-card" *ngIf="hasMetadata">
-  <div class="firewall-card__header">
-    <div>
-      <h4>Data firewall</h4>
-      <p>Internal AI access policy applied to retrieved context.</p>
-    </div>
+<details class="firewall-panel" *ngIf="firewall">
+  <summary class="firewall-panel__summary">
+    <span class="firewall-panel__title">Data firewall</span>
 
-    <span class="firewall-card__mode">
-      {{ firewallModeLabel }}
+    <span class="firewall-panel__status">
+      Checked
+    </span>
+  </summary>
+
+  <p class="firewall-panel__description">
+    Internal AI access policy applied to retrieved context.
+  </p>
+
+  <div class="firewall-panel__metrics">
+    <span>
+      <strong>{{ allowedCount }}</strong>
+      Allowed
+    </span>
+
+    <span>
+      <strong>{{ redactedCount }}</strong>
+      Redacted
+    </span>
+
+    <span>
+      <strong>{{ blockedCount }}</strong>
+      Blocked
     </span>
   </div>
 
-  <div
-    class="firewall-card__notice"
-    *ngIf="firewall?.forced_local || firewall?.local_only"
-  >
-    Response was forced to local/internal context.
-  </div>
+  <div class="firewall-panel__section" *ngIf="blockedItems.length">
+    <h4>Blocked context</h4>
 
-  <div class="firewall-stats">
-    <div>
-      <span>Allowed</span>
-      <strong>{{ firewall?.allowed_count ?? 0 }}</strong>
-    </div>
-
-    <div>
-      <span>Redacted</span>
-      <strong>{{ firewall?.redacted_count ?? 0 }}</strong>
-    </div>
-
-    <div>
-      <span>Blocked</span>
-      <strong>{{ firewall?.blocked_count ?? 0 }}</strong>
+    <div class="firewall-panel__item firewall-panel__item--blocked" *ngFor="let item of blockedItems">
+      <strong>{{ itemTitle(item) }}</strong>
+      <span>{{ itemReason(item) }}</span>
     </div>
   </div>
 
-  <div class="firewall-actions" *ngIf="policyActions.length">
-    <article class="firewall-action-row" *ngFor="let item of policyActions">
-      <div>
-        <span>{{ getDocumentTitle(item) }}</span>
-        <p *ngIf="getReason(item)">
-          {{ formatLabel(getReason(item)) }}
-        </p>
-      </div>
+  <div class="firewall-panel__section" *ngIf="allowedItems.length">
+    <h4>Allowed context</h4>
 
-      <strong [ngClass]="actionClass(getAction(item))">
-        {{ formatLabel(getAction(item)) }}
-      </strong>
-    </article>
+    <div class="firewall-panel__item firewall-panel__item--allowed" *ngFor="let item of allowedItems">
+      <strong>{{ itemTitle(item) }}</strong>
+      <span>{{ itemReason(item) }}</span>
+    </div>
   </div>
-
-  <div class="firewall-card__reason" *ngIf="firewall?.blocked_reason || firewall?.reason">
-    {{ firewall?.blocked_reason || firewall?.reason }}
-  </div>
-</section>
+</details>

@@ -18,20 +18,34 @@
   </div>
 
   <div *ngIf="conversations.length" class="conversation-list">
-    <button
-      type="button"
+    <article
       *ngFor="let conversation of conversations"
-      (click)="selectConversation(conversation.uuid)"
       class="conversation-item"
       [class.conversation-item--active]="conversation.uuid === activeConversationUuid"
     >
-      <div class="conversation-title">
-        {{ conversation.title }}
-      </div>
+      <button
+        type="button"
+        class="conversation-item__select"
+        (click)="selectConversation(conversation.uuid)"
+      >
+        <div class="conversation-title">
+          {{ conversation.title }}
+        </div>
 
-      <div class="conversation-date">
-        {{ conversation.updated_at | date: 'medium' }}
-      </div>
-    </button>
+        <div class="conversation-date">
+          {{ conversation.updated_at | date: 'medium' }}
+        </div>
+      </button>
+
+      <button
+        type="button"
+        class="conversation-item__delete"
+        title="Delete conversation"
+        aria-label="Delete conversation"
+        (click)="requestDelete($event, conversation.uuid)"
+      >
+        ×
+      </button>
+    </article>
   </div>
 </div>

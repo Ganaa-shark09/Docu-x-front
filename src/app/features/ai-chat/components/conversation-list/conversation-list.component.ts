@@ -18,8 +18,14 @@ export class ConversationListComponent {
   @Output() newChat = new EventEmitter<void>();
   @Output() refresh = new EventEmitter<void>();
   @Output() selected = new EventEmitter<string>();
+  @Output() deleteRequested = new EventEmitter<string>();
 
   selectConversation(uuid: string): void {
     this.selected.emit(uuid);
+  }
+
+  requestDelete(event: MouseEvent, uuid: string): void {
+    event.stopPropagation();
+    this.deleteRequested.emit(uuid);
   }
 }

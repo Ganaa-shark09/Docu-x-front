@@ -1,0 +1,355 @@
+.assistant-response {
+  color: var(--app-text);
+  font-size: 15px;
+  line-height: 1.72;
+}
+
+.assistant-response__text {
+  margin-bottom: 14px;
+}
+
+/* Paragraphs */
+:host ::ng-deep .assistant-response__text p {
+  margin: 0 0 14px;
+}
+
+/* Headings: clear but not too large/heavy */
+:host ::ng-deep .assistant-response__text h1,
+:host ::ng-deep .assistant-response__text h2,
+:host ::ng-deep .assistant-response__text h3,
+:host ::ng-deep .assistant-response__text h4 {
+  margin: 22px 0 10px;
+  color: var(--app-text);
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+:host ::ng-deep .assistant-response__text h1,
+:host ::ng-deep .assistant-response__text h2 {
+  font-size: 20px;
+}
+
+:host ::ng-deep .assistant-response__text h3 {
+  font-size: 17px;
+}
+
+:host ::ng-deep .assistant-response__text h4 {
+  font-size: 15px;
+}
+
+/* Lists: ChatGPT-like clean spacing */
+:host ::ng-deep .assistant-response__text ul,
+:host ::ng-deep .assistant-response__text ol {
+  margin: 10px 0 18px 0;
+  padding-left: 22px;
+}
+
+:host ::ng-deep .assistant-response__text li {
+  margin: 9px 0;
+  padding-left: 4px;
+}
+
+:host ::ng-deep .assistant-response__text li::marker {
+  color: var(--app-text-muted);
+  font-weight: 600;
+}
+
+/* Nested paragraphs inside list items */
+:host ::ng-deep .assistant-response__text li p {
+  margin: 0;
+}
+
+/* Bold labels like "Atomic Operations:" should look professional, not oversized */
+:host ::ng-deep .assistant-response__text strong {
+  color: var(--app-text);
+  font-weight: 650;
+}
+
+/* Inline code should be subtle */
+:host ::ng-deep .assistant-response__text code {
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.055);
+  padding: 1px 6px;
+  color: var(--app-text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* Add breathing room before later sections without card styling */
+:host ::ng-deep .assistant-response__text h3:not(:first-child),
+:host ::ng-deep .assistant-response__text h2:not(:first-child) {
+  margin-top: 30px;
+  padding-top: 4px;
+}
+
+/* Quote remains a special block */
+.assistant-response__quote {
+  margin: 14px 0;
+  border-left: 3px solid var(--app-border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 12px 14px;
+  color: var(--app-text-muted);
+}
+
+/* Code block only: this is allowed to be boxed */
+.assistant-response__code {
+  margin: 14px 0 18px;
+  overflow: hidden;
+  border: 1px solid var(--app-border);
+  border-radius: 16px;
+  background: #111317;
+}
+
+.assistant-response__code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--app-border);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 9px 12px;
+}
+
+.assistant-response__code-lang {
+  color: var(--app-text-muted);
+  font-size: 12px;
+  text-transform: lowercase;
+}
+
+.assistant-response__copy-btn {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--app-text-muted);
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease;
+}
+
+.assistant-response__copy-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--app-text);
+}
+
+.assistant-response__copy-btn svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.assistant-response__pre {
+  margin: 0;
+  overflow-x: auto;
+  padding: 16px;
+  color: #e5e7eb;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.assistant-response__table-wrap {
+  margin: 14px 0 18px;
+  overflow: hidden;
+  border: 1px solid var(--app-border);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.assistant-response__table {
+  overflow-x: auto;
+  padding: 4px 8px;
+}
+
+:host ::ng-deep .assistant-response__table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+:host ::ng-deep .assistant-response__table th,
+:host ::ng-deep .assistant-response__table td {
+  border-bottom: 1px solid var(--app-border);
+  padding: 12px;
+  text-align: left;
+}
+
+:host ::ng-deep .assistant-response__table th {
+  color: var(--app-text);
+  font-weight: 600;
+}
+
+/* Sources can still be compact cards */
+.assistant-response__sources {
+  margin-top: 18px;
+}
+
+.assistant-response__sources-title {
+  margin-bottom: 10px;
+  color: var(--app-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.assistant-response__sources-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.source-card {
+  border: 1px solid var(--app-border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 12px 14px;
+}
+
+.source-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.source-card__badge {
+  display: inline-flex;
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.14);
+  padding: 4px 8px;
+  color: #dbeafe;
+  font-size: 11px;
+  text-transform: capitalize;
+}
+
+.source-card__open {
+  color: var(--app-text-muted);
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.source-card__open:hover {
+  text-decoration: underline;
+}
+
+.source-card__title {
+  margin: 0 0 6px;
+  color: var(--app-text);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.source-card__snippet {
+  margin: 0;
+  color: var(--app-text-muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+/* Compact source panel for Internal + External AI */
+.assistant-response__sources {
+  margin-top: 18px;
+  border-top: 1px solid var(--app-border);
+  padding-top: 12px;
+}
+
+.assistant-response__sources-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--app-text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  user-select: none;
+}
+
+.assistant-response__sources-summary strong {
+  display: inline-grid;
+  min-width: 20px;
+  height: 20px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--app-surface-soft);
+  color: var(--app-text);
+  font-size: 11px;
+}
+
+.assistant-response__sources-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.source-row {
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.025);
+  padding: 10px 12px;
+}
+
+.source-row__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.source-row__badge {
+  display: inline-flex;
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.12);
+  padding: 3px 8px;
+  color: #dbeafe;
+  font-size: 10px;
+  text-transform: capitalize;
+}
+
+.source-row__open {
+  color: var(--app-text-muted);
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.source-row__open:hover {
+  text-decoration: underline;
+}
+
+.source-row__title {
+  display: block;
+  overflow: hidden;
+  color: var(--app-text);
+  font-size: 13px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.source-row__snippet {
+  display: -webkit-box;
+  margin: 6px 0 0;
+  overflow: hidden;
+  color: var(--app-text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* Hide old large source-card styles if older markup remains cached/duplicated */
+.source-card {
+  border-radius: 12px;
+  padding: 10px 12px;
+}

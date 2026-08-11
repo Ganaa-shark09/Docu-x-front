@@ -198,3 +198,38 @@ export interface ExternalDocumentBulkUploadResponse {
   uploaded_count: number;
   documents: ExternalDocument[];
 }
+
+export interface ExternalDocumentReadinessItem {
+  uuid: string;
+  title: string;
+  original_filename?: string;
+  status?: string;
+  state: 'processing' | 'ready' | 'failed' | string;
+  is_ai_ready: boolean;
+  is_ocr_completed?: boolean;
+  is_indexed?: boolean;
+  processing_error?: string;
+  updated_at?: string | null;
+}
+
+export interface ExternalDocumentReadinessResponse {
+  documents: ExternalDocumentReadinessItem[];
+  ready_documents: ExternalDocumentReadinessItem[];
+  processing_documents: ExternalDocumentReadinessItem[];
+  failed_documents: ExternalDocumentReadinessItem[];
+  missing_document_uuids: string[];
+  all_ready: boolean;
+  has_processing: boolean;
+  has_failed: boolean;
+}
+
+export interface ExternalAttachmentsProcessingResponse
+  extends ExternalDocumentReadinessResponse {
+  status: 'attachments_processing';
+  detail: string;
+  retry_after_ms: number;
+}
+
+export type ExternalAiChatResponse =
+  | AiChatResponse
+  | ExternalAttachmentsProcessingResponse;

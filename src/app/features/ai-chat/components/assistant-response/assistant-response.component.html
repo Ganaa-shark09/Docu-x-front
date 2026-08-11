@@ -1,0 +1,76 @@
+<article class="assistant-response">
+  <ng-container *ngFor="let block of blocks; trackBy: trackBlock">
+    <div
+      *ngIf="block.kind === 'html'"
+      class="assistant-response__text"
+      [innerHTML]="block.html"
+    ></div>
+
+    <div
+      *ngIf="block.kind === 'quote'"
+      class="assistant-response__quote"
+      [innerHTML]="block.html"
+    ></div>
+
+    <div *ngIf="block.kind === 'table'" class="assistant-response__table-wrap">
+      <div class="assistant-response__table" [innerHTML]="block.html"></div>
+    </div>
+
+    <section *ngIf="block.kind === 'code'" class="assistant-response__code">
+      <div class="assistant-response__code-header">
+        <span class="assistant-response__code-lang">
+          {{ block.language || 'code' }}
+        </span>
+
+        <button
+          type="button"
+          class="assistant-response__copy-btn"
+          [attr.aria-label]="isCopied(block.id) ? 'Copied' : 'Copy code'"
+          [title]="isCopied(block.id) ? 'Copied' : 'Copy code'"
+          (click)="copyCode(block)"
+        >
+          <svg *ngIf="!isCopied(block.id)" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M8 8.5A2.5 2.5 0 0 1 10.5 6H18a2.5 2.5 0 0 1 2.5 2.5V16a2.5 2.5 0 0 1-2.5 2.5h-7.5A2.5 2.5 0 0 1 8 16V8.5Z"></path>
+            <path d="M5.5 15.5H5A2.5 2.5 0 0 1 2.5 13V5A2.5 2.5 0 0 1 5 2.5h8A2.5 2.5 0 0 1 15.5 5v.5"></path>
+          </svg>
+
+          <svg *ngIf="isCopied(block.id)" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 12.5l4.2 4.2L19 7"></path>
+          </svg>
+        </button>
+      </div>
+
+      <pre class="assistant-response__pre"><code>{{ block.code }}</code></pre>
+    </section>
+  </ng-container>
+  <details *ngIf="hasSources" class="assistant-response__sources">
+    <summary class="assistant-response__sources-summary">
+      <span>Sources</span>
+      <strong>{{ message.sources?.length || 0 }}</strong>
+    </summary>
+
+    <div class="assistant-response__sources-list">
+      <article class="source-row" *ngFor="let source of message.sources">
+        <div class="source-row__header">
+          <span class="source-row__badge">{{ sourceType(source) }}</span>
+
+          <a
+            *ngIf="sourceUrl(source)"
+            [href]="sourceUrl(source)"
+            target="_blank"
+            rel="noreferrer"
+            class="source-row__open"
+          >
+            Open
+          </a>
+        </div>
+
+        <strong class="source-row__title">{{ sourceTitle(source) }}</strong>
+
+        <p class="source-row__snippet" *ngIf="sourceSnippet(source)">
+          {{ sourceSnippet(source) }}
+        </p>
+      </article>
+    </div>
+  </details>
+</article>

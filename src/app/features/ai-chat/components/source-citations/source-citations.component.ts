@@ -1,4 +1,4 @@
-import { NgFor, NgIf } from '@angular/common';
+import { NgClass, NgFor, NgIf } from '@angular/common';
 import { Component, Input } from '@angular/core';
 
 import { AiSource } from '../../models/ai-chat.model';
@@ -6,7 +6,7 @@ import { AiSource } from '../../models/ai-chat.model';
 @Component({
   selector: 'app-source-citations',
   standalone: true,
-  imports: [NgFor, NgIf],
+  imports: [NgClass, NgFor, NgIf],
   templateUrl: './source-citations.component.html',
   styleUrl: './source-citations.component.scss',
 })
@@ -23,6 +23,33 @@ export class SourceCitationsComponent {
     return (this.sources || []).filter((source) => source.source_type === 'system_warning');
   }
 
+  get sourceLayoutClass(): string {
+    const hasWeb = this.visibleSources.some((source) => source.source_type === 'web');
+    const hasDocument = this.visibleSources.some((source) =>
+      ['external_document', 'internal_document'].includes(String(source.source_type || '')),
+    );
+
+    if (hasDocument && !hasWeb) {
+      return 'source-card source-card--document-layout';
+    }
+
+    if (hasWeb && !hasDocument) {
+      return 'source-card source-card--web-layout';
+    }
+
+    return 'source-card source-card--mixed-layout';
+  }
+
+  getSourceItemClass(source: AiSource): Record<string, boolean> {
+    return {
+      'source-item': true,
+      'source-item--web': source.source_type === 'web',
+      'source-item--document': source.source_type === 'external_document' || source.source_type === 'internal_document',
+      'source-item--processing': source.source_type === 'processing_document',
+      'source-item--failed': source.source_type === 'failed_document',
+    };
+  }
+
   getSourceLabel(source: AiSource): string {
     if (source.source_type === 'web') {
       return 'Web';
@@ -30,6 +57,10 @@ export class SourceCitationsComponent {
 
     if (source.source_type === 'external_document') {
       return 'External document';
+    }
+
+    if (source.source_type === 'internal_document') {
+      return 'Internal document';
     }
 
     if (source.source_type === 'processing_document') {
@@ -40,7 +71,7 @@ export class SourceCitationsComponent {
       return 'Failed document';
     }
 
-    return 'Internal document';
+    return 'Source';
   }
 
   getTitle(source: AiSource): string {

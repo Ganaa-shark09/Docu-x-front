@@ -11,8 +11,10 @@ import {
   AiConversation,
   AiConversationDetail,
   ExternalAiChatRequest,
+  ExternalAiChatResponse,
   ExternalDocument,
   ExternalDocumentBulkUploadResponse,
+  ExternalDocumentReadinessResponse,
 } from '../models/ai-chat.model';
 
 type ConversationListResponse =
@@ -47,8 +49,8 @@ export class AiChatService {
     );
   }
 
-  sendExternalChatMessage(payload: ExternalAiChatRequest): Observable<AiChatResponse> {
-    return this.http.post<AiChatResponse>(
+  sendExternalChatMessage(payload: ExternalAiChatRequest): Observable<ExternalAiChatResponse> {
+    return this.http.post<ExternalAiChatResponse>(
       `${this.apiBaseUrl}${API_ENDPOINTS.ai.externalChat}`,
       payload,
     );
@@ -83,6 +85,20 @@ export class AiChatService {
     );
   }
 
+
+  deleteConversation(uuid: string): Observable<void> {
+    return this.http.delete<void>(
+      `${this.apiBaseUrl}${API_ENDPOINTS.ai.conversations}${uuid}/`,
+    );
+  }
+
+  restoreConversation(uuid: string): Observable<AiConversation> {
+    return this.http.post<AiConversation>(
+      `${this.apiBaseUrl}${API_ENDPOINTS.ai.conversations}${uuid}/restore/`,
+      {},
+    );
+  }
+
   getExternalDocuments(conversationUuid?: string): Observable<ExternalDocument[]> {
     let params = new HttpParams();
 
@@ -104,6 +120,23 @@ export class AiChatService {
           return response.results || response.documents || response.data || [];
         }),
       );
+  }
+
+
+  getExternalDocumentProcessingStatus(
+    documentUuids: string[],
+    conversationUuid?: string,
+  ): Observable<ExternalDocumentReadinessResponse> {
+    let params = new HttpParams().set('document_uuids', documentUuids.join(','));
+
+    if (conversationUuid) {
+      params = params.set('conversation_uuid', conversationUuid);
+    }
+
+    return this.http.get<ExternalDocumentReadinessResponse>(
+      `${this.apiBaseUrl}${API_ENDPOINTS.ai.externalDocuments}processing-status/`,
+      { params },
+    );
   }
 
   uploadExternalDocument(formData: FormData): Observable<ExternalDocument> {

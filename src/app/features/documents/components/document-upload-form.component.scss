@@ -1,0 +1,124 @@
+:host {
+  display: block;
+}
+
+.upload-form-card {
+  border: 1px solid var(--app-border);
+  border-radius: 18px;
+  background: var(--app-surface);
+  padding: 18px;
+}
+
+.upload-form-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.upload-form-card__header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.upload-form-card__header p {
+  margin: 4px 0 0;
+  color: var(--app-text-muted);
+  font-size: 13px;
+}
+
+.upload-form-card__close {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--app-border);
+  border-radius: 999px;
+  background: var(--app-surface-soft);
+  color: var(--app-text);
+  font-size: 20px;
+}
+
+.upload-form {
+  display: grid;
+  gap: 14px;
+}
+
+.upload-form label {
+  display: grid;
+  gap: 8px;
+  color: var(--app-text);
+  font-size: 13px;
+}
+
+.upload-form input,
+.upload-form textarea,
+.upload-form select {
+  border: 1px solid var(--app-border-strong);
+  border-radius: 12px;
+  background: var(--app-bg);
+  padding: 11px 12px;
+  color: var(--app-text);
+  outline: 0;
+}
+
+.upload-form input:focus,
+.upload-form textarea:focus,
+.upload-form select:focus {
+  border-color: var(--app-primary);
+}
+
+.upload-form__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.upload-form__selected-file {
+  margin: 0;
+  color: var(--app-text-muted);
+  font-size: 12px;
+}
+
+.upload-form__error {
+  border: 1px solid var(--app-danger-border);
+  border-radius: 12px;
+  background: var(--app-danger-bg);
+  padding: 10px 12px;
+  color: var(--app-danger-text);
+  font-size: 13px;
+}
+
+.upload-form__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.upload-form__primary,
+.upload-form__secondary {
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 14px;
+}
+
+.upload-form__primary {
+  background: var(--app-primary);
+  color: var(--app-on-primary);
+}
+
+.upload-form__secondary {
+  background: var(--app-surface-soft);
+  color: var(--app-text);
+}
+
+.upload-form__primary:disabled {
+  opacity: 0.55;
+}
+
+@media (max-width: 900px) {
+  .upload-form__grid {
+    grid-template-columns: 1fr;
+  }
+}

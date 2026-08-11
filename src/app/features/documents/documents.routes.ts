@@ -7,6 +7,13 @@ export const DOCUMENTS_ROUTES: Routes = [
     pathMatch: 'full',
   },
   {
+    path: 'detail/:uuid',
+    loadComponent: () =>
+      import('./pages/document-detail-page.component').then(
+        (m) => m.DocumentDetailPageComponent,
+      ),
+  },
+  {
     path: 'internal',
     loadComponent: () =>
       import('./pages/document-list-page.component').then(

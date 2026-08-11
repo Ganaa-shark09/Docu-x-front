@@ -1,17 +1,13 @@
-<section class="source-card" *ngIf="visibleSources.length || warningSources.length">
+<section [ngClass]="sourceLayoutClass" *ngIf="visibleSources.length || warningSources.length">
   <div class="source-card__title" *ngIf="visibleSources.length">
     Sources
   </div>
 
   <div class="source-card__list" *ngIf="visibleSources.length">
-    <article class="source-item" *ngFor="let source of visibleSources; let i = index">
+    <article [ngClass]="getSourceItemClass(source)" *ngFor="let source of visibleSources; let i = index">
       <div class="source-item__top">
         <div>
-          <span
-            class="source-item__badge"
-            [class.source-item__badge--failed]="source.source_type === 'failed_document'"
-            [class.source-item__badge--processing]="source.source_type === 'processing_document'"
-          >
+          <span class="source-item__badge">
             {{ getSourceLabel(source) }}
           </span>
 
