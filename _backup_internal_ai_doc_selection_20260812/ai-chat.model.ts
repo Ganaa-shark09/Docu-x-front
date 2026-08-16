@@ -1,8 +1,6 @@
 export type AiChatScope = 'internal' | 'external';
 
 export interface AiChatRequest {
-  document_scope?: 'all' | 'selected';
-  document_uuids?: string[];
   message: string;
   conversation_uuid?: string;
   department?: string | null;
@@ -163,7 +161,6 @@ export interface LocalChatAttachment {
 }
 
 export interface LocalChatMessage {
-  document_context?: AiDocumentContext;
   role: 'user' | 'assistant';
   content: string;
   created_at: string;
@@ -194,9 +191,6 @@ export interface ExternalDocument {
   updated_at?: string;
   file_size?: number;
   mime_type?: string;
-
-  processing_stage?: string | null;
-  processing_progress?: number | null;
 }
 
 export interface ExternalDocumentBulkUploadResponse {
@@ -239,42 +233,3 @@ export interface ExternalAttachmentsProcessingResponse
 export type ExternalAiChatResponse =
   | AiChatResponse
   | ExternalAttachmentsProcessingResponse;
-
-
-export interface InternalAiDocument {
-  uuid: string;
-  title: string;
-  description?: string | null;
-  original_filename?: string | null;
-  file_extension?: string | null;
-  document_type?: string | null;
-  department_uuid?: string | null;
-  department_name?: string | null;
-  sensitivity_label?: string | null;
-  file_size?: number | null;
-  mime_type?: string | null;
-  page_count?: number | null;
-  status?: string | null;
-  is_indexed?: boolean;
-  is_ai_ready?: boolean;
-  can_download?: boolean;
-  preview_url?: string | null;
-  download_url?: string | null;
-  created_at?: string | null;
-  updated_at?: string | null;
-}
-
-export interface InternalAiDocumentLibraryResponse {
-  count: number;
-  next: string | null;
-  previous: string | null;
-  results: InternalAiDocument[];
-}
-
-export interface AiDocumentContext {
-  mode: 'all' | 'selected';
-  document_uuids: string[];
-  document_titles: string[];
-  accessible_document_count: number;
-  selected_document_count: number;
-}

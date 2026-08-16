@@ -23,12 +23,9 @@ import {
 } from '../../models/ai-chat.model';
 import { AiChatService } from '../../services/ai-chat.service';
 import {
+  DocumentProcessingEvent,
   DocumentRealtimeService,
 } from '../../../../core/realtime/document-realtime.service';
-
-import {
-  DocumentProcessingEvent,
-} from '../../../../core/realtime/realtime.models';
 import { ChatMessageListComponent } from '../../components/chat-message-list/chat-message-list.component';
 import { ConversationListComponent } from '../../components/conversation-list/conversation-list.component';
 
@@ -142,6 +139,7 @@ export class ExternalAiChatPageComponent implements OnDestroy {
   ngOnDestroy(): void {
     this.realtimeSubscription?.unsubscribe();
     this.clearPendingRealtimeSend();
+    this.documentRealtimeService.disconnect();
     document.body.classList.remove('ai-chat-no-page-scroll');
     this.routeSubscription?.unsubscribe();
     this.stopDocumentPolling();
@@ -193,6 +191,7 @@ export class ExternalAiChatPageComponent implements OnDestroy {
     this.isLoadingConversation = false;
     this.stopDocumentPolling();
     this.clearPendingRealtimeSend();
+    this.documentRealtimeService.reset();
 
     this.router.navigate(['/ai/external']);
     this.cdr.markForCheck();
@@ -240,6 +239,7 @@ export class ExternalAiChatPageComponent implements OnDestroy {
     this.selectedExternalDocumentUuids.clear();
     this.stopDocumentPolling();
     this.clearPendingRealtimeSend();
+    this.documentRealtimeService.reset();
     this.cdr.markForCheck();
 
     this.aiChatService.getConversation(uuid).subscribe({
@@ -783,12 +783,6 @@ export class ExternalAiChatPageComponent implements OnDestroy {
     );
   }
 
-
-
-
-
-
-
   private getAllExternalConversationDocumentUuids(): string[] {
     const documentListUuids =
       this.externalAttachedDocuments
@@ -798,14 +792,6 @@ export class ExternalAiChatPageComponent implements OnDestroy {
         )
         .filter(Boolean);
 
-    /*
-     * Also read UUIDs already represented in chat
-     * message attachment cards.
-     *
-     * This protects against a small synchronization
-     * window where the message attachment exists but
-     * externalAttachedDocuments has not yet refreshed.
-     */
     const messageAttachmentUuids =
       this.externalMessages.flatMap(
         (message: LocalChatMessage) =>
@@ -839,11 +825,11 @@ export class ExternalAiChatPageComponent implements OnDestroy {
       );
 
     /*
-     * One or more documents explicitly selected:
+     * Explicit selection:
      *
      * selected existing documents
      * +
-     * files uploaded with THIS user prompt.
+     * anything uploaded with THIS prompt
      */
     if (selectedUuids.length > 0) {
       return this.normalizeExternalDocumentUuids([
@@ -855,13 +841,61 @@ export class ExternalAiChatPageComponent implements OnDestroy {
     /*
      * Nothing selected:
      *
-     * send EVERY document UUID available in the
-     * current conversation.
-     *
-     * Newly uploaded files are also included.
+     * ALL documents belonging to the conversation
+     * +
+     * anything uploaded with THIS prompt.
      */
     return this.normalizeExternalDocumentUuids([
       ...this.getAllExternalConversationDocumentUuids(),
+      ...uploadedUuids,
+    ]);
+  }
+
+  private resolveExternalDocumentUuids(
+    currentMessageDocumentUuids: string[] = [],
+  ): string[] {
+    const uploadedUuids =
+      this.normalizeExternalDocumentUuids(
+        currentMessageDocumentUuids,
+      );
+
+    const selectedUuids =
+      this.normalizeExternalDocumentUuids(
+        Array.from(
+          this.selectedExternalDocumentUuids,
+        ),
+      );
+
+    /*
+     * Explicit selection exists.
+     *
+     * Query scope =
+     * selected existing documents
+     * +
+     * files attached to THIS message.
+     */
+    if (selectedUuids.length > 0) {
+      return this.normalizeExternalDocumentUuids([
+        ...selectedUuids,
+        ...uploadedUuids,
+      ]);
+    }
+
+    /*
+     * Nothing selected.
+     *
+     * Query scope = EVERY document currently
+     * attached to this conversation.
+     *
+     * mergeAttachedDocuments() runs before this
+     * during upload, so newly uploaded documents
+     * are already included here.
+     */
+    return this.normalizeExternalDocumentUuids([
+      ...this.externalAttachedDocuments.map(
+        (document: ExternalDocument) =>
+          document.uuid,
+      ),
       ...uploadedUuids,
     ]);
   }

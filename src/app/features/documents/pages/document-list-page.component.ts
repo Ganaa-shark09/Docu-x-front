@@ -1,11 +1,15 @@
 import { DatePipe, NgFor, NgIf } from '@angular/common';
-import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
-import { finalize } from 'rxjs';
+import { Subscription, finalize } from 'rxjs';
 
 import { DocumentUploadFormComponent } from '../components/document-upload-form.component';
 import { DocumentsService } from '../services/documents.service';
+import {
+  DocumentProcessingStore,
+} from '../../../core/realtime/document-processing.store';
+
 
 type DocumentScope = 'internal' | 'external';
 
@@ -16,12 +20,16 @@ type DocumentScope = 'internal' | 'external';
   templateUrl: './document-list-page.component.html',
   styleUrl: './document-list-page.component.scss',
 })
-export class DocumentListPageComponent implements OnInit {
+export class DocumentListPageComponent implements OnInit, OnDestroy {
   private readonly documentsService = inject(DocumentsService);
   private readonly fb = inject(FormBuilder);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly processingStore =
+    inject(DocumentProcessingStore);
+
+  private processingStatesSubscription?: Subscription;
 
   documents: any[] = [];
   departments: any[] = [];
@@ -104,6 +112,70 @@ export class DocumentListPageComponent implements OnInit {
 
 
   ngOnInit(): void {
+    this.processingStatesSubscription =
+      this.processingStore.states$
+        .subscribe((states) => {
+          if (!this.documents.length) {
+            return;
+          }
+
+          let changed = false;
+
+          const updatedDocuments =
+            this.documents.map((document: any) => {
+              const uuid =
+                document?.uuid ||
+                document?.id;
+
+              if (!uuid) {
+                return document;
+              }
+
+              const processingState =
+                states.get(uuid);
+
+              if (!processingState) {
+                return document;
+              }
+
+              changed = true;
+
+              return {
+                ...document,
+
+                status:
+                  processingState.status ||
+                  document.status,
+
+                processing_stage:
+                  processingState.stage,
+
+                processing_progress:
+                  processingState.progress,
+
+                is_ai_ready:
+                  processingState.isAiReady,
+
+                is_indexed:
+                  processingState.isIndexed,
+
+                is_ocr_completed:
+                  processingState.isOcrCompleted,
+
+                processing_error:
+                  processingState.error ??
+                  document.processing_error,
+              };
+            });
+
+          if (changed) {
+            this.documents =
+              updatedDocuments;
+
+            this.cdr.detectChanges();
+          }
+        });
+
     this.route.data.subscribe((data) => {
     this.scope = (data['scope'] || 'internal') as DocumentScope;
     this.isUploadOpen = false;
@@ -117,6 +189,16 @@ export class DocumentListPageComponent implements OnInit {
     window.setTimeout(() => {
       this.loadDocuments();
     }, 180);
+  }
+
+  ngOnDestroy(): void {
+    this.processingStatesSubscription?.unsubscribe();
+
+    /*
+     * IMPORTANT:
+     * Do NOT close the global WebSocket here.
+     * Other application features can still use it.
+     */
   }
 
   loadDocuments(): void {
@@ -145,6 +227,32 @@ export class DocumentListPageComponent implements OnInit {
             [];
 
         this.documents = documents;
+
+        /*
+         * HTTP response is authoritative initial state.
+         *
+         * The store seeds processing_stage/progress from DB,
+         * then the global WebSocket keeps individual rows updated.
+         */
+        this.processingStore.subscribeDocuments(
+          documents
+            .filter(
+              (document: any) =>
+                !!(
+                  document?.uuid ||
+                  document?.id
+                ),
+            )
+            .map(
+              (document: any) => ({
+                ...document,
+                uuid:
+                  document.uuid ||
+                  document.id,
+              }),
+            ),
+        );
+
         this.isLoading = false;
         this.errorMessage = '';
         this.cdr.detectChanges();
@@ -213,7 +321,68 @@ export class DocumentListPageComponent implements OnInit {
   }
 
   getDocumentStatus(document: any): string {
-    return document.status || document.processing_status || 'ready';
+    const stage =
+      String(
+        document.processing_stage || '',
+      ).toLowerCase();
+
+    const labels:
+      Record<string, string> = {
+        queued: 'Queued',
+        extracting: 'Extracting content',
+        classifying: 'Analyzing document',
+        firewall_scan: 'Security scan',
+        chunking: 'Preparing content',
+        embedding: 'Creating embeddings',
+        indexing: 'Indexing document',
+        ready: 'Ready',
+        failed: 'Failed',
+      };
+
+    if (stage && labels[stage]) {
+      return labels[stage];
+    }
+
+    const status =
+      String(
+        document.status ||
+        document.processing_status ||
+        '',
+      ).toLowerCase();
+
+    if (status === 'failed') {
+      return 'Failed';
+    }
+
+    if (
+      status === 'ready' ||
+      document.is_ai_ready === true
+    ) {
+      return 'Ready';
+    }
+
+    if (
+      status === 'processing' ||
+      status === 'uploaded'
+    ) {
+      return 'Processing';
+    }
+
+    return status || 'Ready';
+  }
+
+  getDocumentProcessingProgress(
+    document: any,
+  ): number {
+    const progress =
+      Number(
+        document.processing_progress ?? 0,
+      );
+
+    return Math.max(
+      0,
+      Math.min(100, progress),
+    );
   }
 
   getAiStatus(document: any): string {

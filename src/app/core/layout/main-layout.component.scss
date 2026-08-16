@@ -247,15 +247,15 @@
   padding: 32px;
 }
 
-/* Floating DocuX AI launcher: clean icon only */
+/* Floating DocuX AI launcher */
 .docux-ai-fab {
   position: fixed;
   right: 24px;
   bottom: 24px;
   z-index: 1200;
   display: grid;
-  width: 54px;
-  height: 54px;
+  width: 58px;
+  height: 58px;
   place-items: center;
   border: 0;
   border-radius: 999px;
@@ -270,7 +270,7 @@
 
 .docux-ai-fab:hover {
   transform: translateY(-2px) scale(1.04);
-  filter: drop-shadow(0 14px 28px rgba(0, 0, 0, 0.28));
+  filter: drop-shadow(0 14px 28px rgba(0, 0, 0, 0.26));
 }
 
 .docux-ai-fab:focus-visible {
@@ -278,7 +278,6 @@
   outline-offset: 4px;
 }
 
-/* No visible outer layer */
 .docux-ai-fab__glow {
   display: none;
 }
@@ -286,8 +285,8 @@
 .docux-ai-fab__icon-stage {
   position: relative;
   display: grid;
-  width: 46px;
-  height: 46px;
+  width: 52px;
+  height: 52px;
   place-items: center;
   overflow: hidden;
   border: 1px solid rgba(148, 163, 184, 0.28);
@@ -302,12 +301,12 @@
   display: grid;
   place-items: center;
   opacity: 0;
-  transform: rotateY(80deg) scale(0.92);
+  transform: rotateY(70deg) scale(0.96);
   backface-visibility: hidden;
   pointer-events: none;
   transition:
-    opacity 1100ms ease,
-    transform 1100ms cubic-bezier(0.16, 1, 0.3, 1);
+    opacity 900ms ease,
+    transform 900ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .docux-ai-fab__icon-layer--active {
@@ -317,8 +316,8 @@
 
 .docux-ai-fab__image {
   display: block;
-  width: 34px;
-  height: 34px;
+  width: 39px;
+  height: 39px;
   object-fit: contain;
   filter: drop-shadow(0 0 7px rgba(124, 255, 190, 0.18));
 }
@@ -328,18 +327,18 @@
   align-items: center;
   justify-content: center;
   color: #ffffff;
-  font-size: 24px;
+  font-size: 27px;
   line-height: 1;
 }
 
 .docux-ai-fab__popup {
   position: absolute;
-  right: 50%;
-  bottom: calc(100% + 12px);
-  min-width: 178px;
+  right: 0;
+  bottom: calc(100% + 14px);
+  width: 218px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 16px;
-  background: rgba(12, 14, 22, 0.96);
+  background: rgba(12, 14, 22, 0.97);
   box-shadow:
     0 18px 42px rgba(0, 0, 0, 0.34),
     0 0 0 1px rgba(124, 92, 255, 0.08);
@@ -348,7 +347,7 @@
   opacity: 0;
   pointer-events: none;
   text-align: left;
-  transform: translateX(50%) translateY(8px);
+  transform: translateY(8px);
   transition:
     opacity 260ms ease,
     transform 260ms ease,
@@ -356,22 +355,22 @@
   visibility: hidden;
 }
 
-.docux-ai-fab:hover .docux-ai-fab__popup,
-.docux-ai-fab:focus-visible .docux-ai-fab__popup {
+.docux-ai-fab:not(.docux-ai-fab--intro-active):hover .docux-ai-fab__popup,
+.docux-ai-fab:not(.docux-ai-fab--intro-active):focus-visible .docux-ai-fab__popup {
   opacity: 1;
-  transform: translateX(50%) translateY(0);
+  transform: translateY(0);
   visibility: visible;
 }
 
 .docux-ai-fab__popup::after {
   content: '';
   position: absolute;
-  right: 50%;
+  right: 21px;
   bottom: -6px;
   width: 12px;
   height: 12px;
-  background: rgba(12, 14, 22, 0.96);
-  transform: translateX(50%) rotate(45deg);
+  background: rgba(12, 14, 22, 0.97);
+  transform: rotate(45deg);
   border-right: 1px solid rgba(255, 255, 255, 0.06);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
@@ -389,6 +388,104 @@
   color: rgba(226, 232, 240, 0.82);
   font-size: 12px;
   line-height: 1.35;
+}
+
+/* First dashboard AI pointer popup */
+.docux-ai-intro {
+  position: fixed;
+  right: 92px;
+  bottom: 24px;
+  z-index: 1210;
+  pointer-events: auto;
+}
+
+.docux-ai-intro__card {
+  position: relative;
+  width: 294px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 18px;
+  background: rgba(12, 14, 22, 0.98);
+  box-shadow:
+    0 18px 44px rgba(0, 0, 0, 0.38),
+    0 0 0 1px rgba(124, 92, 255, 0.10);
+  padding: 15px;
+  color: #f8fafc;
+  animation: docux-ai-intro-enter 420ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.docux-ai-intro__card::after {
+  content: '';
+  position: absolute;
+  right: -6px;
+  bottom: 21px;
+  width: 12px;
+  height: 12px;
+  background: rgba(12, 14, 22, 0.98);
+  transform: rotate(45deg);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.docux-ai-intro__tag {
+  display: inline-flex;
+  margin-bottom: 8px;
+  border-radius: 999px;
+  background: rgba(124, 92, 255, 0.22);
+  padding: 4px 8px;
+  color: #ddd6fe;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.docux-ai-intro__card strong {
+  display: block;
+  color: #ffffff;
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.docux-ai-intro__card p {
+  margin: 7px 0 12px;
+  color: rgba(226, 232, 240, 0.84);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.docux-ai-intro__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.docux-ai-intro__actions button {
+  min-height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: transparent;
+  padding: 0 12px;
+  color: #f8fafc;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.docux-ai-intro__actions .docux-ai-intro__primary {
+  border-color: rgba(124, 92, 255, 0.48);
+  background: rgba(124, 92, 255, 0.32);
+}
+
+@keyframes docux-ai-intro-enter {
+  from {
+    opacity: 0;
+    transform: translateX(10px) translateY(8px) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0) translateY(0) scale(1);
+  }
 }
 
 

@@ -8,6 +8,20 @@ export interface DocumentListItem {
   current_user_access?: string;
   document_type: string;
   status: string;
+
+  processing_stage?:
+    | 'queued'
+    | 'extracting'
+    | 'classifying'
+    | 'firewall_scan'
+    | 'chunking'
+    | 'embedding'
+    | 'indexing'
+    | 'ready'
+    | 'failed';
+
+  processing_progress?: number;
+
   sensitivity_label: string;
   original_filename: string;
   file_size: number;

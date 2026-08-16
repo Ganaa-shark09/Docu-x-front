@@ -35,6 +35,20 @@ type ExternalDocumentListResponse =
       data?: ExternalDocument[];
     };
 
+
+export interface ExternalDocumentProcessingStatusItem {
+  uuid: string;
+  status: string;
+  is_ai_ready: boolean;
+  processing_error?: string | null;
+}
+
+export interface ExternalDocumentProcessingStatusResponse {
+  documents: ExternalDocumentProcessingStatusItem[];
+  all_ready: boolean;
+  has_failed: boolean;
+}
+
 @Injectable({
   providedIn: 'root',
 })

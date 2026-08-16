@@ -1,4 +1,4 @@
-<div class="docux-shell">
+<div class="docux-shell" [class.docux-shell--ai-launching]="isLaunchingAi">
   <aside class="docux-sidebar">
     <div class="docux-brand" title="Hover to expand sidebar">
       <span class="docux-brand__mark">D</span>
@@ -80,15 +80,33 @@
       <router-outlet></router-outlet>
     </main>
   </div>
+  <div class="docux-ai-intro" *ngIf="isAiIntroVisible">
+    <div class="docux-ai-intro__card">
+      <span class="docux-ai-intro__tag">DocuX AI</span>
+
+      <strong>Your document assistant is here</strong>
+
+      <p>
+        Ask questions, summarize files, compare information, and find risks from
+        your workspace documents.
+      </p>
+
+      <div class="docux-ai-intro__actions">
+        <button type="button" (click)="closeAiIntro()">Got it</button>
+        <button type="button" class="docux-ai-intro__primary" (click)="openAiChat()">
+          Open AI
+        </button>
+      </div>
+    </div>
+  </div>
 
   <button
     type="button"
     class="docux-ai-fab"
+    [class.docux-ai-fab--intro-active]="isAiIntroVisible"
     aria-label="Open DocuX AI"
     title="Open DocuX AI"
     (click)="openAiChat()"
-    (mouseenter)="handleAiFabMouseEnter()"
-    (mouseleave)="handleAiFabMouseLeave()"
   >
     <span class="docux-ai-fab__glow"></span>
 

@@ -5,8 +5,22 @@ import {
   NgSwitchCase,
   NgSwitchDefault,
 } from '@angular/common';
-import { Component, OnDestroy, OnInit, inject } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import {
+  ChangeDetectorRef,
+  Component,
+  NgZone,
+  OnDestroy,
+  OnInit,
+  inject,
+} from '@angular/core';
+import {
+  NavigationEnd,
+  Router,
+  RouterLink,
+  RouterLinkActive,
+  RouterOutlet,
+} from '@angular/router';
+import { Subscription, filter } from 'rxjs';
 
 import { AuthService } from '../auth/auth.service';
 
@@ -40,6 +54,8 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   readonly authService = inject(AuthService);
 
   private readonly router = inject(Router);
+  private readonly ngZone = inject(NgZone);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   readonly navItems: NavItem[] = [
     { label: 'Dashboard', path: '/dashboard', icon: 'dashboard' },
@@ -68,30 +84,60 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   ];
 
   activeFloatingAiVisualIndex = 0;
-  isAiFabHovered = false;
+  isAiIntroVisible = false;
+  isLaunchingAi = false;
 
   private aiFabCycleHandle: number | null = null;
-  private readonly aiFabCycleMs = 3600;
+  private routerEventsSubscription?: Subscription;
+
+  private readonly aiFabCycleMs = 5000;
+  private readonly introStorageKey = 'docux_ai_intro_seen_v3';
 
   ngOnInit(): void {
     this.startAiFabCycle();
+    this.registerDashboardIntro();
   }
 
   ngOnDestroy(): void {
     this.stopAiFabCycle();
+    this.routerEventsSubscription?.unsubscribe();
+  }
+
+  private registerDashboardIntro(): void {
+    this.showIntroWhenDashboardIsReady();
+
+    this.routerEventsSubscription = this.router.events
+      .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
+      .subscribe(() => {
+        this.showIntroWhenDashboardIsReady();
+      });
+  }
+
+  private showIntroWhenDashboardIsReady(): void {
+    window.setTimeout(() => {
+      const alreadySeen = localStorage.getItem(this.introStorageKey) === 'true';
+      const isDashboard = this.router.url.startsWith('/dashboard');
+
+      if (!alreadySeen && isDashboard) {
+        this.isAiIntroVisible = true;
+        this.cdr.detectChanges();
+      }
+    }, 650);
   }
 
   startAiFabCycle(): void {
     this.stopAiFabCycle();
 
-    this.aiFabCycleHandle = window.setInterval(() => {
-      if (this.isAiFabHovered) {
-        return;
-      }
+    this.ngZone.runOutsideAngular(() => {
+      this.aiFabCycleHandle = window.setInterval(() => {
+        this.ngZone.run(() => {
+          this.activeFloatingAiVisualIndex =
+            (this.activeFloatingAiVisualIndex + 1) % this.floatingAiVisuals.length;
 
-      this.activeFloatingAiVisualIndex =
-        (this.activeFloatingAiVisualIndex + 1) % this.floatingAiVisuals.length;
-    }, this.aiFabCycleMs);
+          this.cdr.detectChanges();
+        });
+      }, this.aiFabCycleMs);
+    });
   }
 
   stopAiFabCycle(): void {
@@ -101,20 +147,34 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     }
   }
 
-  handleAiFabMouseEnter(): void {
-    this.isAiFabHovered = true;
-  }
-
-  handleAiFabMouseLeave(): void {
-    this.isAiFabHovered = false;
-  }
-
   trackFloatingAiVisual(index: number): number {
     return index;
   }
 
+  closeAiIntro(): void {
+    this.isAiIntroVisible = false;
+    localStorage.setItem(this.introStorageKey, 'true');
+    this.cdr.detectChanges();
+  }
+
   openAiChat(): void {
-    this.router.navigate(['/ai/internal']);
+    if (this.isLaunchingAi) {
+      return;
+    }
+
+    this.closeAiIntro();
+    this.isLaunchingAi = true;
+    document.body.classList.add('docux-ai-route-opening');
+    this.cdr.detectChanges();
+
+    window.setTimeout(() => {
+      this.router.navigate(['/ai/internal']);
+    }, 80);
+
+    window.setTimeout(() => {
+      document.body.classList.remove('docux-ai-route-opening');
+      this.isLaunchingAi = false;
+    }, 1400);
   }
 
   logout(): void {

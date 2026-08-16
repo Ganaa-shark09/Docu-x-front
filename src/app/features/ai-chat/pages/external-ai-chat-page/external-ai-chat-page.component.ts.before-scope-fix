@@ -22,13 +22,6 @@ import {
   LocalChatMessage,
 } from '../../models/ai-chat.model';
 import { AiChatService } from '../../services/ai-chat.service';
-import {
-  DocumentRealtimeService,
-} from '../../../../core/realtime/document-realtime.service';
-
-import {
-  DocumentProcessingEvent,
-} from '../../../../core/realtime/realtime.models';
 import { ChatMessageListComponent } from '../../components/chat-message-list/chat-message-list.component';
 import { ConversationListComponent } from '../../components/conversation-list/conversation-list.component';
 
@@ -56,8 +49,6 @@ interface PendingExternalFile {
 })
 export class ExternalAiChatPageComponent implements OnDestroy {
   private readonly aiChatService = inject(AiChatService);
-  private readonly documentRealtimeService =
-    inject(DocumentRealtimeService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly ngZone = inject(NgZone);
   private readonly route = inject(ActivatedRoute);
@@ -97,16 +88,6 @@ export class ExternalAiChatPageComponent implements OnDestroy {
   ];
   private conversationLoadRequestId = 0;
   private routeSubscription?: Subscription;
-  private realtimeSubscription?: Subscription;
-
-  private pendingRealtimeSend: {
-    message: string;
-    scopeUuids: string[];
-    waitUuids: string[];
-  } | null = null;
-
-  private realtimeFallbackHandle:
-    number | null = null;
 
   private readonly allowedExtensions = [
     'pdf',
@@ -126,8 +107,6 @@ export class ExternalAiChatPageComponent implements OnDestroy {
   constructor() {
     document.body.classList.add('ai-chat-no-page-scroll');
 
-    this.bindDocumentRealtimeEvents();
-
     this.routeSubscription = this.route.paramMap.subscribe((params) => {
       const uuid = params.get('conversationUuid');
 
@@ -140,8 +119,6 @@ export class ExternalAiChatPageComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.realtimeSubscription?.unsubscribe();
-    this.clearPendingRealtimeSend();
     document.body.classList.remove('ai-chat-no-page-scroll');
     this.routeSubscription?.unsubscribe();
     this.stopDocumentPolling();
@@ -192,8 +169,6 @@ export class ExternalAiChatPageComponent implements OnDestroy {
     this.documentsPanelOpen = false;
     this.isLoadingConversation = false;
     this.stopDocumentPolling();
-    this.clearPendingRealtimeSend();
-
     this.router.navigate(['/ai/external']);
     this.cdr.markForCheck();
   }
@@ -239,7 +214,6 @@ export class ExternalAiChatPageComponent implements OnDestroy {
     this.pendingFiles = [];
     this.selectedExternalDocumentUuids.clear();
     this.stopDocumentPolling();
-    this.clearPendingRealtimeSend();
     this.cdr.markForCheck();
 
     this.aiChatService.getConversation(uuid).subscribe({
@@ -385,18 +359,14 @@ export class ExternalAiChatPageComponent implements OnDestroy {
           this.syncSelectedDocuments();
           this.syncMessageAttachmentsFromDocuments(documents);
 
-          /*
-           * HTTP gives authoritative initial state.
-           * WebSocket supplies subsequent processing updates.
-           */
-          this.stopDocumentPolling();
+          const pendingDocumentUuids =
+            this.getPendingExternalDocumentUuids(documents);
 
-          this.subscribeRealtimeDocuments(
-            documents.map(
-              (document: ExternalDocument) =>
-                document.uuid,
-            ),
-          );
+          if (pendingDocumentUuids.length > 0) {
+            this.startDocumentPolling(pendingDocumentUuids);
+          } else {
+            this.stopDocumentPolling();
+          }
 
           this.cdr.detectChanges();
         });
@@ -629,29 +599,7 @@ export class ExternalAiChatPageComponent implements OnDestroy {
             );
           }
           this.mergeAttachedDocuments(response.documents || []);
-          this.replaceMessageAttachments(
-            messageIndex,
-            response.documents || [],
-          );
-
-          /*
-           * Keep query + attachment as ONE user prompt.
-           * Replacing attachment objects must never erase
-           * the message text.
-           */
-          this.externalMessages =
-            this.externalMessages.map(
-              (
-                item: LocalChatMessage,
-                index: number,
-              ) =>
-                index === messageIndex
-                  ? {
-                      ...item,
-                      content: message,
-                    }
-                  : item,
-            );
+          this.replaceMessageAttachments(messageIndex, response.documents || []);
 
           this.isUploading = false;
           this.cdr.detectChanges();
@@ -662,39 +610,6 @@ export class ExternalAiChatPageComponent implements OnDestroy {
           const uploadedDocumentUuids = uploadedDocuments
             .map((document: ExternalDocument) => document.uuid)
             .filter(Boolean);
-
-          /*
-           * Freeze the COMPLETE document scope for this query.
-           *
-           * Existing explicit selection:
-           *   selected + newly uploaded
-           *
-           * Nothing selected:
-           *   all conversation documents
-           *   including newly uploaded files
-           */
-          const queryDocumentUuids =
-            this.resolveExternalDocumentUuids(
-              uploadedDocumentUuids,
-            );
-
-          /*
-           * Upload succeeded but no UUID means we cannot safely
-           * bind this message to its current attachments.
-           *
-           * Never silently fall back to all conversation docs.
-           */
-          if (
-            pendingFiles.length > 0 &&
-            uploadedDocumentUuids.length === 0
-          ) {
-            this.isUploading = false;
-            this.isSending = false;
-            this.errorMessage =
-              'The files were uploaded, but the backend did not return document UUIDs. The AI request was not sent.';
-            this.cdr.detectChanges();
-            return;
-          }
 
           const failedUploads = uploadedDocuments.filter(
             (document: ExternalDocument) =>
@@ -711,30 +626,21 @@ export class ExternalAiChatPageComponent implements OnDestroy {
           }
 
           const pendingDocumentUuids =
-            this.getPendingExternalDocumentUuids(
-              uploadedDocuments,
-            );
+            this.getPendingExternalDocumentUuids(uploadedDocuments);
 
-          /*
-           * Subscribe immediately after upload.
-           * Backend sends a current-state snapshot, so an
-           * event emitted before subscription is not lost.
-           */
-          this.subscribeRealtimeDocuments(
-            uploadedDocumentUuids,
-          );
-
-          if (
-            pendingDocumentUuids.length > 0
-          ) {
+          if (pendingDocumentUuids.length > 0) {
             if (message) {
-              this.queueRealtimeSend(
-                message,
-                queryDocumentUuids,
-                pendingDocumentUuids,
+              this.startDocumentPolling(
+                uploadedDocumentUuids,
+                () =>
+                  this.sendExternalMessage(
+                    message,
+                    uploadedDocumentUuids,
+                  ),
               );
             } else {
               this.isSending = false;
+              this.startDocumentPolling(uploadedDocumentUuids);
               this.cdr.detectChanges();
             }
 
@@ -744,7 +650,7 @@ export class ExternalAiChatPageComponent implements OnDestroy {
           if (message) {
             this.sendExternalMessage(
               message,
-              queryDocumentUuids,
+              uploadedDocumentUuids,
             );
           } else {
             this.isSending = false;
@@ -769,634 +675,102 @@ export class ExternalAiChatPageComponent implements OnDestroy {
     });
   }
 
-  private normalizeExternalDocumentUuids(
-    documentUuids: string[],
-  ): string[] {
-    return Array.from(
-      new Set(
-        documentUuids
-          .map((uuid: string) =>
-            String(uuid || '').trim(),
-          )
-          .filter(Boolean),
-      ),
-    );
-  }
-
-
-
-
-
-
-
-  private getAllExternalConversationDocumentUuids(): string[] {
-    const documentListUuids =
-      this.externalAttachedDocuments
-        .map(
-          (document: ExternalDocument) =>
-            document.uuid,
-        )
-        .filter(Boolean);
-
-    /*
-     * Also read UUIDs already represented in chat
-     * message attachment cards.
-     *
-     * This protects against a small synchronization
-     * window where the message attachment exists but
-     * externalAttachedDocuments has not yet refreshed.
-     */
-    const messageAttachmentUuids =
-      this.externalMessages.flatMap(
-        (message: LocalChatMessage) =>
-          (message.attachments || [])
-            .map(
-              (attachment: LocalChatAttachment) =>
-                attachment.uuid || '',
-            )
-            .filter(Boolean),
-      );
-
-    return this.normalizeExternalDocumentUuids([
-      ...documentListUuids,
-      ...messageAttachmentUuids,
-    ]);
-  }
-
-  private resolveExternalDocumentUuids(
-    currentMessageDocumentUuids: string[] = [],
-  ): string[] {
-    const uploadedUuids =
-      this.normalizeExternalDocumentUuids(
-        currentMessageDocumentUuids,
-      );
-
-    const selectedUuids =
-      this.normalizeExternalDocumentUuids(
-        Array.from(
-          this.selectedExternalDocumentUuids,
-        ),
-      );
-
-    /*
-     * One or more documents explicitly selected:
-     *
-     * selected existing documents
-     * +
-     * files uploaded with THIS user prompt.
-     */
-    if (selectedUuids.length > 0) {
-      return this.normalizeExternalDocumentUuids([
-        ...selectedUuids,
-        ...uploadedUuids,
-      ]);
-    }
-
-    /*
-     * Nothing selected:
-     *
-     * send EVERY document UUID available in the
-     * current conversation.
-     *
-     * Newly uploaded files are also included.
-     */
-    return this.normalizeExternalDocumentUuids([
-      ...this.getAllExternalConversationDocumentUuids(),
-      ...uploadedUuids,
-    ]);
-  }
-
-  private sendExternalMessage(
-    message: string,
-    explicitDocumentUuids?: string[],
-  ): void {
+  private sendExternalMessage(message: string, explicitDocumentUuids?: string[]): void {
     if (!message) {
       this.isSending = false;
       this.cdr.markForCheck();
       return;
     }
 
-    /*
-     * Freeze the effective scope for THIS request.
-     *
-     * Explicit current-message files take precedence over
-     * selected conversation files.
-     */
-    const effectiveDocumentUuids =
-      explicitDocumentUuids !== undefined
-        ? this.normalizeExternalDocumentUuids(
-            explicitDocumentUuids,
-          )
-        : this.resolveExternalDocumentUuids();
+    const selectedExternalDocumentUuids =
+      explicitDocumentUuids && explicitDocumentUuids.length
+        ? explicitDocumentUuids
+        : Array.from(this.selectedExternalDocumentUuids);
 
     const payload: ExternalAiChatRequest = {
       message,
       use_web: true,
       top_k: 8,
-
-      /*
-       * External AI contract:
-       *
-       * Always send document_uuids.
-       *
-       * selected docs -> selected UUIDs
-       * no selection  -> all conversation UUIDs
-       * no documents  -> []
-       */
-      document_uuids:
-        effectiveDocumentUuids,
     };
 
     if (this.activeExternalConversationUuid) {
-      payload.conversation_uuid =
-        this.activeExternalConversationUuid;
+      payload.conversation_uuid = this.activeExternalConversationUuid;
     }
 
-    console.debug(
-      '[External AI] sending query scope',
-      {
-        conversation_uuid:
-          payload.conversation_uuid,
-        document_uuids:
-          payload.document_uuids,
-        message:
-          payload.message,
-      },
-    );
-
-    this.aiChatService
-      .sendExternalChatMessage(payload)
-      .subscribe({
-        next: (response: any) => {
-          this.ngZone.run(() => {
-            /*
-             * Backend safety layer.
-             *
-             * Preserve exactly the same document scope while
-             * waiting. Do not re-read sidebar selection because
-             * the user may change it while processing occurs.
-             */
-            if (
-              response?.status ===
-              'attachments_processing'
-            ) {
-              const retryAfterMs = Math.max(
-                Number(
-                  response.retry_after_ms || 3000,
-                ),
-                1000,
-              );
-
-              const backendPendingUuids =
-                Array.isArray(
-                  response.pending_document_uuids,
-                )
-                  ? response.pending_document_uuids
-                  : [];
-
-              const uuidsToPoll =
-                backendPendingUuids.length
-                  ? backendPendingUuids
-                  : effectiveDocumentUuids || [];
-
-              if (!uuidsToPoll.length) {
-                this.isSending = false;
-                this.errorMessage =
-                  'Attachments are still processing, but no document UUID was returned for status tracking.';
-                this.cdr.detectChanges();
-                return;
-              }
-
-              /*
-               * Backend confirmed that one or more documents
-               * required by this query are still processing.
-               *
-               * Do NOT poll processing-status here.
-               * Subscribe/wait for WebSocket readiness instead.
-               */
-              this.queueRealtimeSend(
-                message,
-                effectiveDocumentUuids,
-                uuidsToPoll,
-              );
-
-              return;
-            }
-
-            /*
-             * Never render processing/non-answer responses as
-             * empty assistant messages.
-             */
-            if (
-              typeof response?.answer !== 'string'
-            ) {
-              this.isSending = false;
-              this.errorMessage =
-                response?.detail ||
-                'External AI returned an unexpected response.';
-              this.cdr.detectChanges();
-              return;
-            }
-
-            if (response.conversation_uuid) {
-              this.activeExternalConversationUuid =
-                response.conversation_uuid;
-
-              this.router.navigate(
-                [
-                  '/ai/external',
-                  response.conversation_uuid,
-                ],
-                {
-                  replaceUrl: true,
-                },
-              );
-            }
-
-            const assistantMessage: LocalChatMessage = {
-              role: 'assistant',
-              content: response.answer,
-              created_at: new Date().toISOString(),
-              sources: response.sources || [],
-              model_provider: response.model_provider,
-              model_name: response.model_name,
-              usage: response.usage,
-              external_context:
-                response.external_context,
-            };
-
-            this.appendAssistantMessageWithFastTyping(
-              assistantMessage,
-            );
-
-            this.loadExternalConversations();
-
-            /*
-             * IMPORTANT:
-             * Do NOT call loadAttachedDocuments() here.
-             *
-             * Sending/receiving a chat answer does not require
-             * reloading the whole attachment list.
-             */
-          });
-        },
-
-        error: (error: any) => {
-          this.ngZone.run(() => {
-            console.error(
-              'External AI chat error:',
-              error,
-            );
-
-            this.errorMessage =
-              error?.error?.detail ||
-              'Unable to send external AI message.';
-
-            this.isSending = false;
-            this.cdr.detectChanges();
-          });
-        },
-      });
-  }
-
-  private bindDocumentRealtimeEvents(): void {
-    this.realtimeSubscription =
-      this.documentRealtimeService
-        .events$
-        .subscribe(
-          (
-            event:
-              DocumentProcessingEvent,
-          ) => {
-            if (
-              event.event !==
-                'document.processing.snapshot' &&
-              event.event !==
-                'document.processing.updated'
-            ) {
-              return;
-            }
-
-            if (!event.document_uuid) {
-              return;
-            }
-
-            this.applyDocumentRealtimeEvent(
-              event,
-            );
-
-            /*
-             * Any realtime activity proves the socket is alive.
-             * Push fallback polling further out.
-             */
-            this.scheduleRealtimeFallback();
-
-            this.tryFlushPendingRealtimeSend();
-
-            this.cdr.detectChanges();
-          },
-        );
-  }
-
-  private subscribeRealtimeDocuments(
-    documentUuids: string[],
-  ): void {
-    const normalized =
-      this.normalizeExternalDocumentUuids(
-        documentUuids,
-      );
-
-    if (!normalized.length) {
-      return;
+    if (selectedExternalDocumentUuids.length > 0) {
+      payload.document_uuids = selectedExternalDocumentUuids;
     }
 
-    this.documentRealtimeService
-      .subscribeDocuments(normalized);
-  }
+    this.aiChatService.sendExternalChatMessage(payload).subscribe({
+      next: (response: any) => {
+        this.ngZone.run(() => {
+          if (response?.status === 'attachments_processing') {
+            const retryAfterMs = Math.max(
+              Number(response.retry_after_ms || 3000),
+              1000,
+            );
 
-  private applyDocumentRealtimeEvent(
-    event: DocumentProcessingEvent,
-  ): void {
-    const uuid = event.document_uuid;
+            const processingDocumentUuids =
+              response.pending_document_uuids ||
+              response.document_uuids ||
+              selectedExternalDocumentUuids;
 
-    if (!uuid) {
-      return;
-    }
+            if (processingDocumentUuids.length > 0) {
+              this.startDocumentPolling(
+                processingDocumentUuids,
+                () =>
+                  this.sendExternalMessage(
+                    message,
+                    selectedExternalDocumentUuids,
+                  ),
+                retryAfterMs,
+              );
+            } else {
+              window.setTimeout(() => {
+                this.sendExternalMessage(
+                  message,
+                  selectedExternalDocumentUuids,
+                );
+              }, retryAfterMs);
+            }
 
-    this.externalAttachedDocuments =
-      this.externalAttachedDocuments.map(
-        (
-          document: ExternalDocument,
-        ) => {
-          if (document.uuid !== uuid) {
-            return document;
+            return;
           }
 
-          return {
-            ...document,
+          if (response.conversation_uuid) {
+            this.activeExternalConversationUuid = response.conversation_uuid;
+            this.router.navigate(
+              ['/ai/external', response.conversation_uuid],
+              { replaceUrl: true },
+            );
+          }
 
-            status:
-              event.status ??
-              document.status,
-
-            is_ai_ready:
-              typeof event.is_ai_ready ===
-              'boolean'
-                ? event.is_ai_ready
-                : document.is_ai_ready,
-
-            processing_error:
-              event.error ??
-              document.processing_error,
+          const assistantMessage: LocalChatMessage = {
+            role: 'assistant',
+            content: response.answer || '',
+            created_at: new Date().toISOString(),
+            sources: response.sources || [],
+            model_provider: response.model_provider,
+            model_name: response.model_name,
+            usage: response.usage,
+            external_context: response.external_context,
           };
-        },
-      );
 
-    /*
-     * Update the attachment card inside the
-     * already-visible user prompt too.
-     */
-    this.externalMessages =
-      this.externalMessages.map(
-        (
-          message: LocalChatMessage,
-        ) => ({
-          ...message,
-
-          attachments:
-            (
-              message.attachments || []
-            ).map(
-              (
-                attachment:
-                  LocalChatAttachment,
-              ) => {
-                if (
-                  attachment.uuid !== uuid
-                ) {
-                  return attachment;
-                }
-
-                return {
-                  ...attachment,
-
-                  status:
-                    event.status ??
-                    attachment.status,
-
-                  is_ai_ready:
-                    typeof event
-                      .is_ai_ready ===
-                    'boolean'
-                      ? event
-                          .is_ai_ready
-                      : attachment
-                          .is_ai_ready,
-
-                  processing_error:
-                    event.error ??
-                    attachment
-                      .processing_error,
-                };
-              },
-            ),
-        }),
-      );
-  }
-
-  private queueRealtimeSend(
-    message: string,
-    scopeUuids: string[],
-    waitUuids: string[],
-  ): void {
-    this.stopDocumentPolling();
-
-    this.pendingRealtimeSend = {
-      message,
-      scopeUuids:
-        this.normalizeExternalDocumentUuids(
-          scopeUuids,
-        ),
-      waitUuids:
-        this.normalizeExternalDocumentUuids(
-          waitUuids,
-        ),
-    };
-
-    this.subscribeRealtimeDocuments(
-      waitUuids,
-    );
-
-    this.scheduleRealtimeFallback();
-
-    this.tryFlushPendingRealtimeSend();
-  }
-
-  private tryFlushPendingRealtimeSend(): void {
-    const pending =
-      this.pendingRealtimeSend;
-
-    if (!pending) {
-      return;
-    }
-
-    const documentsByUuid =
-      new Map<string, ExternalDocument>(
-        this.externalAttachedDocuments.map(
-          (
-            document:
-              ExternalDocument,
-          ) => [
-            document.uuid,
-            document,
-          ],
-        ),
-      );
-
-    const targetDocuments =
-      pending.waitUuids
-        .map(
-          (uuid: string) =>
-            documentsByUuid.get(uuid),
-        )
-        .filter(
-          (
-            document:
-              ExternalDocument | undefined,
-          ): document is ExternalDocument =>
-            !!document,
-        );
-
-    /*
-     * Wait for snapshot/event for every UUID.
-     */
-    if (
-      targetDocuments.length !==
-      pending.waitUuids.length
-    ) {
-      return;
-    }
-
-    const failed =
-      targetDocuments.find(
-        (
-          document:
-            ExternalDocument,
-        ) =>
-          this.isExternalDocumentFailed(
-            document,
-          ),
-      );
-
-    if (failed) {
-      this.isSending = false;
-
-      this.errorMessage =
-        failed.processing_error ||
-        'An attachment failed during processing.';
-
-      this.clearPendingRealtimeSend();
-      return;
-    }
-
-    const allReady =
-      targetDocuments.every(
-        (
-          document:
-            ExternalDocument,
-        ) =>
-          !this.getPendingExternalDocumentUuids(
-            [document],
-          ).length,
-      );
-
-    if (!allReady) {
-      return;
-    }
-
-    /*
-     * Capture before clearing.
-     */
-    const message =
-      pending.message;
-
-    const scopeUuids =
-      [...pending.scopeUuids];
-
-    this.clearPendingRealtimeSend();
-
-    /*
-     * Now send the original query with the
-     * exact frozen UUID scope.
-     */
-    this.sendExternalMessage(
-      message,
-      scopeUuids,
-    );
-  }
-
-  private scheduleRealtimeFallback(): void {
-    if (!this.pendingRealtimeSend) {
-      return;
-    }
-
-    if (this.realtimeFallbackHandle !== null) {
-      window.clearTimeout(
-        this.realtimeFallbackHandle,
-      );
-    }
-
-    this.realtimeFallbackHandle =
-      window.setTimeout(() => {
-        this.realtimeFallbackHandle = null;
-
-        const pending =
-          this.pendingRealtimeSend;
-
-        if (!pending) {
-          return;
-        }
-
-        /*
-         * Do NOT fall back to continuous HTTP status polling.
-         *
-         * Re-subscription causes the backend to send a fresh
-         * document.processing.snapshot from authoritative DB state.
-         */
-        if (this.documentRealtimeService.isConnected) {
-          console.debug(
-            '[DocuX realtime] Re-subscribing pending documents:',
-            pending.waitUuids,
-          );
-        } else {
-          console.warn(
-            '[DocuX realtime] Socket is not ready. Reconnecting:',
-            pending.waitUuids,
-          );
-        }
-
-        this.subscribeRealtimeDocuments(
-          pending.waitUuids,
-        );
-      }, 12000);
-  }
-
-  private clearPendingRealtimeSend(): void {
-    this.pendingRealtimeSend = null;
-
-    if (
-      this.realtimeFallbackHandle !==
-      null
-    ) {
-      window.clearTimeout(
-        this.realtimeFallbackHandle,
-      );
-
-      this.realtimeFallbackHandle =
-        null;
-    }
-
-    this.stopDocumentPolling();
+          this.appendAssistantMessageWithFastTyping(assistantMessage);
+          this.loadExternalConversations();
+        });
+      },
+      error: (error: any) => {
+        this.ngZone.run(() => {
+          console.error('External AI chat error:', error);
+          this.errorMessage =
+            error?.error?.detail ||
+            'Unable to send external AI message.';
+          this.isSending = false;
+          this.cdr.detectChanges();
+        });
+      },
+    });
   }
 
   private appendAssistantMessageWithFastTyping(message: LocalChatMessage): void {

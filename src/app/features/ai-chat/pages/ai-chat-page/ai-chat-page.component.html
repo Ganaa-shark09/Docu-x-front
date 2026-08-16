@@ -1,67 +1,285 @@
 <section class="ai-chat-workspace">
   <aside class="ai-chat-sidebar">
-    <div class="ai-chat-brand">
-      <div class="ai-chat-logo">D</div>
+    <div class="ai-chat-sidebar__header">
+      <div class="ai-chat-sidebar__avatar">D</div>
+
       <div>
-        <div class="ai-chat-brand__title">DocuX Internal AI</div>
-        <div class="ai-chat-brand__subtitle">Private workspace</div>
+        <h1>DocuX Internal AI</h1>
+        <p>Private workspace</p>
       </div>
     </div>
+
+    <button type="button" class="ai-chat-sidebar__new" (click)="startNewChat()">
+      + New Chat
+    </button>
 
     <app-conversation-list
       [conversations]="internalConversations"
       [activeConversationUuid]="activeInternalConversationUuid"
       [isLoading]="isLoadingConversations"
-      (newChat)="startNewChat()"
-      (refresh)="loadConversations()"
       (selected)="selectConversation($event)"
-    />
+    ></app-conversation-list>
 
-    <div class="ai-chat-footer">
-      <button type="button" class="ai-chat-exit" (click)="exitChat()">
-        Exit AI Chat
-      </button>
-    </div>
+    <button type="button" class="ai-chat-sidebar__exit" (click)="exitChat()">
+      Exit AI Chat
+    </button>
   </aside>
 
   <main class="ai-chat-main">
-    <div
+    <nav
       class="ai-scope-tabs"
       [class.ai-scope-tabs--switching-right]="isSwitchingToExternal"
+      aria-label="AI scope"
     >
-      <button type="button" class="ai-scope-tabs__button ai-scope-tabs__button--active">
+      <button type="button" class="ai-scope-tabs__item is-active">
         Internal AI
       </button>
 
-      <button type="button" class="ai-scope-tabs__button" (click)="openExternalAi()">
+      <button type="button" class="ai-scope-tabs__item" (click)="openExternalAi()">
         External AI
       </button>
-    </div>
+    </nav>
 
-    <div *ngIf="errorMessage" class="ai-chat-error">
+    <button
+      type="button"
+      class="internal-doc-toggle"
+      [class.internal-doc-toggle--active]="documentsPanelOpen"
+      (click)="toggleDocumentsPanel()"
+      [title]="selectedDocumentCountLabel"
+    >
+      <span>📚</span>
+      <strong *ngIf="selectedDocuments.length">{{ selectedDocuments.length }}</strong>
+    </button>
+
+    <section class="internal-doc-panel" *ngIf="documentsPanelOpen">
+      <div class="internal-doc-panel__header">
+        <div>
+          <h2>Internal AI document scope</h2>
+          <p>
+            {{ selectedDocuments.length ? 'Selected documents only' : 'All accessible documents' }}
+          </p>
+        </div>
+
+        <button type="button" (click)="clearSelectedDocuments()" [disabled]="!selectedDocuments.length">
+          Clear
+        </button>
+      </div>
+
+      <div class="internal-doc-scope">
+        <span
+          class="internal-doc-scope__badge"
+          [ngClass]="{
+            'internal-doc-scope__badge--all': documentScope === 'all',
+            'internal-doc-scope__badge--selected': documentScope === 'selected'
+          }"
+        >
+          {{ documentScope === 'all' ? 'All accessible documents' : selectedDocuments.length + ' selected' }}
+        </span>
+
+        <span class="internal-doc-scope__hint">
+          Retrieval will use {{ documentScope === 'all' ? 'all documents you can access' : 'only selected documents' }}.
+        </span>
+      </div>
+
+      <div class="internal-doc-search">
+        <input
+          type="search"
+          [(ngModel)]="documentSearchTerm"
+          (keydown)="handleDocumentSearchKeydown($event)"
+          placeholder="Search AI-ready documents..."
+        />
+
+        <button type="button" (click)="searchDocuments()">Search</button>
+        <button type="button" class="internal-doc-search__ghost" (click)="resetDocumentSearch()">Reset</button>
+      </div>
+
+      <div class="internal-doc-selected" *ngIf="selectedDocuments.length">
+        <article class="internal-doc-chip" *ngFor="let document of selectedDocuments">
+          <span>{{ document.title || document.original_filename }}</span>
+          <button type="button" (click)="toggleDocumentSelection(document)">×</button>
+        </article>
+      </div>
+
+      <div class="internal-doc-error" *ngIf="documentSelectionError">
+        {{ documentSelectionError }}
+      </div>
+
+      <div class="internal-doc-loading" *ngIf="isLoadingAiDocuments">
+        Loading AI-ready documents...
+      </div>
+
+      <div class="internal-doc-list" *ngIf="!isLoadingAiDocuments">
+        <article
+          class="internal-doc-row"
+          *ngFor="let document of aiDocuments"
+          [class.internal-doc-row--selected]="isDocumentSelected(document)"
+        >
+          <button
+            type="button"
+            class="internal-doc-row__select"
+            (click)="toggleDocumentSelection(document)"
+          >
+            <span class="internal-doc-row__check">
+              {{ isDocumentSelected(document) ? '✓' : '' }}
+            </span>
+
+            <span class="internal-doc-row__body">
+              <strong>{{ document.title || document.original_filename }}</strong>
+
+              <small>
+                {{ document.original_filename }}
+                <ng-container *ngIf="document.file_size">
+                  · {{ formatFileSize(document.file_size) }}
+                </ng-container>
+              </small>
+
+              <span>
+                {{ formatLabel(document.document_type) }}
+                <ng-container *ngIf="document.department_name">
+                  · {{ document.department_name }}
+                </ng-container>
+                · {{ formatLabel(document.sensitivity_label) }}
+              </span>
+            </span>
+          </button>
+
+          <div class="internal-doc-row__actions">
+            <button
+              type="button"
+              class="internal-doc-row__menu-button"
+              aria-label="Document actions"
+              (click)="toggleDocumentActions(document, $event)"
+            >
+              ⋯
+            </button>
+
+            <div
+              class="internal-doc-row__menu"
+              *ngIf="activeDocumentMenuUuid === document.uuid"
+            >
+              <button type="button" (click)="openDocumentPreview(document)">
+                View
+              </button>
+
+              <button
+                type="button"
+                (click)="downloadDocument(document)"
+                [disabled]="document.can_download === false"
+              >
+                Download
+              </button>
+            </div>
+          </div>
+        </article>
+
+        <div class="internal-doc-empty" *ngIf="!aiDocuments.length">
+          No AI-ready internal documents found.
+        </div>
+      </div>
+
+      <footer class="internal-doc-pagination">
+        <span>{{ documentCount }} documents available</span>
+
+        <div>
+          <button type="button" (click)="loadPreviousDocumentPage()" [disabled]="!documentPrevious">
+            Previous
+          </button>
+
+          <span>Page {{ documentPage }}</span>
+
+          <button type="button" (click)="loadNextDocumentPage()" [disabled]="!documentNext">
+            Next
+          </button>
+        </div>
+      </footer>
+    </section>
+
+    <section class="internal-doc-preview" *ngIf="previewPanelOpen">
+      <div class="internal-doc-preview__header">
+        <div>
+          <h3>{{ previewDocument?.title || previewDocument?.original_filename }}</h3>
+          <p>
+            {{ previewDocument?.original_filename }}
+            <ng-container *ngIf="previewDocument?.department_name">
+              · {{ previewDocument?.department_name }}
+            </ng-container>
+          </p>
+        </div>
+
+        <button type="button" (click)="closeDocumentPreview()">Close</button>
+      </div>
+
+      <div class="internal-doc-preview__body">
+        <div class="internal-doc-preview__loading" *ngIf="isPreviewLoading">
+          Loading preview...
+        </div>
+
+        <div class="internal-doc-error" *ngIf="previewError">
+          {{ previewError }}
+        </div>
+
+        <iframe
+          *ngIf="!isPreviewLoading && !previewError && previewType === 'pdf' && previewSafeUrl"
+          [src]="previewSafeUrl"
+          title="Document preview"
+        ></iframe>
+
+        <img
+          *ngIf="!isPreviewLoading && !previewError && previewType === 'image' && previewObjectUrl"
+          [src]="previewObjectUrl"
+          alt="Document preview"
+        />
+
+        <div
+          class="internal-doc-preview__unsupported"
+          *ngIf="!isPreviewLoading && !previewError && previewType === 'unsupported'"
+        >
+          <strong>Preview is not available for this file type.</strong>
+          <p>
+            Browser inline preview is supported for PDF and images. Use Download for
+            Word, Excel, CSV, and other office files.
+          </p>
+
+          <button
+            type="button"
+            (click)="downloadDocument(previewDocument!)"
+            [disabled]="previewDocument?.can_download === false"
+          >
+            Download document
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <div class="ai-chat-error" *ngIf="errorMessage">
       {{ errorMessage }}
     </div>
 
-    <section class="ai-chat-thread">
-      <div *ngIf="isLoadingConversation" class="ai-chat-loading">
-        Loading internal conversation...
-      </div>
+    <div class="ai-chat-loading" *ngIf="isLoadingConversation">
+      Loading internal conversation...
+    </div>
 
-      <app-chat-message-list
-        [messages]="internalMessages"
-        [isSending]="isSending"
-      />
-    </section>
+    <app-chat-message-list
+      [messages]="internalMessages"
+      [isSending]="isSending"
+    ></app-chat-message-list>
 
-    <footer class="ai-chat-composer">
-      <app-chat-input
-        [isSending]="isSending"
-        (sendMessage)="sendMessage($event)"
-      />
+    <div class="internal-scope-bar">
+      <span>Document scope:</span>
+      <strong>{{ selectedDocumentCountLabel }}</strong>
+      <button
+        type="button"
+        *ngIf="selectedDocuments.length"
+        (click)="clearSelectedDocuments()"
+      >
+        Clear
+      </button>
+    </div>
 
-      <p class="ai-chat-hint">
-        Press Enter to send. Press Shift + Enter for a new line.
-      </p>
-    </footer>
+    <app-chat-input
+      placeholder="Message DocuX AI..."
+      [isSending]="isSending"
+      (sendMessage)="sendMessage($event)"
+    ></app-chat-input>
   </main>
 </section>

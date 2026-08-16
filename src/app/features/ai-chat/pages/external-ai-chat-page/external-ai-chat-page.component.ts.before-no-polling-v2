@@ -23,12 +23,9 @@ import {
 } from '../../models/ai-chat.model';
 import { AiChatService } from '../../services/ai-chat.service';
 import {
+  DocumentProcessingEvent,
   DocumentRealtimeService,
 } from '../../../../core/realtime/document-realtime.service';
-
-import {
-  DocumentProcessingEvent,
-} from '../../../../core/realtime/realtime.models';
 import { ChatMessageListComponent } from '../../components/chat-message-list/chat-message-list.component';
 import { ConversationListComponent } from '../../components/conversation-list/conversation-list.component';
 
@@ -142,6 +139,7 @@ export class ExternalAiChatPageComponent implements OnDestroy {
   ngOnDestroy(): void {
     this.realtimeSubscription?.unsubscribe();
     this.clearPendingRealtimeSend();
+    this.documentRealtimeService.disconnect();
     document.body.classList.remove('ai-chat-no-page-scroll');
     this.routeSubscription?.unsubscribe();
     this.stopDocumentPolling();
@@ -193,6 +191,7 @@ export class ExternalAiChatPageComponent implements OnDestroy {
     this.isLoadingConversation = false;
     this.stopDocumentPolling();
     this.clearPendingRealtimeSend();
+    this.documentRealtimeService.reset();
 
     this.router.navigate(['/ai/external']);
     this.cdr.markForCheck();
@@ -240,6 +239,7 @@ export class ExternalAiChatPageComponent implements OnDestroy {
     this.selectedExternalDocumentUuids.clear();
     this.stopDocumentPolling();
     this.clearPendingRealtimeSend();
+    this.documentRealtimeService.reset();
     this.cdr.markForCheck();
 
     this.aiChatService.getConversation(uuid).subscribe({
@@ -775,52 +775,10 @@ export class ExternalAiChatPageComponent implements OnDestroy {
     return Array.from(
       new Set(
         documentUuids
-          .map((uuid: string) =>
-            String(uuid || '').trim(),
-          )
+          .map((uuid: string) => String(uuid || '').trim())
           .filter(Boolean),
       ),
     );
-  }
-
-
-
-
-
-
-
-  private getAllExternalConversationDocumentUuids(): string[] {
-    const documentListUuids =
-      this.externalAttachedDocuments
-        .map(
-          (document: ExternalDocument) =>
-            document.uuid,
-        )
-        .filter(Boolean);
-
-    /*
-     * Also read UUIDs already represented in chat
-     * message attachment cards.
-     *
-     * This protects against a small synchronization
-     * window where the message attachment exists but
-     * externalAttachedDocuments has not yet refreshed.
-     */
-    const messageAttachmentUuids =
-      this.externalMessages.flatMap(
-        (message: LocalChatMessage) =>
-          (message.attachments || [])
-            .map(
-              (attachment: LocalChatAttachment) =>
-                attachment.uuid || '',
-            )
-            .filter(Boolean),
-      );
-
-    return this.normalizeExternalDocumentUuids([
-      ...documentListUuids,
-      ...messageAttachmentUuids,
-    ]);
   }
 
   private resolveExternalDocumentUuids(
@@ -839,11 +797,12 @@ export class ExternalAiChatPageComponent implements OnDestroy {
       );
 
     /*
-     * One or more documents explicitly selected:
+     * Explicit selection exists.
      *
+     * Query scope =
      * selected existing documents
      * +
-     * files uploaded with THIS user prompt.
+     * files attached to THIS message.
      */
     if (selectedUuids.length > 0) {
       return this.normalizeExternalDocumentUuids([
@@ -853,15 +812,20 @@ export class ExternalAiChatPageComponent implements OnDestroy {
     }
 
     /*
-     * Nothing selected:
+     * Nothing selected.
      *
-     * send EVERY document UUID available in the
-     * current conversation.
+     * Query scope = EVERY document currently
+     * attached to this conversation.
      *
-     * Newly uploaded files are also included.
+     * mergeAttachedDocuments() runs before this
+     * during upload, so newly uploaded documents
+     * are already included here.
      */
     return this.normalizeExternalDocumentUuids([
-      ...this.getAllExternalConversationDocumentUuids(),
+      ...this.externalAttachedDocuments.map(
+        (document: ExternalDocument) =>
+          document.uuid,
+      ),
       ...uploadedUuids,
     ]);
   }
@@ -912,18 +876,6 @@ export class ExternalAiChatPageComponent implements OnDestroy {
         this.activeExternalConversationUuid;
     }
 
-    console.debug(
-      '[External AI] sending query scope',
-      {
-        conversation_uuid:
-          payload.conversation_uuid,
-        document_uuids:
-          payload.document_uuids,
-        message:
-          payload.message,
-      },
-    );
-
     this.aiChatService
       .sendExternalChatMessage(payload)
       .subscribe({
@@ -967,17 +919,20 @@ export class ExternalAiChatPageComponent implements OnDestroy {
                 return;
               }
 
-              /*
-               * Backend confirmed that one or more documents
-               * required by this query are still processing.
-               *
-               * Do NOT poll processing-status here.
-               * Subscribe/wait for WebSocket readiness instead.
-               */
-              this.queueRealtimeSend(
-                message,
-                effectiveDocumentUuids,
+              this.startDocumentPolling(
                 uuidsToPoll,
+                () => {
+                  /*
+                   * Retry with the SAME frozen scope.
+                   *
+                   * [] means all-document mode.
+                   */
+                  this.sendExternalMessage(
+                    message,
+                    effectiveDocumentUuids || [],
+                  );
+                },
+                retryAfterMs,
               );
 
               return;
@@ -1340,15 +1295,25 @@ export class ExternalAiChatPageComponent implements OnDestroy {
       return;
     }
 
-    if (this.realtimeFallbackHandle !== null) {
+    if (
+      this.realtimeFallbackHandle !==
+      null
+    ) {
       window.clearTimeout(
         this.realtimeFallbackHandle,
       );
     }
 
+    /*
+     * processing-status is RECOVERY ONLY.
+     *
+     * As long as WebSocket events continue to arrive,
+     * this timeout keeps getting pushed out.
+     */
     this.realtimeFallbackHandle =
       window.setTimeout(() => {
-        this.realtimeFallbackHandle = null;
+        this.realtimeFallbackHandle =
+          null;
 
         const pending =
           this.pendingRealtimeSend;
@@ -1357,28 +1322,35 @@ export class ExternalAiChatPageComponent implements OnDestroy {
           return;
         }
 
-        /*
-         * Do NOT fall back to continuous HTTP status polling.
-         *
-         * Re-subscription causes the backend to send a fresh
-         * document.processing.snapshot from authoritative DB state.
-         */
-        if (this.documentRealtimeService.isConnected) {
-          console.debug(
-            '[DocuX realtime] Re-subscribing pending documents:',
-            pending.waitUuids,
-          );
-        } else {
-          console.warn(
-            '[DocuX realtime] Socket is not ready. Reconnecting:',
-            pending.waitUuids,
-          );
-        }
-
-        this.subscribeRealtimeDocuments(
-          pending.waitUuids,
+        console.warn(
+          'No realtime document update received; using processing-status fallback.',
         );
-      }, 12000);
+
+        this.startDocumentPolling(
+          pending.waitUuids,
+          () => {
+            if (
+              this.pendingRealtimeSend !==
+              pending
+            ) {
+              return;
+            }
+
+            const message =
+              pending.message;
+
+            const scopeUuids =
+              [...pending.scopeUuids];
+
+            this.clearPendingRealtimeSend();
+
+            this.sendExternalMessage(
+              message,
+              scopeUuids,
+            );
+          },
+        );
+      }, 15000);
   }
 
   private clearPendingRealtimeSend(): void {

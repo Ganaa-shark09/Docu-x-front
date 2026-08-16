@@ -194,9 +194,6 @@ export interface ExternalDocument {
   updated_at?: string;
   file_size?: number;
   mime_type?: string;
-
-  processing_stage?: string | null;
-  processing_progress?: number | null;
 }
 
 export interface ExternalDocumentBulkUploadResponse {

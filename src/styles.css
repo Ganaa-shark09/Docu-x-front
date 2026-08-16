@@ -231,3 +231,213 @@ body.ai-chat-no-page-scroll app-root {
   height: 100dvh !important;
   overflow: hidden !important;
 }
+
+/* DocuX AI route exit animation */
+body.docux-ai-exit-closing::after {
+  content: '';
+  position: fixed;
+  left: 34px;
+  bottom: 34px;
+  z-index: 2000;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle, rgba(124, 92, 255, 0.96), rgba(12, 14, 22, 0.98));
+  pointer-events: none;
+  animation: docux-ai-close-to-left 420ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes docux-ai-close-to-left {
+  from {
+    opacity: 0;
+    transform: scale(80);
+  }
+
+  to {
+    opacity: 0.85;
+    transform: scale(1);
+  }
+}
+
+/* DocuX AI close route animation - override */
+body.docux-ai-exit-closing::after {
+  content: '';
+  position: fixed;
+  left: 34px;
+  bottom: 34px;
+  z-index: 3000;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle, rgba(124, 92, 255, 0.96), rgba(12, 14, 22, 0.98));
+  pointer-events: none;
+  animation: docux-ai-close-to-left-strong 560ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes docux-ai-close-to-left-strong {
+  0% {
+    opacity: 0;
+    transform: scale(75);
+  }
+
+  58% {
+    opacity: 0.34;
+  }
+
+  100% {
+    opacity: 0.85;
+    transform: scale(1);
+  }
+}
+
+/* DocuX AI route opening animation */
+body.docux-ai-route-opening::before {
+  content: '';
+  position: fixed;
+  right: 50px;
+  bottom: 50px;
+  z-index: 4000;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle, rgba(124, 92, 255, 0.98), rgba(12, 14, 22, 0.98));
+  pointer-events: none;
+  animation: docux-ai-route-open 900ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes docux-ai-route-open {
+  0% {
+    opacity: 0.85;
+    transform: scale(1);
+  }
+
+  42% {
+    opacity: 0.72;
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(95);
+  }
+}
+
+/* DocuX AI route closing animation */
+body.docux-ai-route-closing::before {
+  content: '';
+  position: fixed;
+  left: 34px;
+  bottom: 34px;
+  z-index: 4000;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle, rgba(124, 92, 255, 0.98), rgba(12, 14, 22, 0.98));
+  pointer-events: none;
+  animation: docux-ai-route-close 900ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes docux-ai-route-close {
+  0% {
+    opacity: 0;
+    transform: scale(95);
+  }
+
+  55% {
+    opacity: 0.45;
+  }
+
+  100% {
+    opacity: 0.85;
+    transform: scale(1);
+  }
+}
+
+/* DocuX AI route animation override: slower transparent-dark transition */
+body.docux-ai-route-opening::before {
+  content: '';
+  position: fixed;
+  right: 50px;
+  bottom: 50px;
+  z-index: 4000;
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  background:
+    radial-gradient(
+      circle,
+      rgba(18, 18, 22, 0.92) 0%,
+      rgba(18, 18, 22, 0.78) 38%,
+      rgba(18, 18, 22, 0.48) 68%,
+      rgba(18, 18, 22, 0.16) 100%
+    );
+  backdrop-filter: blur(10px);
+  pointer-events: none;
+  animation: docux-ai-route-open-dark 1400ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes docux-ai-route-open-dark {
+  0% {
+    opacity: 0.72;
+    transform: scale(1);
+  }
+
+  45% {
+    opacity: 0.58;
+    transform: scale(42);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(105);
+  }
+}
+
+body.docux-ai-route-closing::before {
+  content: '';
+  position: fixed;
+  left: 34px;
+  bottom: 34px;
+  z-index: 4000;
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  background:
+    radial-gradient(
+      circle,
+      rgba(18, 18, 22, 0.92) 0%,
+      rgba(18, 18, 22, 0.78) 38%,
+      rgba(18, 18, 22, 0.48) 68%,
+      rgba(18, 18, 22, 0.16) 100%
+    );
+  backdrop-filter: blur(10px);
+  pointer-events: none;
+  animation: docux-ai-route-close-dark 1400ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes docux-ai-route-close-dark {
+  0% {
+    opacity: 0;
+    transform: scale(105);
+  }
+
+  48% {
+    opacity: 0.48;
+    transform: scale(46);
+  }
+
+  100% {
+    opacity: 0.76;
+    transform: scale(1);
+  }
+}
+
+/* Close animation disabled: keep only AI opening route animation */
+body.docux-ai-route-closing::before,
+body.docux-ai-exit-closing::after {
+  display: none !important;
+  animation: none !important;
+}
