@@ -20,9 +20,15 @@
       (selected)="selectConversation($event)"
     ></app-conversation-list>
 
-    <button type="button" class="ai-chat-sidebar__exit" (click)="exitChat()">
-      Exit AI Chat
-    </button>
+    <div class="ai-chat-sidebar__footer">
+      <button
+        type="button"
+        class="ai-chat-sidebar__exit"
+        (click)="exitChat()"
+      >
+        Exit AI Chat
+      </button>
+    </div>
   </aside>
 
   <main class="ai-chat-main">
@@ -60,9 +66,26 @@
           </p>
         </div>
 
-        <button type="button" (click)="clearSelectedDocuments()" [disabled]="!selectedDocuments.length">
-          Clear
-        </button>
+        <div class="internal-doc-panel__actions">
+          <button
+            type="button"
+            class="internal-doc-panel__clear"
+            (click)="clearSelectedDocuments()"
+            [disabled]="!selectedDocuments.length"
+          >
+            Clear
+          </button>
+
+          <button
+            type="button"
+            class="internal-doc-panel__close"
+            aria-label="Close document scope"
+            title="Close document scope"
+            (click)="toggleDocumentsPanel()"
+          >
+            ×
+          </button>
+        </div>
       </div>
 
       <div class="internal-doc-scope">

@@ -669,3 +669,1387 @@ app-chat-input {
   outline-offset: 2px;
   border-radius: 6px !important;
 }
+
+
+/* === DOCUX_UNIFIED_AI_UI_V1 === */
+
+:host {
+  display: block;
+  width: 100%;
+  height: 100dvh;
+  min-height: 0;
+}
+
+/*
+ * Keep Internal AI and External AI on the same application shell:
+ *
+ * Sidebar: 320px
+ * Header: 68px
+ * Top scope switch: 250px
+ * Composer: max 900px
+ */
+.ai-chat-workspace {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+
+  width: 100vw;
+  height: 100dvh;
+
+  overflow: hidden;
+
+  background: var(--app-bg);
+  color: var(--app-text);
+}
+
+
+/* ===========================
+   SIDEBAR
+   =========================== */
+
+.ai-chat-sidebar {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+
+  grid-template-rows:
+    auto
+    auto
+    minmax(0, 1fr)
+    auto;
+
+  padding: 0;
+
+  border-right: 1px solid var(--app-border);
+
+  background:
+    var(--app-sidebar, var(--app-sidebar-bg, var(--app-surface)));
+}
+
+
+.ai-chat-sidebar__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  min-height: 68px;
+
+  margin: 0;
+  padding: 14px 16px;
+}
+
+
+.ai-chat-sidebar__avatar {
+  display: grid;
+
+  width: 36px;
+  height: 36px;
+
+  flex: 0 0 36px;
+
+  place-items: center;
+
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+
+  background: var(--app-surface);
+
+  font-size: 14px;
+  font-weight: 700;
+}
+
+
+.ai-chat-sidebar__header h1 {
+  margin: 0;
+
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+
+.ai-chat-sidebar__header p {
+  margin: 2px 0 0;
+
+  color: var(--app-text-muted);
+
+  font-size: 12px;
+}
+
+
+.ai-chat-sidebar__new {
+  width: calc(100% - 24px);
+
+  min-height: 42px;
+
+  margin: 0 12px 8px;
+  padding: 10px 12px;
+
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+
+  background: var(--app-surface);
+
+  color: var(--app-text);
+
+  cursor: pointer;
+
+  font-size: 14px;
+  font-weight: 600;
+
+  text-align: left;
+}
+
+
+.ai-chat-sidebar__new:hover {
+  background: var(--app-hover);
+}
+
+
+.ai-chat-sidebar__footer {
+  border-top: 1px solid var(--app-border);
+  padding: 12px;
+}
+
+
+.ai-chat-sidebar__exit {
+  width: 100%;
+  min-height: 42px;
+
+  margin: 0;
+
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+
+  background: var(--app-surface);
+
+  color: var(--app-text);
+
+  cursor: pointer;
+
+  font-size: 14px;
+  font-weight: 500;
+}
+
+
+.ai-chat-sidebar__exit:hover {
+  background: var(--app-hover);
+}
+
+
+/* ===========================
+   MAIN CHAT
+   =========================== */
+
+.ai-chat-main {
+  position: relative;
+
+  min-width: 0;
+  min-height: 0;
+
+  width: 100%;
+  height: 100dvh;
+
+  overflow: hidden;
+
+  background: var(--app-bg);
+}
+
+
+/*
+ * Same switch control used visually by External AI.
+ */
+.ai-scope-tabs {
+  position: absolute;
+
+  top: 16px;
+  left: 50%;
+
+  z-index: 50;
+
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+
+  width: min(250px, calc(100% - 48px));
+
+  overflow: hidden;
+
+  transform: translateX(-50%);
+
+  border: 1px solid var(--app-border);
+  border-radius: 999px;
+
+  background: var(--app-surface);
+
+  padding: 4px;
+}
+
+
+.ai-scope-tabs::before {
+  content: '';
+
+  position: absolute;
+
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+
+  z-index: 0;
+
+  width: calc(50% - 6px);
+
+  border-radius: 999px;
+
+  background: var(--app-primary);
+
+  transition: left 180ms ease;
+}
+
+
+.ai-scope-tabs--switching-right::before {
+  left: calc(50% + 2px);
+}
+
+
+.ai-scope-tabs__item {
+  position: relative;
+  z-index: 1;
+
+  min-height: unset;
+
+  border: 0;
+  border-radius: 999px;
+
+  background: transparent;
+
+  padding: 10px 14px;
+
+  color: var(--app-text-muted);
+
+  cursor: pointer;
+
+  font-size: 13px;
+  font-weight: 500;
+}
+
+
+.ai-scope-tabs__item.is-active {
+  background: transparent;
+  color: var(--app-on-primary);
+}
+
+
+/* ===========================
+   DOCUMENT BUTTON
+   =========================== */
+
+.internal-doc-toggle {
+  position: absolute;
+
+  top: 16px;
+  right: 24px;
+
+  z-index: 60;
+
+  display: grid;
+
+  width: 42px;
+  height: 42px;
+
+  place-items: center;
+
+  border: 1px solid var(--app-border);
+  border-radius: 999px;
+
+  background: var(--app-surface);
+
+  color: var(--app-text);
+
+  cursor: pointer;
+
+  font-size: 18px;
+}
+
+
+.internal-doc-toggle:hover {
+  background: var(--app-hover);
+}
+
+
+.internal-doc-toggle strong {
+  position: absolute;
+
+  top: -5px;
+  right: -5px;
+
+  display: grid;
+
+  min-width: 18px;
+  height: 18px;
+
+  place-items: center;
+
+  border-radius: 999px;
+
+  background: var(--app-primary);
+  color: var(--app-on-primary);
+
+  padding: 0 4px;
+
+  font-size: 10px;
+}
+
+
+/* ===========================
+   MESSAGE THREAD
+   =========================== */
+
+app-chat-message-list {
+  position: absolute;
+
+  inset: 0 0 118px 0;
+
+  display: block;
+
+  height: auto;
+  min-height: 0;
+
+  overflow: hidden;
+}
+
+
+/* ===========================
+   INTERNAL COMPOSER
+   =========================== */
+
+app-chat-input {
+  position: absolute;
+
+  right: 50%;
+  bottom: 16px;
+
+  z-index: 30;
+
+  width: min(900px, calc(100% - 48px));
+
+  transform: translateX(50%);
+}
+
+
+/*
+ * Scope chip sits directly above the composer,
+ * just like secondary information in External AI.
+ */
+.internal-scope-bar {
+  position: absolute;
+
+  right: 50%;
+  bottom: 82px;
+
+  z-index: 31;
+
+  display: inline-flex;
+  align-items: center;
+
+  gap: 7px;
+
+  max-width: min(900px, calc(100% - 48px));
+
+  transform: translateX(50%);
+
+  border: 1px solid var(--app-border);
+  border-radius: 999px;
+
+  background: var(--app-surface);
+
+  padding: 5px 10px;
+
+  color: var(--app-text-muted);
+
+  font-size: 11px;
+
+  white-space: nowrap;
+}
+
+
+.internal-scope-bar strong {
+  overflow: hidden;
+
+  max-width: 360px;
+
+  color: var(--app-text);
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+
+.internal-scope-bar button {
+  border: 0;
+  border-radius: 999px;
+
+  background: var(--app-surface-soft);
+  color: var(--app-text);
+
+  padding: 4px 8px;
+
+  cursor: pointer;
+
+  font-size: 11px;
+}
+
+
+/* ===========================
+   ERRORS / LOADING
+   =========================== */
+
+.ai-chat-error,
+.ai-chat-loading {
+  top: 88px;
+
+  width: min(860px, calc(100% - 48px));
+
+  border-radius: 12px;
+
+  padding: 10px 12px;
+
+  font-size: 13px;
+}
+
+
+/* ===========================
+   DOCUMENT PANEL REFINEMENT
+   =========================== */
+
+.internal-doc-panel {
+  top: 72px;
+  right: 16px;
+
+  width: min(520px, calc(100% - 32px));
+
+  max-height: calc(100dvh - 150px);
+
+  border-radius: 16px;
+}
+
+
+.internal-doc-preview {
+  inset:
+    72px
+    16px
+    118px
+    auto;
+
+  width: min(760px, calc(100% - 32px));
+
+  border-radius: 16px;
+}
+
+
+/* ===========================
+   RESPONSIVE TABLET
+   =========================== */
+
+@media (max-width: 1200px) {
+  .ai-chat-workspace {
+    grid-template-columns: 280px minmax(0, 1fr);
+  }
+}
+
+
+@media (max-width: 1024px) {
+  .ai-chat-workspace {
+    grid-template-columns: 260px minmax(0, 1fr);
+  }
+
+  app-chat-input {
+    width: min(760px, calc(100% - 32px));
+  }
+
+  .internal-scope-bar {
+    max-width: min(760px, calc(100% - 32px));
+  }
+
+  .internal-doc-panel {
+    right: 12px;
+
+    width: min(460px, calc(100% - 24px));
+  }
+
+  .internal-doc-preview {
+    inset:
+      72px
+      12px
+      118px
+      12px;
+
+    width: auto;
+  }
+}
+
+
+/* ===========================
+   RESPONSIVE MOBILE
+   =========================== */
+
+@media (max-width: 760px) {
+  .ai-chat-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ai-chat-sidebar {
+    display: none;
+  }
+
+  .ai-scope-tabs {
+    top: 12px;
+
+    width: min(250px, calc(100% - 116px));
+  }
+
+  .internal-doc-toggle {
+    top: 12px;
+    right: 12px;
+  }
+
+  app-chat-message-list {
+    inset: 0 0 112px 0;
+  }
+
+  app-chat-input {
+    right: 12px;
+    bottom: 12px;
+
+    width: calc(100% - 24px);
+
+    transform: none;
+  }
+
+  .internal-scope-bar {
+    right: 12px;
+    bottom: 78px;
+
+    max-width: calc(100% - 24px);
+
+    transform: none;
+  }
+
+  .internal-scope-bar span {
+    display: none;
+  }
+
+  .internal-doc-panel {
+    top: 66px;
+    right: 8px;
+
+    width: calc(100% - 16px);
+
+    max-height: calc(100dvh - 142px);
+  }
+
+  .internal-doc-preview {
+    inset:
+      66px
+      8px
+      112px
+      8px;
+
+    width: auto;
+  }
+
+  .internal-doc-search {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .internal-doc-search__ghost {
+    grid-column: 1 / -1;
+  }
+}
+
+
+@media (max-width: 480px) {
+  .ai-scope-tabs {
+    left: 12px;
+
+    width: calc(100% - 76px);
+
+    transform: none;
+  }
+
+  .internal-doc-panel__header,
+  .internal-doc-pagination {
+    gap: 8px;
+  }
+
+  .internal-doc-pagination {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .internal-doc-row {
+    grid-template-columns: minmax(0, 1fr) 28px;
+  }
+}
+
+/* === DOCUX_INTERNAL_DOCUMENT_PANEL_V2 === */
+
+/*
+ * Internal AI document scope drawer
+ *
+ * Goals:
+ * - fixed usable height
+ * - document list scrolls independently
+ * - header + pagination remain visible
+ * - selected documents cannot consume the entire panel
+ * - responsive desktop/tablet/mobile layout
+ */
+
+.internal-doc-panel {
+  position: absolute;
+
+  top: 84px;
+  right: 20px;
+  bottom: 94px;
+
+  z-index: 80;
+
+  display: flex;
+  flex-direction: column;
+
+  width: min(520px, calc(100% - 40px));
+
+  min-height: 0;
+  max-height: none;
+
+  overflow: hidden;
+
+  border: 1px solid var(--app-border);
+  border-radius: 18px;
+
+  background: var(--app-surface);
+
+  box-shadow:
+    0 24px 70px rgba(0, 0, 0, 0.34),
+    0 0 0 1px rgba(255, 255, 255, 0.02);
+}
+
+
+/* =========================
+   HEADER
+   ========================= */
+
+.internal-doc-panel__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+
+  flex: 0 0 auto;
+
+  gap: 16px;
+
+  padding: 16px 16px 14px;
+
+  border-bottom: 1px solid var(--app-border);
+
+  background: var(--app-surface);
+}
+
+
+.internal-doc-panel__header > div:first-child {
+  min-width: 0;
+}
+
+
+.internal-doc-panel__header h2 {
+  margin: 0;
+
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+
+.internal-doc-panel__header p {
+  margin: 4px 0 0;
+
+  color: var(--app-text-muted);
+
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+
+.internal-doc-panel__actions {
+  display: flex;
+  align-items: center;
+
+  flex: 0 0 auto;
+
+  gap: 7px;
+}
+
+
+.internal-doc-panel__clear {
+  min-height: 34px !important;
+
+  padding: 0 12px !important;
+
+  font-size: 12px;
+}
+
+
+.internal-doc-panel__close {
+  display: grid !important;
+
+  width: 34px;
+  height: 34px;
+  min-height: 34px !important;
+
+  place-items: center;
+
+  padding: 0 !important;
+
+  border-radius: 10px !important;
+
+  font-size: 20px;
+  line-height: 1;
+}
+
+
+.internal-doc-panel__close:hover,
+.internal-doc-panel__clear:hover:not(:disabled) {
+  background: var(--app-hover);
+}
+
+
+/* =========================
+   CURRENT SCOPE
+   ========================= */
+
+.internal-doc-scope {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+
+  flex: 0 0 auto;
+
+  gap: 8px;
+
+  padding: 11px 16px;
+
+  border-bottom: 1px solid var(--app-border);
+}
+
+
+.internal-doc-scope__badge {
+  flex: 0 0 auto;
+
+  padding: 5px 9px;
+
+  font-size: 11px;
+}
+
+
+.internal-doc-scope__hint {
+  min-width: 0;
+
+  color: var(--app-text-muted);
+
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+
+/* =========================
+   SEARCH
+   ========================= */
+
+.internal-doc-search {
+  display: grid;
+
+  grid-template-columns:
+    minmax(0, 1fr)
+    auto
+    auto;
+
+  flex: 0 0 auto;
+
+  gap: 7px;
+
+  padding: 12px 16px;
+
+  border-bottom: 1px solid var(--app-border);
+}
+
+
+.internal-doc-search input {
+  width: 100%;
+  min-width: 0;
+  min-height: 38px;
+
+  border-radius: 10px;
+
+  font-size: 13px;
+
+  outline: none;
+}
+
+
+.internal-doc-search input:focus {
+  border-color: var(--app-primary);
+
+  box-shadow:
+    0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+
+
+.internal-doc-search button {
+  min-height: 38px;
+
+  padding: 0 12px;
+
+  border-radius: 10px;
+
+  font-size: 12px;
+}
+
+
+/* =========================
+   SELECTED DOCUMENT CHIPS
+   ========================= */
+
+.internal-doc-selected {
+  display: flex;
+  flex-wrap: wrap;
+
+  flex: 0 0 auto;
+
+  gap: 6px;
+
+  max-height: 92px;
+
+  overflow-y: auto;
+  overscroll-behavior: contain;
+
+  padding: 10px 16px;
+
+  border-bottom: 1px solid var(--app-border);
+
+  scrollbar-width: thin;
+  scrollbar-color:
+    var(--app-border)
+    transparent;
+}
+
+
+.internal-doc-selected::-webkit-scrollbar {
+  width: 7px;
+}
+
+
+.internal-doc-selected::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+
+.internal-doc-selected::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+
+  background: var(--app-border);
+}
+
+
+.internal-doc-chip {
+  max-width: 220px;
+
+  padding:
+    4px
+    5px
+    4px
+    9px;
+
+  border-radius: 999px;
+}
+
+
+.internal-doc-chip span {
+  min-width: 0;
+
+  font-size: 11px;
+}
+
+
+.internal-doc-chip button {
+  width: 22px;
+  height: 22px;
+  min-height: 22px;
+
+  padding: 0;
+}
+
+
+/* =========================
+   ERROR / LOADING
+   ========================= */
+
+.internal-doc-error {
+  flex: 0 0 auto;
+
+  margin: 10px 16px 0;
+}
+
+
+.internal-doc-loading,
+.internal-doc-empty {
+  display: grid;
+
+  flex: 1 1 auto;
+
+  min-height: 160px;
+
+  place-items: center;
+
+  padding: 24px;
+
+  color: var(--app-text-muted);
+
+  font-size: 13px;
+
+  text-align: center;
+}
+
+
+/* =========================
+   DOCUMENT LIST
+   IMPORTANT: THIS AREA SCROLLS
+   ========================= */
+
+.internal-doc-list {
+  display: grid;
+
+  grid-auto-rows: min-content;
+
+  flex: 1 1 auto;
+
+  min-height: 0;
+
+  gap: 8px;
+
+  overflow-x: hidden;
+  overflow-y: scroll;
+
+  overscroll-behavior: contain;
+
+  padding:
+    12px
+    10px
+    12px
+    16px;
+
+  scrollbar-gutter: stable;
+
+  scrollbar-width: thin;
+  scrollbar-color:
+    var(--app-border)
+    transparent;
+}
+
+
+.internal-doc-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+
+.internal-doc-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+
+.internal-doc-list::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+
+  background: var(--app-border);
+
+  background-clip: padding-box;
+}
+
+
+.internal-doc-list::-webkit-scrollbar-thumb:hover {
+  background: var(--app-text-muted);
+
+  background-clip: padding-box;
+}
+
+
+/* =========================
+   DOCUMENT CARD
+   ========================= */
+
+.internal-doc-row {
+  position: relative;
+
+  display: grid;
+
+  grid-template-columns:
+    minmax(0, 1fr)
+    34px;
+
+  gap: 8px;
+
+  width: 100%;
+
+  border: 1px solid var(--app-border);
+  border-radius: 13px;
+
+  background: var(--app-bg);
+
+  padding: 10px;
+
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    box-shadow 140ms ease,
+    transform 140ms ease;
+}
+
+
+.internal-doc-row:hover {
+  border-color: rgba(148, 163, 184, 0.42);
+
+  background: var(--app-hover);
+}
+
+
+.internal-doc-row--selected {
+  border-color: rgba(99, 102, 241, 0.62);
+
+  box-shadow:
+    inset 3px 0 0 var(--app-primary),
+    0 0 0 1px rgba(99, 102, 241, 0.08);
+
+  transform: none;
+}
+
+
+.internal-doc-row__select {
+  display: grid !important;
+
+  grid-template-columns:
+    28px
+    minmax(0, 1fr);
+
+  align-items: start;
+
+  gap: 9px;
+
+  min-width: 0;
+}
+
+
+.internal-doc-row__check {
+  width: 24px;
+  height: 24px;
+
+  border-radius: 7px;
+
+  font-size: 12px;
+}
+
+
+.internal-doc-row--selected .internal-doc-row__check {
+  border-color: var(--app-primary);
+
+  background: rgba(99, 102, 241, 0.15);
+}
+
+
+.internal-doc-row__body {
+  min-width: 0;
+}
+
+
+.internal-doc-row__body strong {
+  display: block;
+
+  overflow: hidden;
+
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.35;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+
+.internal-doc-row__body small,
+.internal-doc-row__body span {
+  display: block;
+
+  overflow: hidden;
+
+  margin-top: 3px;
+
+  color: var(--app-text-muted);
+
+  font-size: 10px;
+  line-height: 1.35;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+
+.internal-doc-row__actions {
+  position: relative;
+
+  display: flex;
+
+  align-items: flex-start;
+  justify-content: flex-end;
+}
+
+
+.internal-doc-row__menu-button {
+  width: 30px !important;
+  height: 30px !important;
+  min-height: 30px !important;
+
+  padding: 0 !important;
+
+  border-radius: 9px !important;
+}
+
+
+/* =========================
+   PAGINATION
+   ALWAYS VISIBLE
+   ========================= */
+
+.internal-doc-pagination {
+  display: flex;
+
+  align-items: center;
+  justify-content: space-between;
+
+  flex: 0 0 auto;
+
+  gap: 10px;
+
+  min-height: 54px;
+
+  padding: 10px 16px;
+
+  border-top: 1px solid var(--app-border);
+
+  background: var(--app-surface);
+
+  color: var(--app-text-muted);
+
+  font-size: 11px;
+}
+
+
+.internal-doc-pagination > span {
+  white-space: nowrap;
+}
+
+
+.internal-doc-pagination div {
+  display: flex;
+
+  align-items: center;
+
+  gap: 6px;
+}
+
+
+.internal-doc-pagination button {
+  min-height: 30px;
+
+  padding: 0 10px;
+
+  border-radius: 9px;
+
+  font-size: 11px;
+}
+
+
+/* =========================
+   TABLET
+   ========================= */
+
+@media (max-width: 1100px) {
+  .internal-doc-panel {
+    top: 76px;
+    right: 12px;
+    bottom: 88px;
+
+    width: min(480px, calc(100% - 24px));
+  }
+}
+
+
+/* =========================
+   SMALL TABLET / MOBILE
+   ========================= */
+
+@media (max-width: 760px) {
+  .internal-doc-panel {
+    top: 66px;
+    right: 8px;
+    bottom: 82px;
+
+    width: calc(100% - 16px);
+
+    border-radius: 16px;
+  }
+
+
+  .internal-doc-panel__header {
+    padding:
+      13px
+      14px
+      12px;
+  }
+
+
+  .internal-doc-panel__header h2 {
+    font-size: 15px;
+  }
+
+
+  .internal-doc-scope {
+    padding:
+      9px
+      14px;
+  }
+
+
+  .internal-doc-search {
+    grid-template-columns:
+      minmax(0, 1fr)
+      auto;
+
+    padding:
+      10px
+      14px;
+  }
+
+
+  .internal-doc-search__ghost {
+    grid-column: 1 / -1;
+
+    min-height: 32px !important;
+  }
+
+
+  .internal-doc-selected {
+    max-height: 76px;
+
+    padding:
+      8px
+      14px;
+  }
+
+
+  .internal-doc-chip {
+    max-width: min(210px, 100%);
+  }
+
+
+  .internal-doc-list {
+    padding:
+      10px
+      7px
+      10px
+      12px;
+  }
+
+
+  .internal-doc-pagination {
+    padding:
+      9px
+      12px;
+  }
+}
+
+
+/* =========================
+   SMALL MOBILE
+   ========================= */
+
+@media (max-width: 480px) {
+  .internal-doc-panel {
+    top: 62px;
+    right: 6px;
+    bottom: 76px;
+
+    width: calc(100% - 12px);
+
+    border-radius: 14px;
+  }
+
+
+  .internal-doc-panel__header {
+    gap: 8px;
+  }
+
+
+  .internal-doc-panel__header p {
+    font-size: 11px;
+  }
+
+
+  .internal-doc-panel__clear {
+    display: none;
+  }
+
+
+  .internal-doc-scope__hint {
+    width: 100%;
+  }
+
+
+  .internal-doc-search {
+    grid-template-columns:
+      minmax(0, 1fr)
+      72px;
+  }
+
+
+  .internal-doc-search button {
+    padding: 0 9px;
+  }
+
+
+  .internal-doc-row {
+    grid-template-columns:
+      minmax(0, 1fr)
+      30px;
+
+    padding: 9px;
+  }
+
+
+  .internal-doc-pagination {
+    align-items: stretch;
+    flex-direction: column;
+
+    gap: 7px;
+  }
+
+
+  .internal-doc-pagination div {
+    justify-content: space-between;
+  }
+
+
+  .internal-doc-pagination button {
+    flex: 1;
+  }
+}

@@ -77,3 +77,57 @@ button[type='submit'] svg,
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+
+
+/* === DOCUX_UNIFIED_CHAT_INPUT_V1 === */
+
+.chat-input {
+  width: 100%;
+
+  box-sizing: border-box;
+
+  gap: 8px;
+
+  margin: 0;
+
+  border-radius: 18px;
+
+  padding: 8px;
+
+  box-shadow: none;
+}
+
+
+.chat-input__textarea {
+  min-height: 34px;
+  max-height: 120px;
+
+  padding: 8px 10px;
+
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+
+.chat-input__send {
+  width: 36px;
+  height: 36px;
+
+  border-radius: 12px;
+}
+
+
+@media (max-width: 760px) {
+  .chat-input {
+    border-radius: 16px;
+
+    padding: 6px;
+  }
+
+  .chat-input__send {
+    width: 34px;
+    height: 34px;
+
+    border-radius: 10px;
+  }
+}

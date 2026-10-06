@@ -230,7 +230,7 @@ export class DocumentDetailPageComponent implements OnDestroy {
   }
 
   getDocumentFileUrl(): string | null {
-    const document = this.document as any;
+    const document = this.document;
 
     return document?.file ||
       document?.file_url ||

@@ -1,5 +1,8 @@
 import { NgClass, NgFor, NgIf } from '@angular/common';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import {
+  HttpClient,
+  HttpParams,
+} from '@angular/common/http';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import {
   ChangeDetectorRef,
@@ -16,6 +19,7 @@ import { Subscription, finalize } from 'rxjs';
 
 import {
   AiChatRequest,
+  AiChatResponse,
   AiConversation,
   AiConversationMessage,
   InternalAiDocument,
@@ -542,7 +546,7 @@ export class AiChatPageComponent implements OnInit, OnDestroy {
     };
 
     this.aiChatService.sendInternalChatMessage(payload).subscribe({
-      next: (response: any) => {
+      next: (response: AiChatResponse) => {
         this.ngZone.run(() => {
           if (response.conversation_uuid) {
             this.activeInternalConversationUuid = response.conversation_uuid;
@@ -569,19 +573,25 @@ export class AiChatPageComponent implements OnInit, OnDestroy {
           this.loadConversations();
         });
       },
-      error: (error: any) => {
+      error: (error: unknown) => {
         this.ngZone.run(() => {
           console.error('Internal AI chat error:', error);
 
           this.isSending = false;
 
-          if (error?.error?.code === 'selected_documents_unavailable') {
+          const apiError =
+            this.getInternalAiError(error);
+
+          if (
+            apiError.code ===
+            'selected_documents_unavailable'
+          ) {
             this.documentSelectionError =
-              error?.error?.detail ||
+              apiError.detail ||
               'One or more selected documents are unavailable for Internal AI.';
           } else {
             this.errorMessage =
-              error?.error?.detail ||
+              apiError.detail ||
               'Unable to send internal AI message.';
           }
 
@@ -589,6 +599,70 @@ export class AiChatPageComponent implements OnInit, OnDestroy {
         });
       },
     });
+  }
+
+  private getInternalAiError(
+    error: unknown,
+  ): {
+    code?: string;
+    detail?: string;
+  } {
+    let body: unknown =
+      error;
+
+    /*
+     * Angular HttpErrorResponse and unit-test mocks
+     * both expose the backend payload through
+     * an `error` property.
+     *
+     * Use structural narrowing instead of instanceof
+     * so both runtime errors and typed test doubles
+     * behave identically.
+     */
+    if (
+      error !== null &&
+      typeof error === 'object' &&
+      'error' in error
+    ) {
+      body =
+        (
+          error as Record<
+            string,
+            unknown
+          >
+        )['error'];
+    }
+
+    if (
+      body === null ||
+      typeof body !== 'object'
+    ) {
+      return {};
+    }
+
+    const payload =
+      body as Record<
+        string,
+        unknown
+      >;
+
+    const code =
+      payload['code'];
+
+    const detail =
+      payload['detail'];
+
+    return {
+      code:
+        typeof code === 'string'
+          ? code
+          : undefined,
+
+      detail:
+        typeof detail === 'string'
+          ? detail
+          : undefined,
+    };
   }
 
   private appendAssistantMessageWithFastTyping(message: LocalChatMessage): void {
@@ -664,27 +738,54 @@ export class AiChatPageComponent implements OnInit, OnDestroy {
     window.setTimeout(() => this.messageList?.scrollToBottom(), 0);
   }
 
-  private mapConversationMessage(message: AiConversationMessage): LocalChatMessage {
-    const raw = message as any;
-
+  private mapConversationMessage(
+    message: AiConversationMessage,
+  ): LocalChatMessage {
     return {
-      role: message.role === 'assistant' ? 'assistant' : 'user',
-      content: message.content || '',
-      created_at: message.created_at,
-      sources: raw.retrieved_sources || raw.sources || [],
+      role:
+        message.role === 'assistant'
+          ? 'assistant'
+          : 'user',
+
+      content:
+        message.content || '',
+
+      created_at:
+        message.created_at,
+
+      sources:
+        message.retrieved_sources ||
+        message.sources ||
+        [],
+
       document_context:
-        raw.document_context ||
-        raw.metadata?.document_context ||
-        raw.metadata?.internal_document_context,
-      model_provider: raw.model_provider,
-      model_name: raw.model_name,
+        message.document_context ||
+        message.metadata?.document_context ||
+        message.metadata?.internal_document_context,
+
+      model_provider:
+        message.model_provider,
+
+      model_name:
+        message.model_name,
+
       usage: {
-        prompt_tokens: raw.prompt_tokens || 0,
-        completion_tokens: raw.completion_tokens || 0,
-        total_tokens: raw.total_tokens || 0,
+        prompt_tokens:
+          message.prompt_tokens || 0,
+
+        completion_tokens:
+          message.completion_tokens || 0,
+
+        total_tokens:
+          message.total_tokens || 0,
       },
-      firewall: raw.firewall,
-      external_context: raw.metadata?.external_context || raw.external_context,
+
+      firewall:
+        message.firewall,
+
+      external_context:
+        message.metadata?.external_context ||
+        message.external_context,
     };
   }
 

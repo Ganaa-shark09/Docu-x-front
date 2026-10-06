@@ -1,11 +1,40 @@
-import { HttpClient } from '@angular/common/http';
-import { Injectable, inject } from '@angular/core';
-import { Router } from '@angular/router';
-import { BehaviorSubject, Observable, map, tap } from 'rxjs';
+import {
+  HttpClient,
+  HttpHeaders,
+} from '@angular/common/http';
 
-import { API_ENDPOINTS } from '../config/api-endpoints';
-import { environment } from '../../../environments/environment';
-import { TokenStorageService } from './token-storage.service';
+import {
+  Injectable,
+  inject,
+} from '@angular/core';
+
+import { Router } from '@angular/router';
+
+import {
+  BehaviorSubject,
+  Observable,
+  catchError,
+  finalize,
+  map,
+  of,
+  shareReplay,
+  switchMap,
+  tap,
+  throwError,
+} from 'rxjs';
+
+import {
+  API_ENDPOINTS,
+} from '../config/api-endpoints';
+
+import {
+  environment,
+} from '../../../environments/environment';
+
+import {
+  TokenStorageService,
+} from './token-storage.service';
+
 
 export interface LoginPayload {
   username?: string;
@@ -14,133 +43,250 @@ export interface LoginPayload {
   password: string;
 }
 
+
 export interface LoginResponse {
-  access?: string;
-  refresh?: string;
-  access_token?: string;
-  refresh_token?: string;
-  tokens?: {
-    access?: string;
-    refresh?: string;
-  };
+  access: string;
   user?: unknown;
 }
 
+
 export interface RefreshTokenResponse {
-  access?: string;
-  refresh?: string;
-  tokens?: {
-    access?: string;
-    refresh?: string;
-  };
+  access: string;
 }
+
+
+interface CsrfTokenResponse {
+  csrfToken: string;
+}
+
 
 @Injectable({
   providedIn: 'root',
 })
 export class AuthService {
-  private readonly http = inject(HttpClient);
-  private readonly router = inject(Router);
-  private readonly tokenStorage = inject(TokenStorageService);
-  private readonly apiBaseUrl = environment.apiBaseUrl;
+  private readonly http =
+    inject(HttpClient);
 
-  private readonly authenticatedSubject = new BehaviorSubject<boolean>(
-    this.tokenStorage.isAuthenticated(),
-  );
+  private readonly router =
+    inject(Router);
 
-  readonly authenticated$ = this.authenticatedSubject.asObservable();
+  private readonly tokenStorage =
+    inject(TokenStorageService);
 
-  login(payload: LoginPayload): Observable<LoginResponse> {
-    return this.http
-      .post<LoginResponse>(
-        `${this.apiBaseUrl}${API_ENDPOINTS.auth.login}`,
-        payload,
-      )
-      .pipe(
-        tap((response) => {
-          const accessToken =
-            response.access ||
-            response.access_token ||
-            response.tokens?.access;
+  private readonly apiBaseUrl =
+    environment.apiBaseUrl;
 
-          const refreshToken =
-            response.refresh ||
-            response.refresh_token ||
-            response.tokens?.refresh;
+  private csrfToken: string | null = null;
 
-          if (!accessToken || !refreshToken) {
-            throw new Error('Login response did not include access and refresh tokens.');
-          }
+  private sessionRequest$:
+    Observable<boolean> | null = null;
 
-          this.tokenStorage.setTokens(accessToken, refreshToken);
-          this.authenticatedSubject.next(true);
-        }),
-      );
+  private readonly authenticatedSubject =
+    new BehaviorSubject<boolean>(
+      this.tokenStorage.isAuthenticated(),
+    );
+
+  readonly authenticated$ =
+    this.authenticatedSubject.asObservable();
+
+
+  login(
+    payload: LoginPayload,
+  ): Observable<LoginResponse> {
+    return this.ensureCsrfToken().pipe(
+      switchMap((csrfToken) =>
+        this.http.post<LoginResponse>(
+          `${this.apiBaseUrl}${API_ENDPOINTS.auth.login}`,
+          payload,
+          {
+            withCredentials: true,
+            headers: this.csrfHeaders(
+              csrfToken,
+            ),
+          },
+        ),
+      ),
+
+      tap((response) => {
+        if (!response.access) {
+          throw new Error(
+            'Login response did not include an access token.',
+          );
+        }
+
+        this.tokenStorage.setAccessToken(
+          response.access,
+        );
+
+        this.authenticatedSubject.next(
+          true,
+        );
+      }),
+    );
   }
+
 
   refreshAccessToken(): Observable<string> {
-    const refreshToken = this.tokenStorage.getRefreshToken();
+    return this.ensureCsrfToken().pipe(
+      switchMap((csrfToken) =>
+        this.http.post<RefreshTokenResponse>(
+          `${this.apiBaseUrl}${API_ENDPOINTS.auth.refresh}`,
+          {},
+          {
+            withCredentials: true,
+            headers: this.csrfHeaders(
+              csrfToken,
+            ),
+          },
+        ),
+      ),
 
-    if (!refreshToken) {
-      this.forceLogout();
-      throw new Error('Refresh token not available.');
+      map((response) => {
+        if (!response.access) {
+          throw new Error(
+            'Refresh response did not include an access token.',
+          );
+        }
+
+        this.tokenStorage.setAccessToken(
+          response.access,
+        );
+
+        this.authenticatedSubject.next(
+          true,
+        );
+
+        return response.access;
+      }),
+    );
+  }
+
+
+  ensureSession(): Observable<boolean> {
+    if (
+      this.tokenStorage.getAccessToken()
+    ) {
+      return of(true);
     }
 
-    return this.http
-      .post<RefreshTokenResponse>(
-        `${this.apiBaseUrl}${API_ENDPOINTS.auth.refresh}`,
-        {
-          refresh: refreshToken,
-        },
-      )
-      .pipe(
-        tap((response) => {
-          const accessToken = response.access || response.tokens?.access;
-          const rotatedRefreshToken = response.refresh || response.tokens?.refresh;
+    if (this.sessionRequest$) {
+      return this.sessionRequest$;
+    }
 
-          if (!accessToken) {
-            throw new Error('Refresh response did not include access token.');
-          }
+    this.sessionRequest$ =
+      this.refreshAccessToken().pipe(
+        map(() => true),
 
-          this.tokenStorage.setAccessToken(accessToken);
+        catchError(() => {
+          this.tokenStorage.clearTokens();
 
-          if (rotatedRefreshToken) {
-            this.tokenStorage.setRefreshToken(rotatedRefreshToken);
-          }
+          this.authenticatedSubject.next(
+            false,
+          );
 
-          this.authenticatedSubject.next(true);
+          return of(false);
         }),
-        map((response) => {
-          const accessToken = response.access || response.tokens?.access;
 
-          if (!accessToken) {
-            throw new Error('Refresh response did not include access token.');
-          }
+        finalize(() => {
+          this.sessionRequest$ = null;
+        }),
 
-          return accessToken;
+        shareReplay({
+          bufferSize: 1,
+          refCount: false,
         }),
       );
+
+    return this.sessionRequest$;
   }
 
+
   logout(): void {
-    this.forceLogout();
+    this.ensureCsrfToken()
+      .pipe(
+        switchMap((csrfToken) =>
+          this.http.post(
+            `${this.apiBaseUrl}${API_ENDPOINTS.auth.logout}`,
+            {},
+            {
+              withCredentials: true,
+              headers: this.csrfHeaders(
+                csrfToken,
+              ),
+            },
+          ),
+        ),
+
+        catchError(() => of(null)),
+
+        finalize(() => {
+          this.forceLogout();
+        }),
+      )
+      .subscribe();
   }
+
 
   forceLogout(): void {
     this.tokenStorage.clearTokens();
-    this.authenticatedSubject.next(false);
-    this.router.navigate(['/login']);
+
+    this.authenticatedSubject.next(
+      false,
+    );
+
+    this.router.navigate([
+      '/login',
+    ]);
   }
+
 
   getAccessToken(): string | null {
     return this.tokenStorage.getAccessToken();
   }
 
-  getRefreshToken(): string | null {
-    return this.tokenStorage.getRefreshToken();
-  }
 
   isAuthenticated(): boolean {
     return this.tokenStorage.isAuthenticated();
+  }
+
+
+  private ensureCsrfToken():
+    Observable<string> {
+    if (this.csrfToken) {
+      return of(
+        this.csrfToken,
+      );
+    }
+
+    return this.http
+      .get<CsrfTokenResponse>(
+        `${this.apiBaseUrl}${API_ENDPOINTS.auth.csrf}`,
+        {
+          withCredentials: true,
+        },
+      )
+      .pipe(
+        map((response) => {
+          if (!response.csrfToken) {
+            throw new Error(
+              'CSRF token was not returned.',
+            );
+          }
+
+          this.csrfToken =
+            response.csrfToken;
+
+          return response.csrfToken;
+        }),
+      );
+  }
+
+
+  private csrfHeaders(
+    token: string,
+  ): HttpHeaders {
+    return new HttpHeaders({
+      'X-CSRFToken': token,
+    });
   }
 }

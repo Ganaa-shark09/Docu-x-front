@@ -1,15 +1,40 @@
-import { inject } from '@angular/core';
-import { CanActivateFn, Router } from '@angular/router';
+import {
+  inject,
+} from '@angular/core';
 
-import { AuthService } from '../auth/auth.service';
+import {
+  CanActivateFn,
+  Router,
+} from '@angular/router';
 
-export const publicGuard: CanActivateFn = () => {
-  const authService = inject(AuthService);
-  const router = inject(Router);
+import {
+  map,
+} from 'rxjs';
 
-  if (!authService.isAuthenticated()) {
-    return true;
-  }
+import {
+  AuthService,
+} from '../auth/auth.service';
 
-  return router.createUrlTree(['/dashboard']);
-};
+
+export const publicGuard:
+  CanActivateFn = () => {
+    const authService =
+      inject(AuthService);
+
+    const router =
+      inject(Router);
+
+    return authService
+      .ensureSession()
+      .pipe(
+        map((authenticated) => {
+          if (!authenticated) {
+            return true;
+          }
+
+          return router.createUrlTree(
+            ['/dashboard'],
+          );
+        }),
+      );
+  };

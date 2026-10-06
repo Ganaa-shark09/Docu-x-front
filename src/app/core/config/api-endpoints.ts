@@ -1,7 +1,8 @@
 export const API_ENDPOINTS = {
   auth: {
+    csrf: '/auth/csrf/',
     login: '/auth/login/',
-    refresh: '/auth/token/refresh/',
+    refresh: '/auth/refresh/',
     logout: '/auth/logout/',
     profile: '/auth/profile/',
   },

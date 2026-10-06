@@ -17,15 +17,41 @@ import {
   AiConversation,
   AiConversationMessage,
   ExternalAiChatRequest,
+  ExternalAiChatResponse,
   ExternalDocument,
+  ExternalDocumentBulkUploadResponse,
+  ExternalDocumentReadinessItem,
   LocalChatAttachment,
   LocalChatMessage,
 } from '../../models/ai-chat.model';
 import { AiChatService } from '../../services/ai-chat.service';
 import {
-  DocumentRealtimeService,
-} from '../../../../core/realtime/document-realtime.service';
-
+  ExternalDocumentReadinessService,
+} from '../../services/external-document-readiness.service';
+import {
+  ExternalAttachmentStateService,
+} from '../../services/external-attachment-state.service';
+import {
+  ExternalDocumentUploadService,
+} from '../../services/external-document-upload.service';
+import {
+  ExternalUploadOutcomePlannerService,
+} from '../../services/external-upload-outcome-planner.service';
+import {
+  ExternalDocumentScopeService,
+} from '../../services/external-document-scope.service';
+import {
+  ExternalConversationMessageMapperService,
+} from '../../services/external-conversation-message-mapper.service';
+import {
+  AiApiErrorMessageService,
+} from '../../services/ai-api-error-message.service';
+import {
+  ExternalAiChatResponsePlannerService,
+} from '../../services/external-ai-chat-response-planner.service';
+import {
+  ExternalDocumentProcessingCoordinatorService,
+} from '../../services/external-document-processing-coordinator.service';
 import {
   DocumentProcessingEvent,
 } from '../../../../core/realtime/realtime.models';
@@ -51,13 +77,32 @@ interface PendingExternalFile {
     NgFor,
     NgIf,
   ],
+  providers: [
+    ExternalDocumentProcessingCoordinatorService,
+  ],
   templateUrl: './external-ai-chat-page.component.html',
   styleUrl: './external-ai-chat-page.component.scss',
 })
 export class ExternalAiChatPageComponent implements OnDestroy {
   private readonly aiChatService = inject(AiChatService);
-  private readonly documentRealtimeService =
-    inject(DocumentRealtimeService);
+  private readonly externalDocumentReadinessService =
+    inject(ExternalDocumentReadinessService);
+  private readonly externalAttachmentStateService =
+    inject(ExternalAttachmentStateService);
+  private readonly externalDocumentUploadService =
+    inject(ExternalDocumentUploadService);
+  private readonly externalUploadOutcomePlanner =
+    inject(ExternalUploadOutcomePlannerService);
+  private readonly externalDocumentScopeService =
+    inject(ExternalDocumentScopeService);
+  private readonly externalConversationMessageMapper =
+    inject(ExternalConversationMessageMapperService);
+  private readonly aiApiErrorMessageService =
+    inject(AiApiErrorMessageService);
+  private readonly externalAiChatResponsePlanner =
+    inject(ExternalAiChatResponsePlannerService);
+  private readonly externalDocumentProcessingCoordinator =
+    inject(ExternalDocumentProcessingCoordinatorService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly ngZone = inject(NgZone);
   private readonly route = inject(ActivatedRoute);
@@ -86,28 +131,8 @@ export class ExternalAiChatPageComponent implements OnDestroy {
   messageText = '';
   errorMessage = '';
 
-  private documentPollingHandle: number | null = null;
-
-  private readonly documentPollingDelays = [
-    2000,
-    3000,
-    5000,
-    8000,
-    10000,
-  ];
   private conversationLoadRequestId = 0;
   private routeSubscription?: Subscription;
-  private realtimeSubscription?: Subscription;
-
-  private pendingRealtimeSend: {
-    message: string;
-    scopeUuids: string[];
-    waitUuids: string[];
-  } | null = null;
-
-  private realtimeFallbackHandle:
-    number | null = null;
-
   private readonly allowedExtensions = [
     'pdf',
     'docx',
@@ -140,7 +165,6 @@ export class ExternalAiChatPageComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.realtimeSubscription?.unsubscribe();
     this.clearPendingRealtimeSend();
     document.body.classList.remove('ai-chat-no-page-scroll');
     this.routeSubscription?.unsubscribe();
@@ -601,25 +625,23 @@ export class ExternalAiChatPageComponent implements OnDestroy {
     message: string,
     messageIndex: number,
   ): void {
-    const formData = new FormData();
-
-    if (this.activeExternalConversationUuid) {
-      formData.append('conversation_uuid', this.activeExternalConversationUuid);
-    }
-
-    formData.append('document_type', 'other');
-    formData.append('sensitivity_label', 'internal');
-
-    pendingFiles.forEach((pendingFile: PendingExternalFile) => {
-      formData.append('files', pendingFile.file);
-    });
-
     this.isUploading = true;
     this.documentsPanelOpen = true;
     this.cdr.markForCheck();
 
-    this.aiChatService.bulkUploadExternalDocuments(formData).subscribe({
-      next: (response: { conversation_uuid: string; documents?: ExternalDocument[] }) => {
+    this.externalDocumentUploadService
+      .upload({
+        files:
+          pendingFiles.map(
+            (pendingFile) =>
+              pendingFile.file,
+          ),
+
+        conversationUuid:
+          this.activeExternalConversationUuid,
+      })
+      .subscribe({
+      next: (response: ExternalDocumentBulkUploadResponse) => {
         this.ngZone.run(() => {
           if (response.conversation_uuid) {
             this.activeExternalConversationUuid = response.conversation_uuid;
@@ -658,83 +680,64 @@ export class ExternalAiChatPageComponent implements OnDestroy {
 
           this.loadExternalConversations();
 
-          const uploadedDocuments = response.documents || [];
-          const uploadedDocumentUuids = uploadedDocuments
-            .map((document: ExternalDocument) => document.uuid)
-            .filter(Boolean);
+          const uploadedDocuments =
+            response.documents || [];
 
-          /*
-           * Freeze the COMPLETE document scope for this query.
-           *
-           * Existing explicit selection:
-           *   selected + newly uploaded
-           *
-           * Nothing selected:
-           *   all conversation documents
-           *   including newly uploaded files
-           */
-          const queryDocumentUuids =
-            this.resolveExternalDocumentUuids(
-              uploadedDocumentUuids,
-            );
+          const outcome =
+            this.externalUploadOutcomePlanner
+              .plan({
+                requestedFileCount:
+                  pendingFiles.length,
 
-          /*
-           * Upload succeeded but no UUID means we cannot safely
-           * bind this message to its current attachments.
-           *
-           * Never silently fall back to all conversation docs.
-           */
+                selectedDocumentUuids:
+                  Array.from(
+                    this.selectedExternalDocumentUuids,
+                  ),
+
+                uploadedDocuments,
+              });
+
           if (
-            pendingFiles.length > 0 &&
-            uploadedDocumentUuids.length === 0
+            outcome.kind ===
+            'error'
           ) {
-            this.isUploading = false;
-            this.isSending = false;
+            this.isUploading =
+              false;
+
+            this.isSending =
+              false;
+
             this.errorMessage =
-              'The files were uploaded, but the backend did not return document UUIDs. The AI request was not sent.';
+              outcome.message;
+
             this.cdr.detectChanges();
             return;
           }
-
-          const failedUploads = uploadedDocuments.filter(
-            (document: ExternalDocument) =>
-              this.isExternalDocumentFailed(document),
-          );
-
-          if (failedUploads.length > 0) {
-            this.isSending = false;
-            this.errorMessage =
-              failedUploads[0].processing_error ||
-              'One or more uploaded files failed during processing.';
-            this.cdr.detectChanges();
-            return;
-          }
-
-          const pendingDocumentUuids =
-            this.getPendingExternalDocumentUuids(
-              uploadedDocuments,
-            );
 
           /*
            * Subscribe immediately after upload.
-           * Backend sends a current-state snapshot, so an
-           * event emitted before subscription is not lost.
+           * The backend supplies a current-state
+           * snapshot for these documents.
            */
           this.subscribeRealtimeDocuments(
-            uploadedDocumentUuids,
+            outcome.uploadedDocumentUuids,
           );
 
           if (
-            pendingDocumentUuids.length > 0
+            outcome.kind ===
+            'wait'
           ) {
             if (message) {
               this.queueRealtimeSend(
                 message,
-                queryDocumentUuids,
-                pendingDocumentUuids,
+                outcome.queryDocumentUuids,
+                outcome.pendingDocumentUuids,
+                outcome.scopeMode,
               );
             } else {
-              this.isSending = false;
+              this.isSending =
+                false;
+
               this.cdr.detectChanges();
             }
 
@@ -744,21 +747,26 @@ export class ExternalAiChatPageComponent implements OnDestroy {
           if (message) {
             this.sendExternalMessage(
               message,
-              queryDocumentUuids,
+              outcome.queryDocumentUuids,
+              outcome.scopeMode,
             );
           } else {
-            this.isSending = false;
+            this.isSending =
+              false;
+
             this.cdr.detectChanges();
           }
         });
       },
-      error: (error: any) => {
+      error: (error: unknown) => {
         this.ngZone.run(() => {
           console.error('External bulk upload error:', error);
           this.errorMessage =
-            error?.error?.detail ||
-            error?.error?.files?.[0] ||
-            'Unable to upload files.';
+            this.aiApiErrorMessageService.getMessage(
+              error,
+              'Unable to upload files.',
+              true,
+            );
 
           this.markMessageAttachmentsFailed(messageIndex, this.errorMessage);
           this.isUploading = false;
@@ -772,103 +780,49 @@ export class ExternalAiChatPageComponent implements OnDestroy {
   private normalizeExternalDocumentUuids(
     documentUuids: string[],
   ): string[] {
-    return Array.from(
-      new Set(
-        documentUuids
-          .map((uuid: string) =>
-            String(uuid || '').trim(),
-          )
-          .filter(Boolean),
-      ),
-    );
+    return this
+      .externalDocumentScopeService
+      .normalize(
+        documentUuids,
+      );
   }
-
-
-
-
-
 
 
   private getAllExternalConversationDocumentUuids(): string[] {
-    const documentListUuids =
-      this.externalAttachedDocuments
-        .map(
-          (document: ExternalDocument) =>
-            document.uuid,
-        )
-        .filter(Boolean);
-
-    /*
-     * Also read UUIDs already represented in chat
-     * message attachment cards.
-     *
-     * This protects against a small synchronization
-     * window where the message attachment exists but
-     * externalAttachedDocuments has not yet refreshed.
-     */
-    const messageAttachmentUuids =
-      this.externalMessages.flatMap(
-        (message: LocalChatMessage) =>
-          (message.attachments || [])
-            .map(
-              (attachment: LocalChatAttachment) =>
-                attachment.uuid || '',
-            )
-            .filter(Boolean),
+    return this
+      .externalDocumentScopeService
+      .getConversationDocumentUuids(
+        this.externalAttachedDocuments,
+        this.externalMessages,
       );
-
-    return this.normalizeExternalDocumentUuids([
-      ...documentListUuids,
-      ...messageAttachmentUuids,
-    ]);
   }
+
 
   private resolveExternalDocumentUuids(
     currentMessageDocumentUuids: string[] = [],
   ): string[] {
-    const uploadedUuids =
-      this.normalizeExternalDocumentUuids(
+    return this
+      .externalDocumentScopeService
+      .resolve({
+        selectedDocumentUuids:
+          Array.from(
+            this.selectedExternalDocumentUuids,
+          ),
+
         currentMessageDocumentUuids,
-      );
 
-    const selectedUuids =
-      this.normalizeExternalDocumentUuids(
-        Array.from(
-          this.selectedExternalDocumentUuids,
-        ),
-      );
+        documents:
+          this.externalAttachedDocuments,
 
-    /*
-     * One or more documents explicitly selected:
-     *
-     * selected existing documents
-     * +
-     * files uploaded with THIS user prompt.
-     */
-    if (selectedUuids.length > 0) {
-      return this.normalizeExternalDocumentUuids([
-        ...selectedUuids,
-        ...uploadedUuids,
-      ]);
-    }
-
-    /*
-     * Nothing selected:
-     *
-     * send EVERY document UUID available in the
-     * current conversation.
-     *
-     * Newly uploaded files are also included.
-     */
-    return this.normalizeExternalDocumentUuids([
-      ...this.getAllExternalConversationDocumentUuids(),
-      ...uploadedUuids,
-    ]);
+        messages:
+          this.externalMessages,
+      });
   }
 
   private sendExternalMessage(
     message: string,
     explicitDocumentUuids?: string[],
+    explicitScopeMode?: 'selected' | 'conversation',
   ): void {
     if (!message) {
       this.isSending = false;
@@ -889,6 +843,12 @@ export class ExternalAiChatPageComponent implements OnDestroy {
           )
         : this.resolveExternalDocumentUuids();
 
+    const documentScopeMode: 'selected' | 'conversation' =
+      explicitScopeMode ??
+      (this.selectedExternalDocumentUuids.size > 0
+        ? 'selected'
+        : 'conversation');
+
     const payload: ExternalAiChatRequest = {
       message,
       use_web: true,
@@ -905,6 +865,7 @@ export class ExternalAiChatPageComponent implements OnDestroy {
        */
       document_uuids:
         effectiveDocumentUuids,
+      document_scope_mode: documentScopeMode,
     };
 
     if (this.activeExternalConversationUuid) {
@@ -919,6 +880,8 @@ export class ExternalAiChatPageComponent implements OnDestroy {
           payload.conversation_uuid,
         document_uuids:
           payload.document_uuids,
+        document_scope_mode:
+          payload.document_scope_mode,
         message:
           payload.message,
       },
@@ -927,106 +890,71 @@ export class ExternalAiChatPageComponent implements OnDestroy {
     this.aiChatService
       .sendExternalChatMessage(payload)
       .subscribe({
-        next: (response: any) => {
+        next: (response: ExternalAiChatResponse) => {
           this.ngZone.run(() => {
-            /*
-             * Backend safety layer.
-             *
-             * Preserve exactly the same document scope while
-             * waiting. Do not re-read sidebar selection because
-             * the user may change it while processing occurs.
-             */
+            const outcome =
+              this.externalAiChatResponsePlanner
+                .plan(
+                  response,
+                  effectiveDocumentUuids,
+                  new Date()
+                    .toISOString(),
+                );
+
             if (
-              response?.status ===
-              'attachments_processing'
+              outcome.kind ===
+              'error'
             ) {
-              const retryAfterMs = Math.max(
-                Number(
-                  response.retry_after_ms || 3000,
-                ),
-                1000,
-              );
+              this.isSending =
+                false;
 
-              const backendPendingUuids =
-                Array.isArray(
-                  response.pending_document_uuids,
-                )
-                  ? response.pending_document_uuids
-                  : [];
-
-              const uuidsToPoll =
-                backendPendingUuids.length
-                  ? backendPendingUuids
-                  : effectiveDocumentUuids || [];
-
-              if (!uuidsToPoll.length) {
-                this.isSending = false;
-                this.errorMessage =
-                  'Attachments are still processing, but no document UUID was returned for status tracking.';
-                this.cdr.detectChanges();
-                return;
-              }
-
-              /*
-               * Backend confirmed that one or more documents
-               * required by this query are still processing.
-               *
-               * Do NOT poll processing-status here.
-               * Subscribe/wait for WebSocket readiness instead.
-               */
-              this.queueRealtimeSend(
-                message,
-                effectiveDocumentUuids,
-                uuidsToPoll,
-              );
-
-              return;
-            }
-
-            /*
-             * Never render processing/non-answer responses as
-             * empty assistant messages.
-             */
-            if (
-              typeof response?.answer !== 'string'
-            ) {
-              this.isSending = false;
               this.errorMessage =
-                response?.detail ||
-                'External AI returned an unexpected response.';
+                outcome.message;
+
               this.cdr.detectChanges();
               return;
             }
 
-            if (response.conversation_uuid) {
+            if (
+              outcome.kind ===
+              'wait'
+            ) {
+              /*
+               * Preserve the exact frozen request
+               * scope while document processing
+               * finishes. Never re-read sidebar
+               * selection here.
+               */
+              this.queueRealtimeSend(
+                message,
+                effectiveDocumentUuids,
+                outcome.waitUuids,
+                documentScopeMode,
+              );
+
+              return;
+            }
+
+            if (
+              outcome.conversationUuid
+            ) {
               this.activeExternalConversationUuid =
-                response.conversation_uuid;
+                outcome.conversationUuid;
 
               this.router.navigate(
                 [
                   '/ai/external',
-                  response.conversation_uuid,
+                  outcome.conversationUuid,
                 ],
                 {
-                  replaceUrl: true,
+                  replaceUrl:
+                    true,
                 },
               );
             }
 
-            const assistantMessage: LocalChatMessage = {
-              role: 'assistant',
-              content: response.answer,
-              created_at: new Date().toISOString(),
-              sources: response.sources || [],
-              model_provider: response.model_provider,
-              model_name: response.model_name,
-              usage: response.usage,
-              external_context:
-                response.external_context,
-            };
-
             this.appendAssistantMessageWithFastTyping(
-              assistantMessage,
+              outcome.assistantMessage,
             );
 
             this.loadExternalConversations();
@@ -1041,7 +969,7 @@ export class ExternalAiChatPageComponent implements OnDestroy {
           });
         },
 
-        error: (error: any) => {
+        error: (error: unknown) => {
           this.ngZone.run(() => {
             console.error(
               'External AI chat error:',
@@ -1049,8 +977,10 @@ export class ExternalAiChatPageComponent implements OnDestroy {
             );
 
             this.errorMessage =
-              error?.error?.detail ||
-              'Unable to send external AI message.';
+              this.aiApiErrorMessageService.getMessage(
+                error,
+                'Unable to send external AI message.',
+              );
 
             this.isSending = false;
             this.cdr.detectChanges();
@@ -1059,44 +989,75 @@ export class ExternalAiChatPageComponent implements OnDestroy {
       });
   }
 
+
   private bindDocumentRealtimeEvents(): void {
-    this.realtimeSubscription =
-      this.documentRealtimeService
-        .events$
-        .subscribe(
-          (
-            event:
-              DocumentProcessingEvent,
-          ) => {
-            if (
-              event.event !==
-                'document.processing.snapshot' &&
-              event.event !==
-                'document.processing.updated'
-            ) {
-              return;
-            }
+    this
+      .externalDocumentProcessingCoordinator
+      .bindRealtime({
+        getDocuments:
+          () =>
+            this.externalAttachedDocuments,
 
-            if (!event.document_uuid) {
-              return;
-            }
+        onEvent:
+          (event) => {
+            this.ngZone.run(
+              () => {
+                this.applyDocumentRealtimeEvent(
+                  event,
+                );
 
-            this.applyDocumentRealtimeEvent(
-              event,
+                this.cdr.detectChanges();
+              },
             );
-
-            /*
-             * Any realtime activity proves the socket is alive.
-             * Push fallback polling further out.
-             */
-            this.scheduleRealtimeFallback();
-
-            this.tryFlushPendingRealtimeSend();
-
-            this.cdr.detectChanges();
           },
-        );
+
+        onStatuses:
+          (statusDocuments) => {
+            this.ngZone.run(
+              () => {
+                this
+                  .applyExternalDocumentProcessingStatuses(
+                    statusDocuments,
+                  );
+
+                this.cdr.detectChanges();
+              },
+            );
+          },
+
+        onFailed:
+          (message) => {
+            this.ngZone.run(
+              () => {
+                this.isSending =
+                  false;
+
+                this.isUploading =
+                  false;
+
+                this.errorMessage =
+                  message;
+
+                this.cdr.detectChanges();
+              },
+            );
+          },
+
+        onSend:
+          (pending) => {
+            this.ngZone.run(
+              () => {
+                this.sendExternalMessage(
+                  pending.message,
+                  pending.scopeUuids,
+                  pending.scopeMode,
+                );
+              },
+            );
+          },
+      });
   }
+
 
   private subscribeRealtimeDocuments(
     documentUuids: string[],
@@ -1106,297 +1067,68 @@ export class ExternalAiChatPageComponent implements OnDestroy {
         documentUuids,
       );
 
-    if (!normalized.length) {
-      return;
-    }
-
-    this.documentRealtimeService
-      .subscribeDocuments(normalized);
+    this
+      .externalDocumentProcessingCoordinator
+      .subscribeDocuments(
+        normalized,
+      );
   }
 
   private applyDocumentRealtimeEvent(
     event: DocumentProcessingEvent,
   ): void {
-    const uuid = event.document_uuid;
-
-    if (!uuid) {
-      return;
-    }
+    const state =
+      this.externalDocumentReadinessService
+        .applyRealtimeEvent(
+          this.externalAttachedDocuments,
+          this.externalMessages,
+          event,
+        );
 
     this.externalAttachedDocuments =
-      this.externalAttachedDocuments.map(
-        (
-          document: ExternalDocument,
-        ) => {
-          if (document.uuid !== uuid) {
-            return document;
-          }
+      state.documents;
 
-          return {
-            ...document,
-
-            status:
-              event.status ??
-              document.status,
-
-            is_ai_ready:
-              typeof event.is_ai_ready ===
-              'boolean'
-                ? event.is_ai_ready
-                : document.is_ai_ready,
-
-            processing_error:
-              event.error ??
-              document.processing_error,
-          };
-        },
-      );
-
-    /*
-     * Update the attachment card inside the
-     * already-visible user prompt too.
-     */
     this.externalMessages =
-      this.externalMessages.map(
-        (
-          message: LocalChatMessage,
-        ) => ({
-          ...message,
-
-          attachments:
-            (
-              message.attachments || []
-            ).map(
-              (
-                attachment:
-                  LocalChatAttachment,
-              ) => {
-                if (
-                  attachment.uuid !== uuid
-                ) {
-                  return attachment;
-                }
-
-                return {
-                  ...attachment,
-
-                  status:
-                    event.status ??
-                    attachment.status,
-
-                  is_ai_ready:
-                    typeof event
-                      .is_ai_ready ===
-                    'boolean'
-                      ? event
-                          .is_ai_ready
-                      : attachment
-                          .is_ai_ready,
-
-                  processing_error:
-                    event.error ??
-                    attachment
-                      .processing_error,
-                };
-              },
-            ),
-        }),
-      );
+      state.messages;
   }
 
   private queueRealtimeSend(
     message: string,
     scopeUuids: string[],
     waitUuids: string[],
+    scopeMode: 'selected' | 'conversation',
   ): void {
     this.stopDocumentPolling();
 
-    this.pendingRealtimeSend = {
-      message,
-      scopeUuids:
-        this.normalizeExternalDocumentUuids(
-          scopeUuids,
-        ),
-      waitUuids:
-        this.normalizeExternalDocumentUuids(
-          waitUuids,
-        ),
-    };
+    this
+      .externalDocumentProcessingCoordinator
+      .queueRealtimeSend({
+        message,
 
-    this.subscribeRealtimeDocuments(
-      waitUuids,
-    );
-
-    this.scheduleRealtimeFallback();
-
-    this.tryFlushPendingRealtimeSend();
-  }
-
-  private tryFlushPendingRealtimeSend(): void {
-    const pending =
-      this.pendingRealtimeSend;
-
-    if (!pending) {
-      return;
-    }
-
-    const documentsByUuid =
-      new Map<string, ExternalDocument>(
-        this.externalAttachedDocuments.map(
-          (
-            document:
-              ExternalDocument,
-          ) => [
-            document.uuid,
-            document,
-          ],
-        ),
-      );
-
-    const targetDocuments =
-      pending.waitUuids
-        .map(
-          (uuid: string) =>
-            documentsByUuid.get(uuid),
-        )
-        .filter(
-          (
-            document:
-              ExternalDocument | undefined,
-          ): document is ExternalDocument =>
-            !!document,
-        );
-
-    /*
-     * Wait for snapshot/event for every UUID.
-     */
-    if (
-      targetDocuments.length !==
-      pending.waitUuids.length
-    ) {
-      return;
-    }
-
-    const failed =
-      targetDocuments.find(
-        (
-          document:
-            ExternalDocument,
-        ) =>
-          this.isExternalDocumentFailed(
-            document,
+        scopeUuids:
+          this.normalizeExternalDocumentUuids(
+            scopeUuids,
           ),
-      );
 
-    if (failed) {
-      this.isSending = false;
+        waitUuids:
+          this.normalizeExternalDocumentUuids(
+            waitUuids,
+          ),
 
-      this.errorMessage =
-        failed.processing_error ||
-        'An attachment failed during processing.';
+        scopeMode,
 
-      this.clearPendingRealtimeSend();
-      return;
-    }
-
-    const allReady =
-      targetDocuments.every(
-        (
-          document:
-            ExternalDocument,
-        ) =>
-          !this.getPendingExternalDocumentUuids(
-            [document],
-          ).length,
-      );
-
-    if (!allReady) {
-      return;
-    }
-
-    /*
-     * Capture before clearing.
-     */
-    const message =
-      pending.message;
-
-    const scopeUuids =
-      [...pending.scopeUuids];
-
-    this.clearPendingRealtimeSend();
-
-    /*
-     * Now send the original query with the
-     * exact frozen UUID scope.
-     */
-    this.sendExternalMessage(
-      message,
-      scopeUuids,
-    );
+        conversationUuid:
+          this
+            .activeExternalConversationUuid ||
+          undefined,
+      });
   }
 
-  private scheduleRealtimeFallback(): void {
-    if (!this.pendingRealtimeSend) {
-      return;
-    }
-
-    if (this.realtimeFallbackHandle !== null) {
-      window.clearTimeout(
-        this.realtimeFallbackHandle,
-      );
-    }
-
-    this.realtimeFallbackHandle =
-      window.setTimeout(() => {
-        this.realtimeFallbackHandle = null;
-
-        const pending =
-          this.pendingRealtimeSend;
-
-        if (!pending) {
-          return;
-        }
-
-        /*
-         * Do NOT fall back to continuous HTTP status polling.
-         *
-         * Re-subscription causes the backend to send a fresh
-         * document.processing.snapshot from authoritative DB state.
-         */
-        if (this.documentRealtimeService.isConnected) {
-          console.debug(
-            '[DocuX realtime] Re-subscribing pending documents:',
-            pending.waitUuids,
-          );
-        } else {
-          console.warn(
-            '[DocuX realtime] Socket is not ready. Reconnecting:',
-            pending.waitUuids,
-          );
-        }
-
-        this.subscribeRealtimeDocuments(
-          pending.waitUuids,
-        );
-      }, 12000);
-  }
 
   private clearPendingRealtimeSend(): void {
-    this.pendingRealtimeSend = null;
-
-    if (
-      this.realtimeFallbackHandle !==
-      null
-    ) {
-      window.clearTimeout(
-        this.realtimeFallbackHandle,
-      );
-
-      this.realtimeFallbackHandle =
-        null;
-    }
-
-    this.stopDocumentPolling();
+    this
+      .externalDocumentProcessingCoordinator
+      .clearPendingRealtimeSend();
   }
 
   private appendAssistantMessageWithFastTyping(message: LocalChatMessage): void {
@@ -1466,140 +1198,67 @@ export class ExternalAiChatPageComponent implements OnDestroy {
     return { chunkSize: 180, delayMs: 3 };
   }
 
+
   private replaceMessageAttachments(
     messageIndex: number,
     documents: ExternalDocument[],
   ): void {
-    this.externalMessages = this.externalMessages.map((message: LocalChatMessage, index: number) => {
-      if (index !== messageIndex) {
-        return message;
-      }
-
-      return {
-        ...message,
-        attachments: documents.map((document: ExternalDocument) => this.mapDocumentToAttachment(document)),
-      };
-    });
+    this.externalMessages =
+      this.externalAttachmentStateService
+        .replaceMessageAttachments(
+          this.externalMessages,
+          messageIndex,
+          documents,
+        );
   }
 
-  private markMessageAttachmentsFailed(messageIndex: number, reason: string): void {
-    this.externalMessages = this.externalMessages.map((message: LocalChatMessage, index: number) => {
-      if (index !== messageIndex) {
-        return message;
-      }
 
-      return {
-        ...message,
-        attachments: (message.attachments || []).map((attachment: LocalChatAttachment) => ({
-          ...attachment,
-          status: 'failed',
-          processing_error: reason,
-        })),
-      };
-    });
+  private markMessageAttachmentsFailed(
+    messageIndex: number,
+    reason: string,
+  ): void {
+    this.externalMessages =
+      this.externalAttachmentStateService
+        .markMessageAttachmentsFailed(
+          this.externalMessages,
+          messageIndex,
+          reason,
+        );
   }
 
-  private syncMessageAttachmentsFromDocuments(documents: ExternalDocument[]): void {
-    const documentsByUuid = new Map<string, ExternalDocument>(
-      documents.map((document: ExternalDocument) => [document.uuid, document]),
-    );
 
-    this.externalMessages = this.externalMessages
-      .map((message: LocalChatMessage) => {
-        if (/^Uploaded\s+\d+\s+file/i.test(message.content || '') && !message.attachments?.length) {
-          return {
-            ...message,
-            content: '',
-          };
-        }
+  private syncMessageAttachmentsFromDocuments(
+    documents: ExternalDocument[],
+  ): void {
+    this.externalMessages =
+      this.externalAttachmentStateService
+        .syncMessagesFromDocuments(
+          this.externalMessages,
+          documents,
+        );
+  }
 
-        if (!message.attachments?.length) {
-          return message;
-        }
 
-        return {
-          ...message,
-          attachments: message.attachments.map((attachment: LocalChatAttachment) => {
-            if (attachment.uuid && documentsByUuid.has(attachment.uuid)) {
-              return this.mapDocumentToAttachment(documentsByUuid.get(attachment.uuid)!);
-            }
-
-            const attachmentName =
-              attachment.original_filename ||
-              attachment.filename ||
-              attachment.title;
-
-            const matchedDocument = documents.find((document: ExternalDocument) => {
-              const documentName =
-                document.original_filename ||
-                document.filename ||
-                document.title;
-
-              return documentName === attachmentName;
-            });
-
-            return matchedDocument
-              ? this.mapDocumentToAttachment(matchedDocument)
-              : attachment;
-          }),
-        };
-      })
-      .filter((message: LocalChatMessage) => {
-        return !!message.content || !!message.attachments?.length || message.role === 'assistant';
-      });
-
-    const existingAttachmentUuids = new Set<string>();
-
-    this.externalMessages.forEach((message: LocalChatMessage) => {
-      (message.attachments || []).forEach((attachment: LocalChatAttachment) => {
-        if (attachment.uuid) {
-          existingAttachmentUuids.add(attachment.uuid);
-        }
-      });
-    });
-
-    const missingDocumentMessages: LocalChatMessage[] = documents
-      .filter((document: ExternalDocument) => !existingAttachmentUuids.has(document.uuid))
-      .map((document: ExternalDocument) => ({
-        role: 'user',
-        content: '',
-        created_at: document.created_at || new Date().toISOString(),
-        attachments: [this.mapDocumentToAttachment(document)],
-      }));
-
-    if (missingDocumentMessages.length) {
-      this.externalMessages = [...this.externalMessages, ...missingDocumentMessages].sort(
-        (a: LocalChatMessage, b: LocalChatMessage) =>
-          new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+  private mapDocumentToAttachment(
+    document: ExternalDocument,
+  ): LocalChatAttachment {
+    return this
+      .externalAttachmentStateService
+      .mapDocumentToAttachment(
+        document,
       );
-    }
   }
 
-  private mapDocumentToAttachment(document: ExternalDocument): LocalChatAttachment {
-    const status = String(document.status || '').toLowerCase();
 
-    return {
-      uuid: document.uuid,
-      title: document.title,
-      original_filename: document.original_filename,
-      filename: document.filename,
-      file_size: document.file_size,
-      status: document.status,
-      is_ai_ready: !!document.is_ai_ready || status === 'ready',
-      processing_error: document.processing_error,
-    };
-  }
-
-  private mergeAttachedDocuments(documents: ExternalDocument[]): void {
-    const existing = new Map<string, ExternalDocument>(
-      this.externalAttachedDocuments.map((document: ExternalDocument) => [document.uuid, document]),
-    );
-
-    documents.forEach((document: ExternalDocument) => {
-      existing.set(document.uuid, document);
-    });
-
-    this.externalAttachedDocuments = Array.from(existing.values());
+  private mergeAttachedDocuments(
+    documents: ExternalDocument[],
+  ): void {
+    this.externalAttachedDocuments =
+      this.externalAttachmentStateService
+        .mergeDocuments(
+          this.externalAttachedDocuments,
+          documents,
+        );
   }
 
   private startDocumentPolling(
@@ -1607,280 +1266,141 @@ export class ExternalAiChatPageComponent implements OnDestroy {
     onReady?: () => void,
     initialDelayMs?: number,
   ): void {
-    this.stopDocumentPolling();
-
-    const targetDocumentUuids = Array.from(
-      new Set(
-        (
-          documentUuids?.length
-            ? documentUuids
-            : this.getPendingExternalDocumentUuids(
-                this.externalAttachedDocuments,
-              )
-        ).filter(Boolean),
-      ),
-    );
+    const targetDocumentUuids =
+      Array.from(
+        new Set(
+          (
+            documentUuids?.length
+              ? documentUuids
+              : this
+                  .getPendingExternalDocumentUuids(
+                    this
+                      .externalAttachedDocuments,
+                  )
+          ).filter(Boolean),
+        ),
+      );
 
     if (!targetDocumentUuids.length) {
       onReady?.();
       return;
     }
 
-    this.scheduleDocumentProcessingCheck(
-      targetDocumentUuids,
-      onReady,
-      0,
-      initialDelayMs,
-    );
-  }
+    this
+      .externalDocumentProcessingCoordinator
+      .start({
+        documentUuids:
+          targetDocumentUuids,
 
-  private scheduleDocumentProcessingCheck(
-    documentUuids: string[],
-    onReady: (() => void) | undefined,
-    attempt: number,
-    overrideDelayMs?: number,
-  ): void {
-    if (!documentUuids.length) {
-      this.stopDocumentPolling();
-      onReady?.();
-      return;
-    }
+        conversationUuid:
+          this
+            .activeExternalConversationUuid ||
+          undefined,
 
-    const delay =
-      overrideDelayMs ??
-      this.documentPollingDelays[
-        Math.min(
-          attempt,
-          this.documentPollingDelays.length - 1,
-        )
-      ];
+        initialDelayMs,
 
-    this.documentPollingHandle = window.setTimeout(() => {
-      this.documentPollingHandle = null;
+        onStatuses:
+          (statusDocuments) => {
+            this.ngZone.run(
+              () => {
+                this
+                  .applyExternalDocumentProcessingStatuses(
+                    statusDocuments,
+                  );
 
-      this.pollExternalDocumentProcessingStatus(
-        documentUuids,
-        onReady,
-        attempt,
-      );
-    }, delay);
-  }
-
-  private pollExternalDocumentProcessingStatus(
-    documentUuids: string[],
-    onReady: (() => void) | undefined,
-    attempt: number,
-  ): void {
-    if (!documentUuids.length) {
-      this.stopDocumentPolling();
-      onReady?.();
-      return;
-    }
-
-    this.aiChatService
-      .getExternalDocumentProcessingStatus(
-        documentUuids,
-        this.activeExternalConversationUuid || undefined,
-      )
-      .subscribe({
-        next: (response: any) => {
-          this.ngZone.run(() => {
-            const statusDocuments =
-              response?.documents || [];
-
-            this.applyExternalDocumentProcessingStatuses(
-              statusDocuments,
+                this.cdr.detectChanges();
+              },
             );
+          },
 
-            const failedDocuments =
-              statusDocuments.filter((document: any) =>
-                this.isExternalDocumentFailed(document),
-              );
+        onFailed:
+          (message) => {
+            this.ngZone.run(
+              () => {
+                this.isSending =
+                  false;
 
-            if (
-              response?.has_failed ||
-              failedDocuments.length > 0
-            ) {
-              this.stopDocumentPolling();
+                this.isUploading =
+                  false;
 
-              this.isSending = false;
-              this.isUploading = false;
+                this.errorMessage =
+                  message;
 
-              this.errorMessage =
-                failedDocuments[0]?.processing_error ||
-                'One or more attached files failed during processing.';
-
-              this.cdr.detectChanges();
-              return;
-            }
-
-            const remainingPendingUuids =
-              statusDocuments
-                .filter(
-                  (document: any) =>
-                    !this.isExternalDocumentReady(document) &&
-                    !this.isExternalDocumentFailed(document),
-                )
-                .map((document: any) => document.uuid)
-                .filter(Boolean);
-
-            if (
-              response?.all_ready ||
-              remainingPendingUuids.length === 0
-            ) {
-              this.stopDocumentPolling();
-              this.cdr.detectChanges();
-
-              onReady?.();
-              return;
-            }
-
-            this.cdr.detectChanges();
-
-            this.scheduleDocumentProcessingCheck(
-              remainingPendingUuids,
-              onReady,
-              attempt + 1,
+                this.cdr.detectChanges();
+              },
             );
-          });
-        },
+          },
 
-        error: (error: unknown) => {
-          this.ngZone.run(() => {
-            console.error(
-              'External attachment processing-status error:',
-              error,
-            );
+        onReady:
+          () => {
+            this.ngZone.run(
+              () => {
+                this.cdr.detectChanges();
 
-            this.scheduleDocumentProcessingCheck(
-              documentUuids,
-              onReady,
-              attempt + 1,
+                onReady?.();
+              },
             );
-          });
-        },
+          },
       });
   }
 
+
   private stopDocumentPolling(): void {
-    if (this.documentPollingHandle !== null) {
-      window.clearTimeout(this.documentPollingHandle);
-      this.documentPollingHandle = null;
-    }
+    this
+      .externalDocumentProcessingCoordinator
+      .stop();
   }
 
   private getPendingExternalDocumentUuids(
     documents: ExternalDocument[],
   ): string[] {
-    return documents
-      .filter(
-        (document: ExternalDocument) =>
-          !this.isExternalDocumentReady(document) &&
-          !this.isExternalDocumentFailed(document),
-      )
-      .map((document: ExternalDocument) => document.uuid)
-      .filter(Boolean);
+    return this
+      .externalDocumentReadinessService
+      .getPendingUuids(
+        documents,
+      );
   }
+
 
   private isExternalDocumentReady(
     document: Partial<ExternalDocument>,
   ): boolean {
-    const status = String(
-      document.status || '',
-    ).toLowerCase();
-
-    return (
-      document.is_ai_ready === true ||
-      status === 'ready'
-    );
+    return this
+      .externalDocumentReadinessService
+      .isReady(
+        document,
+      );
   }
+
 
   private isExternalDocumentFailed(
     document: Partial<ExternalDocument>,
   ): boolean {
-    const status = String(
-      document.status || '',
-    ).toLowerCase();
-
-    return (
-      status === 'failed' ||
-      !!document.processing_error
-    );
+    return this
+      .externalDocumentReadinessService
+      .isFailed(
+        document,
+      );
   }
 
-  private applyExternalDocumentProcessingStatuses(
-    statusDocuments: any[],
-  ): void {
-    if (!statusDocuments.length) {
-      return;
-    }
 
-    const statusByUuid = new Map<string, any>(
-      statusDocuments.map((document: any) => [
-        document.uuid,
-        document,
-      ]),
-    );
+  private applyExternalDocumentProcessingStatuses(
+    statusDocuments:
+      ExternalDocumentReadinessItem[],
+  ): void {
+    const state =
+      this.externalDocumentReadinessService
+        .applyProcessingStatuses(
+          this.externalAttachedDocuments,
+          this.externalMessages,
+          statusDocuments,
+        );
 
     this.externalAttachedDocuments =
-      this.externalAttachedDocuments.map(
-        (document: ExternalDocument) => {
-          const latest = statusByUuid.get(document.uuid);
-
-          if (!latest) {
-            return document;
-          }
-
-          return {
-            ...document,
-            status:
-              latest.status ??
-              document.status,
-            is_ai_ready:
-              typeof latest.is_ai_ready === 'boolean'
-                ? latest.is_ai_ready
-                : document.is_ai_ready,
-            processing_error:
-              latest.processing_error ??
-              document.processing_error,
-          };
-        },
-      );
+      state.documents;
 
     this.externalMessages =
-      this.externalMessages.map(
-        (message: LocalChatMessage) => ({
-          ...message,
-          attachments: (message.attachments || []).map(
-            (attachment: LocalChatAttachment) => {
-              if (!attachment.uuid) {
-                return attachment;
-              }
-
-              const latest =
-                statusByUuid.get(attachment.uuid);
-
-              if (!latest) {
-                return attachment;
-              }
-
-              return {
-                ...attachment,
-                status:
-                  latest.status ??
-                  attachment.status,
-                is_ai_ready:
-                  typeof latest.is_ai_ready === 'boolean'
-                    ? latest.is_ai_ready
-                    : attachment.is_ai_ready,
-                processing_error:
-                  latest.processing_error ??
-                  attachment.processing_error,
-              };
-            },
-          ),
-        }),
-      );
+      state.messages;
   }
 
   private syncSelectedDocuments(): void {
@@ -1899,22 +1419,14 @@ export class ExternalAiChatPageComponent implements OnDestroy {
     window.setTimeout(() => this.messageList?.scrollToBottom(), 0);
   }
 
-  private mapConversationMessage(message: AiConversationMessage): LocalChatMessage {
-    const raw = message as any;
-
-    return {
-      role: message.role === 'assistant' ? 'assistant' : 'user',
-      content: /^Uploaded\s+\d+\s+file/i.test(message.content || '') ? '' : message.content,
-      created_at: message.created_at,
-      sources: raw.retrieved_sources || raw.sources || [],
-      model_provider: raw.model_provider,
-      model_name: raw.model_name,
-      usage: {
-        prompt_tokens: raw.prompt_tokens || 0,
-        completion_tokens: raw.completion_tokens || 0,
-        total_tokens: raw.total_tokens || 0,
-      },
-      external_context: raw.metadata?.external_context,
-    };
+  private mapConversationMessage(
+    message: AiConversationMessage,
+  ): LocalChatMessage {
+    return this
+      .externalConversationMessageMapper
+      .map(
+        message,
+      );
   }
+
 }

@@ -15,6 +15,14 @@
       </div>
     </div>
 
+    <button
+      type="button"
+      class="external-ai-new"
+      (click)="startNewChat()"
+    >
+      + New Chat
+    </button>
+
     <app-conversation-list
       [conversations]="externalConversations"
       [activeConversationUuid]="activeExternalConversationUuid"
@@ -146,9 +154,15 @@
         <p>Current external conversation only</p>
       </div>
 
-      <!-- <button type="button" title="Collapse files" (click)="toggleDocumentsPanel()">
-        📁
-      </button> -->
+      <button
+        type="button"
+        class="external-documents-panel__close"
+        title="Close attached files"
+        aria-label="Close attached files"
+        (click)="toggleDocumentsPanel()"
+      >
+        ×
+      </button>
     </div>
 
     <div class="external-documents__hint">

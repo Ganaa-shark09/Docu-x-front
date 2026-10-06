@@ -19,6 +19,7 @@ export const routes: Routes = [
    */
   {
     path: 'ai',
+    canActivate: [authGuard],
     loadChildren: () =>
       import('./features/ai-chat/ai.routes').then((m) => m.AI_ROUTES),
   },

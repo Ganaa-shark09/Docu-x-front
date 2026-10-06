@@ -410,3 +410,284 @@
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+
+
+/* === DOCUX_EXTERNAL_RESPONSIVE_UI_V1 === */
+
+
+/* Four sidebar rows:
+ * brand
+ * new chat
+ * conversations
+ * exit
+ */
+.external-ai-sidebar {
+  grid-template-rows:
+    auto
+    auto
+    minmax(0, 1fr)
+    auto;
+}
+
+
+.external-ai-new {
+  width: calc(100% - 24px);
+
+  min-height: 42px;
+
+  margin: 0 12px 8px;
+  padding: 10px 12px;
+
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+
+  background: var(--app-surface);
+
+  color: var(--app-text);
+
+  cursor: pointer;
+
+  font-size: 14px;
+  font-weight: 600;
+
+  text-align: left;
+}
+
+
+.external-ai-new:hover {
+  background: var(--app-hover);
+}
+
+
+.external-ai-exit {
+  cursor: pointer;
+}
+
+
+.external-ai-exit:hover {
+  background: var(--app-hover);
+}
+
+
+/* Attached-files close control */
+.external-documents-panel__close {
+  display: grid;
+
+  width: 34px;
+  height: 34px;
+
+  flex: 0 0 34px;
+
+  place-items: center;
+
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+
+  background: var(--app-surface);
+
+  color: var(--app-text);
+
+  cursor: pointer;
+
+  font-size: 20px;
+  line-height: 1;
+}
+
+
+.external-documents-panel__close:hover {
+  background: var(--app-hover);
+}
+
+
+.external-document {
+  min-width: 0;
+}
+
+
+.external-document label {
+  min-width: 0;
+}
+
+
+.external-document label > span {
+  min-width: 0;
+}
+
+
+.external-document strong,
+.external-document small {
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+
+/* ===========================
+   LARGE TABLET
+   =========================== */
+
+@media (max-width: 1200px) {
+  .external-ai-workspace {
+    grid-template-columns:
+      280px
+      minmax(0, 1fr);
+  }
+
+  .external-ai-workspace--documents-open {
+    grid-template-columns:
+      280px
+      minmax(0, 1fr)
+      320px;
+  }
+}
+
+
+/* ===========================
+   TABLET
+   Documents become an overlay,
+   preserving useful chat width.
+   =========================== */
+
+@media (max-width: 1024px) {
+  .external-ai-workspace,
+  .external-ai-workspace--documents-open {
+    grid-template-columns:
+      260px
+      minmax(0, 1fr);
+  }
+
+  .external-documents-panel {
+    position: fixed;
+
+    top: 0;
+    right: 0;
+    bottom: 0;
+
+    z-index: 100;
+
+    width: min(360px, calc(100vw - 260px));
+
+    border-left: 1px solid var(--app-border);
+
+    box-shadow:
+      -18px 0 48px rgba(0, 0, 0, 0.3);
+  }
+
+  .external-ai-composer {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .external-composer-box,
+  .pending-files,
+  .external-ai-hint {
+    width: min(760px, 100%);
+  }
+}
+
+
+/* ===========================
+   MOBILE
+   =========================== */
+
+@media (max-width: 760px) {
+  .external-ai-workspace,
+  .external-ai-workspace--documents-open {
+    grid-template-columns:
+      minmax(0, 1fr);
+  }
+
+  .external-ai-sidebar {
+    display: none;
+  }
+
+  .external-ai-scope-tabs {
+    top: 12px;
+
+    width: min(250px, calc(100% - 116px));
+  }
+
+  .external-doc-toggle {
+    top: 12px;
+    right: 12px;
+  }
+
+  .external-ai-thread {
+    inset: 0 0 108px 0;
+  }
+
+  .external-ai-composer {
+    padding:
+      10px
+      12px
+      8px;
+  }
+
+  .external-composer-box {
+    grid-template-columns:
+      40px
+      minmax(0, 1fr)
+      40px;
+
+    border-radius: 16px;
+
+    padding: 6px;
+  }
+
+  .external-composer-plus,
+  .external-composer-send {
+    width: 34px;
+    height: 34px;
+
+    border-radius: 10px;
+  }
+
+  .external-ai-hint {
+    overflow: hidden;
+
+    margin-top: 6px;
+
+    font-size: 10px;
+
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .pending-files {
+    flex-wrap: nowrap;
+
+    overflow-x: auto;
+
+    padding-bottom: 2px;
+  }
+
+  .pending-file {
+    min-width: 190px;
+    max-width: 240px;
+  }
+
+  .external-documents-panel {
+    width: min(360px, 100vw);
+  }
+}
+
+
+@media (max-width: 480px) {
+  .external-ai-scope-tabs {
+    left: 12px;
+
+    width: calc(100% - 76px);
+
+    transform: none;
+  }
+
+  .external-ai-error,
+  .external-ai-loading {
+    width: calc(100% - 24px);
+  }
+
+  .external-documents-panel {
+    width: 100vw;
+  }
+}

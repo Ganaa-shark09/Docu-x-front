@@ -37,7 +37,36 @@ export interface DocumentListItem {
   updated_at: string;
 }
 
+export interface DocumentListRecord
+  extends Partial<
+    Omit<
+      DocumentListItem,
+      'uuid'
+    >
+  > {
+  uuid: string;
+  /*
+   * Compatibility aliases accepted from current
+   * internal/external list serializers.
+   *
+   * These belong only at the API/list boundary.
+   * Components should prefer uuid/title/file_size.
+   */
+  id?: string;
+  document_title?: string;
+  filename?: string;
+  file_name?: string;
+  size?: number;
+  processing_status?: string;
+  ai_ready?: boolean;
+}
+
+
 export interface DocumentDetail extends DocumentListItem {
+  file?: string | null;
+  file_url?: string | null;
+  download_url?: string | null;
+  document_url?: string | null;
   versions?: DocumentVersion[];
   access_policies?: DocumentAccessPolicy[];
   processing_jobs?: DocumentProcessingJob[];
@@ -86,6 +115,14 @@ export interface DocumentFilters {
   ordering?: string;
   page?: number;
 }
+
+export interface DocumentRetryResponse {
+  detail?: string;
+  status?: string;
+  task_id?: string;
+  document_uuid?: string;
+}
+
 
 export interface DepartmentOption {
   uuid: string;

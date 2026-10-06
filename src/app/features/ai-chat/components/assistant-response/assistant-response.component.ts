@@ -2,7 +2,10 @@ import { CommonModule } from '@angular/common';
 import { Component, Input } from '@angular/core';
 import { marked, type Token, Tokens } from 'marked';
 
-import { LocalChatMessage } from '../../models/ai-chat.model';
+import {
+  AiSource,
+  LocalChatMessage,
+} from '../../models/ai-chat.model';
 
 type AssistantBlock =
   | { id: string; kind: 'html'; html: string }
@@ -120,11 +123,11 @@ export class AssistantResponseComponent {
     return this.copiedBlockId === blockId;
   }
 
-  sourceType(source: any): string {
+  sourceType(source: AiSource): string {
     return source?.source_type || source?.type || 'source';
   }
 
-  sourceTitle(source: any): string {
+  sourceTitle(source: AiSource): string {
     return source?.title ||
       source?.document_title ||
       source?.file_name ||
@@ -132,7 +135,7 @@ export class AssistantResponseComponent {
       'Reference';
   }
 
-  sourceSnippet(source: any): string {
+  sourceSnippet(source: AiSource): string {
     return this.shortenSnippet(
       source?.snippet ||
       source?.content_preview ||
@@ -142,7 +145,7 @@ export class AssistantResponseComponent {
     );
   }
 
-  sourceUrl(source: any): string | null {
+  sourceUrl(source: AiSource): string | null {
     return source?.url || source?.web_url || null;
   }
 

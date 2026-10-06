@@ -1,6 +1,11 @@
 import { NgFor, NgIf } from '@angular/common';
 import { Component, Input } from '@angular/core';
 
+import {
+  AiFirewallContextItem,
+  AiFirewallMetadata,
+} from '../../models/ai-chat.model';
+
 @Component({
   selector: 'app-firewall-metadata',
   standalone: true,
@@ -9,7 +14,7 @@ import { Component, Input } from '@angular/core';
   styleUrl: './firewall-metadata.component.scss',
 })
 export class FirewallMetadataComponent {
-  @Input() firewall: any;
+  @Input() firewall: AiFirewallMetadata | null = null;
 
   get allowedCount(): number {
     return Number(this.firewall?.allowed_count ?? this.firewall?.allowed ?? 0);
@@ -27,7 +32,7 @@ export class FirewallMetadataComponent {
     return this.firewall?.checked_at || this.firewall?.created_at || '';
   }
 
-  get blockedItems(): any[] {
+  get blockedItems(): AiFirewallContextItem[] {
     const items =
       this.firewall?.blocked_items ||
       this.firewall?.blocked_sources ||
@@ -37,7 +42,7 @@ export class FirewallMetadataComponent {
     return Array.isArray(items) ? items : [];
   }
 
-  get allowedItems(): any[] {
+  get allowedItems(): AiFirewallContextItem[] {
     const items =
       this.firewall?.allowed_items ||
       this.firewall?.allowed_sources ||
@@ -47,7 +52,7 @@ export class FirewallMetadataComponent {
     return Array.isArray(items) ? items : [];
   }
 
-  itemTitle(item: any): string {
+  itemTitle(item: AiFirewallContextItem): string {
     return item?.title ||
       item?.document_title ||
       item?.filename ||
@@ -56,7 +61,7 @@ export class FirewallMetadataComponent {
       'Source';
   }
 
-  itemReason(item: any): string {
+  itemReason(item: AiFirewallContextItem): string {
     return item?.reason ||
       item?.decision_reason ||
       item?.message ||

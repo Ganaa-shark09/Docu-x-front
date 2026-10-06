@@ -17,6 +17,7 @@ export interface ExternalAiChatRequest {
   use_web: boolean;
   top_k?: number;
   document_uuids?: string[];
+  document_scope_mode?: 'selected' | 'conversation';
 }
 
 export interface AiSource {
@@ -32,6 +33,14 @@ export interface AiSource {
   title?: string;
   snippet?: string;
   url?: string;
+
+  /*
+   * Compatibility aliases returned by some
+   * document/web source serializers.
+   */
+  type?: string;
+  file_name?: string;
+  web_url?: string;
 
   document_uuid?: string;
   document_title?: string;
@@ -86,6 +95,20 @@ export interface AiFirewallPolicyRecord {
   sensitivity_label?: string;
 }
 
+export interface AiFirewallContextItem {
+  title?: string;
+  document_title?: string;
+  filename?: string;
+  file_name?: string;
+  source_name?: string;
+
+  reason?: string;
+  decision_reason?: string;
+  message?: string;
+  status?: string;
+}
+
+
 export interface AiFirewallMetadata {
   policy_action?: AiFirewallPolicyAction;
   action?: AiFirewallPolicyAction;
@@ -100,6 +123,25 @@ export interface AiFirewallMetadata {
   redacted_count?: number;
   blocked_count?: number;
 
+  /*
+   * Compatibility fields from older/current
+   * firewall response serializers.
+   */
+  allowed?: number;
+  redacted?: number;
+  blocked?: number;
+
+  checked_at?: string;
+  created_at?: string;
+
+  blocked_items?: AiFirewallContextItem[];
+  blocked_sources?: AiFirewallContextItem[];
+  blocked_documents?: AiFirewallContextItem[];
+
+  allowed_items?: AiFirewallContextItem[];
+  allowed_sources?: AiFirewallContextItem[];
+  allowed_documents?: AiFirewallContextItem[];
+
   sensitivity_label?: string;
   blocked_reason?: string;
   reason?: string;
@@ -111,12 +153,14 @@ export interface AiChatResponse {
   conversation_uuid: string;
   message_uuid?: string;
   answer: string;
+  detail?: string;
   sources?: AiSource[];
   model_provider?: string;
   model_name?: string;
   usage?: AiUsage;
   firewall?: AiFirewallMetadata | null;
   external_context?: ExternalContext;
+  document_context?: AiDocumentContext;
   attachments?: LocalChatAttachment[];
 }
 
@@ -135,9 +179,18 @@ export interface AiConversationMessage {
   created_at: string;
   retrieved_sources?: AiSource[];
   sources?: AiSource[];
+
+  document_context?: AiDocumentContext;
+  firewall?: AiFirewallMetadata | null;
+  external_context?: ExternalContext;
+
   metadata?: {
     firewall_enforcement?: AiFirewallMetadata | null;
     external_context?: ExternalContext;
+    document_context?: AiDocumentContext;
+    internal_document_context?: AiDocumentContext;
+    requested_document_uuids?: string[];
+    document_scope_mode?: 'selected' | 'conversation' | 'none' | string;
   };
   model_provider?: string;
   model_name?: string;
@@ -191,7 +244,7 @@ export interface ExternalDocument {
   is_indexed?: boolean;
   processing_error?: string;
   created_at?: string;
-  updated_at?: string;
+  updated_at?: string | null;
   file_size?: number;
   mime_type?: string;
 
@@ -234,6 +287,7 @@ export interface ExternalAttachmentsProcessingResponse
   status: 'attachments_processing';
   detail: string;
   retry_after_ms: number;
+  pending_document_uuids?: string[];
 }
 
 export type ExternalAiChatResponse =

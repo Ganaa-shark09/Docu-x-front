@@ -7,6 +7,10 @@ import { Subscription, finalize } from 'rxjs';
 import { DocumentUploadFormComponent } from '../components/document-upload-form.component';
 import { DocumentsService } from '../services/documents.service';
 import {
+  DepartmentOption,
+  DocumentListRecord,
+} from '../models/document.model';
+import {
   DocumentProcessingStore,
 } from '../../../core/realtime/document-processing.store';
 
@@ -31,8 +35,8 @@ export class DocumentListPageComponent implements OnInit, OnDestroy {
 
   private processingStatesSubscription?: Subscription;
 
-  documents: any[] = [];
-  departments: any[] = [];
+  documents: DocumentListRecord[] = [];
+  departments: DepartmentOption[] = [];
 
   isLoading = false;
   isUploadOpen = false;
@@ -122,10 +126,9 @@ export class DocumentListPageComponent implements OnInit, OnDestroy {
           let changed = false;
 
           const updatedDocuments =
-            this.documents.map((document: any) => {
+            this.documents.map((document) => {
               const uuid =
-                document?.uuid ||
-                document?.id;
+                document.uuid;
 
               if (!uuid) {
                 return document;
@@ -217,14 +220,7 @@ export class DocumentListPageComponent implements OnInit, OnDestroy {
     });
 
     this.documentsService.getDocuments(this.scope, filters).subscribe({
-      next: (response: any) => {
-        const documents = Array.isArray(response)
-          ? response
-          : response?.results ||
-            response?.documents ||
-            response?.data ||
-            response?.items ||
-            [];
+      next: (documents) => {
 
         this.documents = documents;
 
@@ -237,18 +233,16 @@ export class DocumentListPageComponent implements OnInit, OnDestroy {
         this.processingStore.subscribeDocuments(
           documents
             .filter(
-              (document: any) =>
+              (document) =>
                 !!(
-                  document?.uuid ||
-                  document?.id
+                  document.uuid
                 ),
             )
             .map(
-              (document: any) => ({
+              (document) => ({
                 ...document,
                 uuid:
-                  document.uuid ||
-                  document.id,
+                  document.uuid,
               }),
             ),
         );
@@ -257,7 +251,7 @@ export class DocumentListPageComponent implements OnInit, OnDestroy {
         this.errorMessage = '';
         this.cdr.detectChanges();
       },
-      error: (error: any) => {
+      error: (error) => {
         console.error('Documents load error:', error);
         this.documents = [];
         this.isLoading = false;
@@ -282,12 +276,12 @@ export class DocumentListPageComponent implements OnInit, OnDestroy {
     this.loadDocuments();
   }
 
-  openDocument(document: any): void {
+  openDocument(document: DocumentListRecord): void {
     if (this.isExternalScope) {
       return;
     }
 
-    const uuid = document?.uuid || document?.id;
+    const uuid = document.uuid;
 
     if (!uuid) {
       this.errorMessage = 'Document id is missing. Unable to open details.';
@@ -298,16 +292,18 @@ export class DocumentListPageComponent implements OnInit, OnDestroy {
     this.router.navigate(['/documents', 'detail', uuid]);
   }
 
-  getDocumentTitle(document: any): string {
+  getDocumentTitle(document: DocumentListRecord): string {
     return document.title || document.document_title || document.original_filename || document.filename || 'Untitled document';
   }
 
-  getDocumentFilename(document: any): string {
+  getDocumentFilename(document: DocumentListRecord): string {
     return document.original_filename || document.filename || document.file_name || 'Document';
   }
 
-  getDocumentSize(document: any): string {
-    const size = document.file_size || document.size;
+  getDocumentSize(document: DocumentListRecord): string {
+    const size =
+      document.file_size ??
+      document.size;
 
     if (!size) {
       return '';
@@ -320,7 +316,7 @@ export class DocumentListPageComponent implements OnInit, OnDestroy {
     return `${(size / 1024).toFixed(2)} KB`;
   }
 
-  getDocumentStatus(document: any): string {
+  getDocumentStatus(document: DocumentListRecord): string {
     const stage =
       String(
         document.processing_stage || '',
@@ -372,7 +368,7 @@ export class DocumentListPageComponent implements OnInit, OnDestroy {
   }
 
   getDocumentProcessingProgress(
-    document: any,
+    document: DocumentListRecord,
   ): number {
     const progress =
       Number(
@@ -385,7 +381,7 @@ export class DocumentListPageComponent implements OnInit, OnDestroy {
     );
   }
 
-  getAiStatus(document: any): string {
+  getAiStatus(document: DocumentListRecord): string {
     if (document.ai_ready === true || document.is_indexed === true || document.is_ai_ready === true) {
       return 'Ready';
     }
