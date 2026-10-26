@@ -3,7 +3,7 @@
   grid-template-columns: 320px minmax(0, 1fr);
   height: 100vh;
   overflow: hidden;
-  background: var(--app-bg);
+  background: var(--app-workspace);
   color: var(--app-text);
 }
 
@@ -11,7 +11,7 @@
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr) auto;
   border-right: 1px solid var(--app-border);
-  background: var(--app-sidebar-bg, var(--app-surface));
+  background: var(--app-sidebar);
   padding: 18px 14px;
 }
 
@@ -82,7 +82,7 @@
   width: min(300px, calc(100% - 120px));
   grid-template-columns: 1fr 1fr;
   border: 1px solid var(--app-border);
-  border-radius: 999px;
+  border-radius: 12px;
   background: var(--app-surface);
   padding: 5px;
   transform: translateX(-50%);
@@ -91,7 +91,7 @@
 .ai-scope-tabs__item {
   min-height: 40px;
   border: 0;
-  border-radius: 999px;
+  border-radius: 12px;
   background: transparent;
   color: var(--app-text-muted);
   cursor: pointer;
@@ -113,7 +113,7 @@
   height: 48px;
   place-items: center;
   border: 1px solid var(--app-border);
-  border-radius: 999px;
+  border-radius: 12px;
   background: var(--app-surface);
   color: var(--app-text);
   cursor: pointer;
@@ -127,14 +127,14 @@
   min-width: 22px;
   height: 22px;
   place-items: center;
-  border-radius: 999px;
+  border-radius: 12px;
   background: var(--app-primary);
   color: var(--app-on-primary);
   font-size: 11px;
 }
 
 .internal-doc-toggle--active {
-  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.14);
+  box-shadow: 0 0 0 4px rgb(var(--app-accent-rgb) / 0.14);
 }
 
 .internal-doc-panel {
@@ -174,7 +174,7 @@
 
 .internal-doc-panel button {
   border: 1px solid var(--app-border);
-  border-radius: 999px;
+  border-radius: 12px;
   background: var(--app-surface-soft);
   color: var(--app-text);
   cursor: pointer;
@@ -195,7 +195,7 @@
 }
 
 .internal-doc-scope__badge {
-  border-radius: 999px;
+  border-radius: 12px;
   padding: 6px 10px;
   font-size: 12px;
   font-weight: 700;
@@ -206,7 +206,7 @@
 }
 
 .internal-doc-scope__badge--selected {
-  background: rgba(99, 102, 241, 0.18);
+  background: rgb(var(--app-accent-rgb) / 0.18);
 }
 
 .internal-doc-scope__hint {
@@ -225,13 +225,13 @@
   min-height: 40px;
   border: 1px solid var(--app-border);
   border-radius: 12px;
-  background: var(--app-bg);
+  background: var(--app-workspace);
   color: var(--app-text);
   padding: 0 12px;
 }
 
 .internal-doc-search__ghost {
-  background: transparent !important;
+  background: transparent;
 }
 
 .internal-doc-selected {
@@ -247,8 +247,8 @@
   align-items: center;
   gap: 8px;
   border: 1px solid var(--app-border);
-  border-radius: 999px;
-  background: var(--app-bg);
+  border-radius: 12px;
+  background: var(--app-workspace);
   padding: 5px 6px 5px 10px;
 }
 
@@ -295,24 +295,24 @@
   gap: 10px;
   border: 1px solid var(--app-border);
   border-radius: 16px;
-  background: var(--app-bg);
+  background: var(--app-workspace);
   padding: 10px;
 }
 
 .internal-doc-row--selected {
-  border-color: rgba(99, 102, 241, 0.45);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+  border-color: rgb(var(--app-accent-rgb) / 0.45);
+  box-shadow: 0 0 0 3px rgb(var(--app-accent-rgb) / 0.12);
 }
 
 .internal-doc-row__select {
-  display: grid !important;
+  display: grid;
   grid-template-columns: 28px minmax(0, 1fr);
   gap: 10px;
   width: 100%;
-  min-height: 0 !important;
-  border: 0 !important;
-  background: transparent !important;
-  padding: 0 !important;
+  min-height: 0;
+  border: 0;
+  background: transparent;
+  padding: 0;
   text-align: left;
 }
 
@@ -322,7 +322,7 @@
   height: 24px;
   place-items: center;
   border: 1px solid var(--app-border);
-  border-radius: 999px;
+  border-radius: 12px;
   color: var(--app-primary);
   font-weight: 800;
 }
@@ -411,7 +411,7 @@
   max-width: min(760px, calc(100% - 80px));
   transform: translateX(50%);
   border: 1px solid var(--app-border);
-  border-radius: 999px;
+  border-radius: 12px;
   background: var(--app-surface);
   padding: 6px 10px;
   color: var(--app-text-muted);
@@ -424,7 +424,7 @@
 
 .internal-scope-bar button {
   border: 0;
-  border-radius: 999px;
+  border-radius: 12px;
   background: var(--app-surface-soft);
   color: var(--app-text);
   cursor: pointer;
@@ -488,7 +488,7 @@ app-chat-input {
   width: 34px;
   min-height: 34px;
   place-items: center;
-  padding: 0 !important;
+  padding: 0;
   font-size: 20px;
   line-height: 1;
 }
@@ -511,15 +511,15 @@ app-chat-input {
 .internal-doc-row__menu button {
   width: 100%;
   justify-content: flex-start;
-  border: 0 !important;
-  border-radius: 10px !important;
-  background: transparent !important;
-  padding: 0 10px !important;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  padding: 0 10px;
   text-align: left;
 }
 
 .internal-doc-row__menu button:hover {
-  background: var(--app-surface-soft) !important;
+  background: var(--app-surface-soft);
 }
 
 .internal-doc-preview {
@@ -561,7 +561,7 @@ app-chat-input {
 .internal-doc-preview__unsupported button {
   min-height: 34px;
   border: 1px solid var(--app-border);
-  border-radius: 999px;
+  border-radius: 12px;
   background: var(--app-surface-soft);
   color: var(--app-text);
   cursor: pointer;
@@ -618,61 +618,114 @@ app-chat-input {
 
 /* Internal AI document row action menu refinement */
 .internal-doc-row__menu-button {
-  width: 28px !important;
-  min-width: 28px !important;
-  height: 32px !important;
-  min-height: 32px !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  color: var(--app-text-muted) !important;
-  padding: 0 !important;
-  font-size: 24px !important;
-  line-height: 1 !important;
+  width: 28px;
+  min-width: 28px;
+  height: 32px;
+  min-height: 32px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--app-text-muted);
+  padding: 0;
+  font-size: 24px;
+  line-height: 1;
 }
 
 .internal-doc-row__menu-button:hover {
-  background: transparent !important;
-  color: var(--app-text) !important;
+  background: transparent;
+  color: var(--app-text);
 }
 
 .internal-doc-row__menu-button:focus-visible {
   outline: 1px solid var(--app-border);
   outline-offset: 2px;
-  border-radius: 6px !important;
+  border-radius: 6px;
 }
 
 /* Clean vertical three-dot action button override */
 .internal-doc-row__menu-button {
-  width: 24px !important;
-  min-width: 24px !important;
-  height: 32px !important;
-  min-height: 32px !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  color: var(--app-text-muted) !important;
-  padding: 0 !important;
-  font-size: 24px !important;
-  line-height: 1 !important;
+  width: 24px;
+  min-width: 24px;
+  height: 32px;
+  min-height: 32px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--app-text-muted);
+  padding: 0;
+  font-size: 24px;
+  line-height: 1;
 }
 
 .internal-doc-row__menu-button:hover {
-  background: transparent !important;
-  color: var(--app-text) !important;
+  background: transparent;
+  color: var(--app-text);
 }
 
 .internal-doc-row__menu-button:focus-visible {
   outline: 1px solid var(--app-border);
   outline-offset: 2px;
-  border-radius: 6px !important;
+  border-radius: 6px;
 }
-
 
 /* === DOCUX_UNIFIED_AI_UI_V1 === */
 
+.ai-chat-main > app-chat-message-list {
+  top: 160px;
+}
+
+.hr-policy-controls > .ai-chat-error,
+.hr-policy-controls > .ai-chat-loading {
+  position: static;
+  transform: none;
+  width: auto;
+  margin: 0 0 0.5rem;
+  box-sizing: border-box;
+}
+.hr-policy-controls {
+  color: var(--app-text);
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  position: absolute;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+  width: min(900px, calc(100% - 48px));
+  box-sizing: border-box;
+
+  padding: 0.75rem;
+  max-height: 40vh;
+  overflow: auto;
+
+  label {
+    display: grid;
+    gap: 0.25rem;
+  }
+  select,
+  input {
+    box-sizing: border-box;
+
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--app-border);
+    border-radius: 8px;
+    color: var(--app-text);
+    background: var(--app-surface-soft);
+  }
+  summary {
+    cursor: pointer;
+    padding: 0.5rem 0;
+  }
+  .hr-policy-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
+    gap: 0.5rem;
+  }
+}
 :host {
   display: block;
   width: 100%;
@@ -701,10 +754,9 @@ app-chat-input {
 
   overflow: hidden;
 
-  background: var(--app-bg);
+  background: var(--app-workspace);
   color: var(--app-text);
 }
-
 
 /* ===========================
    SIDEBAR
@@ -725,10 +777,8 @@ app-chat-input {
 
   border-right: 1px solid var(--app-border);
 
-  background:
-    var(--app-sidebar, var(--app-sidebar-bg, var(--app-surface)));
+  background: var(--app-sidebar, var(--app-sidebar-bg, var(--app-surface)));
 }
-
 
 .ai-chat-sidebar__header {
   display: flex;
@@ -740,7 +790,6 @@ app-chat-input {
   margin: 0;
   padding: 14px 16px;
 }
-
 
 .ai-chat-sidebar__avatar {
   display: grid;
@@ -761,7 +810,6 @@ app-chat-input {
   font-weight: 700;
 }
 
-
 .ai-chat-sidebar__header h1 {
   margin: 0;
 
@@ -770,7 +818,6 @@ app-chat-input {
   line-height: 1.3;
 }
 
-
 .ai-chat-sidebar__header p {
   margin: 2px 0 0;
 
@@ -778,7 +825,6 @@ app-chat-input {
 
   font-size: 12px;
 }
-
 
 .ai-chat-sidebar__new {
   width: calc(100% - 24px);
@@ -803,17 +849,14 @@ app-chat-input {
   text-align: left;
 }
 
-
 .ai-chat-sidebar__new:hover {
   background: var(--app-hover);
 }
-
 
 .ai-chat-sidebar__footer {
   border-top: 1px solid var(--app-border);
   padding: 12px;
 }
-
 
 .ai-chat-sidebar__exit {
   width: 100%;
@@ -834,11 +877,9 @@ app-chat-input {
   font-weight: 500;
 }
 
-
 .ai-chat-sidebar__exit:hover {
   background: var(--app-hover);
 }
-
 
 /* ===========================
    MAIN CHAT
@@ -855,9 +896,8 @@ app-chat-input {
 
   overflow: hidden;
 
-  background: var(--app-bg);
+  background: var(--app-workspace);
 }
-
 
 /*
  * Same switch control used visually by External AI.
@@ -880,13 +920,12 @@ app-chat-input {
   transform: translateX(-50%);
 
   border: 1px solid var(--app-border);
-  border-radius: 999px;
+  border-radius: 12px;
 
   background: var(--app-surface);
 
   padding: 4px;
 }
-
 
 .ai-scope-tabs::before {
   content: '';
@@ -901,18 +940,16 @@ app-chat-input {
 
   width: calc(50% - 6px);
 
-  border-radius: 999px;
+  border-radius: 12px;
 
   background: var(--app-primary);
 
   transition: left 180ms ease;
 }
 
-
 .ai-scope-tabs--switching-right::before {
   left: calc(50% + 2px);
 }
-
 
 .ai-scope-tabs__item {
   position: relative;
@@ -921,7 +958,7 @@ app-chat-input {
   min-height: unset;
 
   border: 0;
-  border-radius: 999px;
+  border-radius: 12px;
 
   background: transparent;
 
@@ -935,12 +972,10 @@ app-chat-input {
   font-weight: 500;
 }
 
-
 .ai-scope-tabs__item.is-active {
   background: transparent;
   color: var(--app-on-primary);
 }
-
 
 /* ===========================
    DOCUMENT BUTTON
@@ -962,7 +997,7 @@ app-chat-input {
   place-items: center;
 
   border: 1px solid var(--app-border);
-  border-radius: 999px;
+  border-radius: 12px;
 
   background: var(--app-surface);
 
@@ -973,11 +1008,9 @@ app-chat-input {
   font-size: 18px;
 }
 
-
 .internal-doc-toggle:hover {
   background: var(--app-hover);
 }
-
 
 .internal-doc-toggle strong {
   position: absolute;
@@ -992,7 +1025,7 @@ app-chat-input {
 
   place-items: center;
 
-  border-radius: 999px;
+  border-radius: 12px;
 
   background: var(--app-primary);
   color: var(--app-on-primary);
@@ -1001,7 +1034,6 @@ app-chat-input {
 
   font-size: 10px;
 }
-
 
 /* ===========================
    MESSAGE THREAD
@@ -1020,7 +1052,6 @@ app-chat-message-list {
   overflow: hidden;
 }
 
-
 /* ===========================
    INTERNAL COMPOSER
    =========================== */
@@ -1037,7 +1068,6 @@ app-chat-input {
 
   transform: translateX(50%);
 }
-
 
 /*
  * Scope chip sits directly above the composer,
@@ -1061,7 +1091,7 @@ app-chat-input {
   transform: translateX(50%);
 
   border: 1px solid var(--app-border);
-  border-radius: 999px;
+  border-radius: 12px;
 
   background: var(--app-surface);
 
@@ -1074,7 +1104,6 @@ app-chat-input {
   white-space: nowrap;
 }
 
-
 .internal-scope-bar strong {
   overflow: hidden;
 
@@ -1086,10 +1115,9 @@ app-chat-input {
   white-space: nowrap;
 }
 
-
 .internal-scope-bar button {
   border: 0;
-  border-radius: 999px;
+  border-radius: 12px;
 
   background: var(--app-surface-soft);
   color: var(--app-text);
@@ -1100,7 +1128,6 @@ app-chat-input {
 
   font-size: 11px;
 }
-
 
 /* ===========================
    ERRORS / LOADING
@@ -1119,7 +1146,6 @@ app-chat-input {
   font-size: 13px;
 }
 
-
 /* ===========================
    DOCUMENT PANEL REFINEMENT
    =========================== */
@@ -1135,19 +1161,13 @@ app-chat-input {
   border-radius: 16px;
 }
 
-
 .internal-doc-preview {
-  inset:
-    72px
-    16px
-    118px
-    auto;
+  inset: 72px 16px 118px auto;
 
   width: min(760px, calc(100% - 32px));
 
   border-radius: 16px;
 }
-
 
 /* ===========================
    RESPONSIVE TABLET
@@ -1158,7 +1178,6 @@ app-chat-input {
     grid-template-columns: 280px minmax(0, 1fr);
   }
 }
-
 
 @media (max-width: 1024px) {
   .ai-chat-workspace {
@@ -1180,16 +1199,11 @@ app-chat-input {
   }
 
   .internal-doc-preview {
-    inset:
-      72px
-      12px
-      118px
-      12px;
+    inset: 72px 12px 118px 12px;
 
     width: auto;
   }
 }
-
 
 /* ===========================
    RESPONSIVE MOBILE
@@ -1251,11 +1265,7 @@ app-chat-input {
   }
 
   .internal-doc-preview {
-    inset:
-      66px
-      8px
-      112px
-      8px;
+    inset: 66px 8px 112px 8px;
 
     width: auto;
   }
@@ -1268,7 +1278,6 @@ app-chat-input {
     grid-column: 1 / -1;
   }
 }
-
 
 @media (max-width: 480px) {
   .ai-scope-tabs {
@@ -1336,7 +1345,6 @@ app-chat-input {
     0 0 0 1px rgba(255, 255, 255, 0.02);
 }
 
-
 /* =========================
    HEADER
    ========================= */
@@ -1357,11 +1365,9 @@ app-chat-input {
   background: var(--app-surface);
 }
 
-
 .internal-doc-panel__header > div:first-child {
   min-width: 0;
 }
-
 
 .internal-doc-panel__header h2 {
   margin: 0;
@@ -1370,7 +1376,6 @@ app-chat-input {
   font-weight: 650;
   line-height: 1.35;
 }
-
 
 .internal-doc-panel__header p {
   margin: 4px 0 0;
@@ -1381,7 +1386,6 @@ app-chat-input {
   line-height: 1.4;
 }
 
-
 .internal-doc-panel__actions {
   display: flex;
   align-items: center;
@@ -1391,39 +1395,35 @@ app-chat-input {
   gap: 7px;
 }
 
-
 .internal-doc-panel__clear {
-  min-height: 34px !important;
+  min-height: 34px;
 
-  padding: 0 12px !important;
+  padding: 0 12px;
 
   font-size: 12px;
 }
 
-
 .internal-doc-panel__close {
-  display: grid !important;
+  display: grid;
 
   width: 34px;
   height: 34px;
-  min-height: 34px !important;
+  min-height: 34px;
 
   place-items: center;
 
-  padding: 0 !important;
+  padding: 0;
 
-  border-radius: 10px !important;
+  border-radius: 10px;
 
   font-size: 20px;
   line-height: 1;
 }
 
-
 .internal-doc-panel__close:hover,
 .internal-doc-panel__clear:hover:not(:disabled) {
   background: var(--app-hover);
 }
-
 
 /* =========================
    CURRENT SCOPE
@@ -1443,7 +1443,6 @@ app-chat-input {
   border-bottom: 1px solid var(--app-border);
 }
 
-
 .internal-doc-scope__badge {
   flex: 0 0 auto;
 
@@ -1451,7 +1450,6 @@ app-chat-input {
 
   font-size: 11px;
 }
-
 
 .internal-doc-scope__hint {
   min-width: 0;
@@ -1461,7 +1459,6 @@ app-chat-input {
   font-size: 11px;
   line-height: 1.4;
 }
-
 
 /* =========================
    SEARCH
@@ -1484,7 +1481,6 @@ app-chat-input {
   border-bottom: 1px solid var(--app-border);
 }
 
-
 .internal-doc-search input {
   width: 100%;
   min-width: 0;
@@ -1493,18 +1489,13 @@ app-chat-input {
   border-radius: 10px;
 
   font-size: 13px;
-
-  outline: none;
 }
-
 
 .internal-doc-search input:focus {
   border-color: var(--app-primary);
 
-  box-shadow:
-    0 0 0 3px rgba(99, 102, 241, 0.12);
+  box-shadow: 0 0 0 3px rgb(var(--app-accent-rgb) / 0.12);
 }
-
 
 .internal-doc-search button {
   min-height: 38px;
@@ -1515,7 +1506,6 @@ app-chat-input {
 
   font-size: 12px;
 }
-
 
 /* =========================
    SELECTED DOCUMENT CHIPS
@@ -1539,48 +1529,36 @@ app-chat-input {
   border-bottom: 1px solid var(--app-border);
 
   scrollbar-width: thin;
-  scrollbar-color:
-    var(--app-border)
-    transparent;
+  scrollbar-color: var(--app-border) transparent;
 }
-
 
 .internal-doc-selected::-webkit-scrollbar {
   width: 7px;
 }
 
-
 .internal-doc-selected::-webkit-scrollbar-track {
   background: transparent;
 }
 
-
 .internal-doc-selected::-webkit-scrollbar-thumb {
-  border-radius: 999px;
+  border-radius: 12px;
 
   background: var(--app-border);
 }
 
-
 .internal-doc-chip {
   max-width: 220px;
 
-  padding:
-    4px
-    5px
-    4px
-    9px;
+  padding: 4px 5px 4px 9px;
 
-  border-radius: 999px;
+  border-radius: 12px;
 }
-
 
 .internal-doc-chip span {
   min-width: 0;
 
   font-size: 11px;
 }
-
 
 .internal-doc-chip button {
   width: 22px;
@@ -1589,7 +1567,6 @@ app-chat-input {
 
   padding: 0;
 }
-
 
 /* =========================
    ERROR / LOADING
@@ -1600,7 +1577,6 @@ app-chat-input {
 
   margin: 10px 16px 0;
 }
-
 
 .internal-doc-loading,
 .internal-doc-empty {
@@ -1620,7 +1596,6 @@ app-chat-input {
 
   text-align: center;
 }
-
 
 /* =========================
    DOCUMENT LIST
@@ -1643,47 +1618,36 @@ app-chat-input {
 
   overscroll-behavior: contain;
 
-  padding:
-    12px
-    10px
-    12px
-    16px;
+  padding: 12px 10px 12px 16px;
 
   scrollbar-gutter: stable;
 
   scrollbar-width: thin;
-  scrollbar-color:
-    var(--app-border)
-    transparent;
+  scrollbar-color: var(--app-border) transparent;
 }
-
 
 .internal-doc-list::-webkit-scrollbar {
   width: 8px;
 }
 
-
 .internal-doc-list::-webkit-scrollbar-track {
   background: transparent;
 }
 
-
 .internal-doc-list::-webkit-scrollbar-thumb {
   border: 2px solid transparent;
-  border-radius: 999px;
+  border-radius: 12px;
 
   background: var(--app-border);
 
   background-clip: padding-box;
 }
 
-
 .internal-doc-list::-webkit-scrollbar-thumb:hover {
   background: var(--app-text-muted);
 
   background-clip: padding-box;
 }
-
 
 /* =========================
    DOCUMENT CARD
@@ -1705,17 +1669,15 @@ app-chat-input {
   border: 1px solid var(--app-border);
   border-radius: 13px;
 
-  background: var(--app-bg);
+  background: var(--app-workspace);
 
   padding: 10px;
 
   transition:
     border-color 140ms ease,
     background 140ms ease,
-    box-shadow 140ms ease,
-    transform 140ms ease;
+    color 140ms ease;
 }
-
 
 .internal-doc-row:hover {
   border-color: rgba(148, 163, 184, 0.42);
@@ -1723,20 +1685,18 @@ app-chat-input {
   background: var(--app-hover);
 }
 
-
 .internal-doc-row--selected {
-  border-color: rgba(99, 102, 241, 0.62);
+  border-color: rgb(var(--app-accent-rgb) / 0.62);
 
   box-shadow:
     inset 3px 0 0 var(--app-primary),
-    0 0 0 1px rgba(99, 102, 241, 0.08);
+    0 0 0 1px rgb(var(--app-accent-rgb) / 0.08);
 
   transform: none;
 }
 
-
 .internal-doc-row__select {
-  display: grid !important;
+  display: grid;
 
   grid-template-columns:
     28px
@@ -1749,7 +1709,6 @@ app-chat-input {
   min-width: 0;
 }
 
-
 .internal-doc-row__check {
   width: 24px;
   height: 24px;
@@ -1759,18 +1718,15 @@ app-chat-input {
   font-size: 12px;
 }
 
-
 .internal-doc-row--selected .internal-doc-row__check {
   border-color: var(--app-primary);
 
-  background: rgba(99, 102, 241, 0.15);
+  background: rgb(var(--app-accent-rgb) / 0.15);
 }
-
 
 .internal-doc-row__body {
   min-width: 0;
 }
-
 
 .internal-doc-row__body strong {
   display: block;
@@ -1784,7 +1740,6 @@ app-chat-input {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
 
 .internal-doc-row__body small,
 .internal-doc-row__body span {
@@ -1803,7 +1758,6 @@ app-chat-input {
   white-space: nowrap;
 }
 
-
 .internal-doc-row__actions {
   position: relative;
 
@@ -1813,17 +1767,15 @@ app-chat-input {
   justify-content: flex-end;
 }
 
-
 .internal-doc-row__menu-button {
-  width: 30px !important;
-  height: 30px !important;
-  min-height: 30px !important;
+  width: 30px;
+  height: 30px;
+  min-height: 30px;
 
-  padding: 0 !important;
+  padding: 0;
 
-  border-radius: 9px !important;
+  border-radius: 9px;
 }
-
 
 /* =========================
    PAGINATION
@@ -1853,11 +1805,9 @@ app-chat-input {
   font-size: 11px;
 }
 
-
 .internal-doc-pagination > span {
   white-space: nowrap;
 }
-
 
 .internal-doc-pagination div {
   display: flex;
@@ -1866,7 +1816,6 @@ app-chat-input {
 
   gap: 6px;
 }
-
 
 .internal-doc-pagination button {
   min-height: 30px;
@@ -1877,7 +1826,6 @@ app-chat-input {
 
   font-size: 11px;
 }
-
 
 /* =========================
    TABLET
@@ -1892,7 +1840,6 @@ app-chat-input {
     width: min(480px, calc(100% - 24px));
   }
 }
-
 
 /* =========================
    SMALL TABLET / MOBILE
@@ -1909,75 +1856,50 @@ app-chat-input {
     border-radius: 16px;
   }
 
-
   .internal-doc-panel__header {
-    padding:
-      13px
-      14px
-      12px;
+    padding: 13px 14px 12px;
   }
-
 
   .internal-doc-panel__header h2 {
     font-size: 15px;
   }
 
-
   .internal-doc-scope {
-    padding:
-      9px
-      14px;
+    padding: 9px 14px;
   }
-
 
   .internal-doc-search {
     grid-template-columns:
       minmax(0, 1fr)
       auto;
 
-    padding:
-      10px
-      14px;
+    padding: 10px 14px;
   }
-
 
   .internal-doc-search__ghost {
     grid-column: 1 / -1;
 
-    min-height: 32px !important;
+    min-height: 32px;
   }
-
 
   .internal-doc-selected {
     max-height: 76px;
 
-    padding:
-      8px
-      14px;
+    padding: 8px 14px;
   }
-
 
   .internal-doc-chip {
     max-width: min(210px, 100%);
   }
 
-
   .internal-doc-list {
-    padding:
-      10px
-      7px
-      10px
-      12px;
+    padding: 10px 7px 10px 12px;
   }
-
 
   .internal-doc-pagination {
-    padding:
-      9px
-      12px;
+    padding: 9px 12px;
   }
 }
-
 
 /* =========================
    SMALL MOBILE
@@ -1994,26 +1916,21 @@ app-chat-input {
     border-radius: 14px;
   }
 
-
   .internal-doc-panel__header {
     gap: 8px;
   }
-
 
   .internal-doc-panel__header p {
     font-size: 11px;
   }
 
-
   .internal-doc-panel__clear {
     display: none;
   }
 
-
   .internal-doc-scope__hint {
     width: 100%;
   }
-
 
   .internal-doc-search {
     grid-template-columns:
@@ -2021,11 +1938,9 @@ app-chat-input {
       72px;
   }
 
-
   .internal-doc-search button {
     padding: 0 9px;
   }
-
 
   .internal-doc-row {
     grid-template-columns:
@@ -2035,7 +1950,6 @@ app-chat-input {
     padding: 9px;
   }
 
-
   .internal-doc-pagination {
     align-items: stretch;
     flex-direction: column;
@@ -2043,11 +1957,9 @@ app-chat-input {
     gap: 7px;
   }
 
-
   .internal-doc-pagination div {
     justify-content: space-between;
   }
-
 
   .internal-doc-pagination button {
     flex: 1;

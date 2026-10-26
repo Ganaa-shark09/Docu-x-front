@@ -1,0 +1,505 @@
+<section class="card legal-workspace" aria-label="Legal clause intelligence">
+  <header class="heading">
+    <div>
+      <h2>Legal clause intelligence</h2>
+      <p class="muted">Source facts, organization expectations and human decisions.</p>
+    </div>
+    <button
+      type="button"
+      (click)="load()"
+      [disabled]="pending() || busy() || loading() || !!target || !!correction"
+    >
+      Refresh analysis
+    </button>
+  </header>
+  @if (error()) {
+    <p class="error" role="alert">{{ error() }}</p>
+  }
+  @if (notice()) {
+    <p class="notice" role="status">{{ notice() }}</p>
+  }
+  @if (loading()) {
+    <p role="status">Loading authorized clause analysis…</p>
+  }
+  @if (analysis(); as a) {
+    <p>Analysis revision {{ a.revision }} · Workflow revision {{ run().revision }}</p>
+    <p class="muted">Pinned playbook version: {{ a.playbook_version_uuid }}</p>
+    <p class="muted">
+      This analysis keeps its original published policy. Open playbook history to inspect the policy
+      name, version, scope, rules and effective dates.
+    </p>
+    <a routerLink="/workflows/legal/playbooks">Open authorized playbooks</a>
+    <p [class.warning]="!a.coverage.complete" [class.notice]="a.coverage.complete">
+      {{
+        a.coverage.complete
+          ? 'Complete source coverage reported by the backend. Required-clause absence still requires review.'
+          : 'Coverage insufficient. Clause absence and final compliance cannot be established.'
+      }}
+    </p>
+    <p class="muted">
+      Coverage method: {{ a.coverage.method || 'Not supplied' }} · No evidence bounding boxes are
+      inferred.
+    </p>
+    <dl class="facts-grid">
+      @for (item of a.context | keyvalue; track item.key) {
+        <div>
+          <dt>{{ label(item.key) }}</dt>
+          <dd>{{ value(item.value) }}</dd>
+        </div>
+      }
+    </dl>
+    <nav class="tabs" role="tablist" aria-label="Legal analysis sections">
+      @for (t of tabs; track t; let i = $index) {
+        <button
+          type="button"
+          role="tab"
+          [id]="'legal-tab-' + run().uuid + '-' + t"
+          [attr.aria-selected]="tab() === t"
+          [attr.aria-controls]="'legal-panel-' + run().uuid"
+          [attr.tabindex]="tab() === t ? 0 : -1"
+          [class.active]="tab() === t"
+          (click)="changeTab(t)"
+          (keydown)="tabKey($event, i)"
+          [disabled]="pending() || !!target || !!correction"
+        >
+          {{
+            t === 'clauses'
+              ? 'Detected clauses'
+              : t === 'comparison'
+                ? 'Playbook comparison'
+                : 'Corrections & output history'
+          }}
+        </button>
+      }
+    </nav>
+    <section
+      role="tabpanel"
+      [id]="'legal-panel-' + run().uuid"
+      [attr.aria-labelledby]="'legal-tab-' + run().uuid + '-' + tab()"
+    >
+      @if (tab() === 'clauses') {
+        <div class="legal-grid">
+          @for (c of a.clauses; track c.uuid) {
+            <app-legal-clause-card
+              [clause]="c"
+              [reviewable]="reviewable()"
+              [correctable]="correctable()"
+              [busy]="pending() || busy()"
+              (evidence)="showEvidence($event)"
+              (review)="reviewClause($event)"
+              (correct)="editCorrection($event)"
+            />
+          } @empty {
+            <p class="notice">
+              No supported clauses detected. Review coverage and playbook comparison before drawing
+              conclusions.
+            </p>
+          }
+        </div>
+      }
+      @if (tab() === 'comparison') {
+        <div class="legal-grid">
+          @for (d of a.deviations; track d.uuid) {
+            <app-legal-comparison
+              [deviation]="d"
+              [complete]="a.coverage.complete"
+              [state]="state(d.uuid)"
+              [reviewable]="reviewable()"
+              [busy]="pending() || busy()"
+              (evidence)="showEvidence($event)"
+              (review)="reviewDeviation($event)"
+            />
+          } @empty {
+            <p class="notice">
+              No clause-rule comparisons returned. This does not establish legal compliance.
+            </p>
+          }
+        </div>
+      }
+      @if (target; as t) {
+        <form class="card" (ngSubmit)="submitDecision()">
+          <fieldset [disabled]="pending() || busy()">
+            <legend>
+              Review {{ t.type === 'clause' ? 'clause detection' : 'playbook comparison' }}
+            </legend>
+            <p class="muted">
+              Server authorization, evidence and approval rules apply. Negotiation or more
+              information keeps review open.
+            </p>
+            <label
+              >Decision<select name="legalDecision" [(ngModel)]="decision">
+                @for (d of choices(); track d) {
+                  <option [value]="d">{{ label(d) }}</option>
+                }
+              </select></label
+            ><label
+              >Reason<textarea
+                name="legalReason"
+                [(ngModel)]="reason"
+                required
+                maxlength="2000"
+              ></textarea>
+            </label>
+            <div class="actions">
+              <button type="submit" [disabled]="!reason.trim()">Save decision</button
+              ><button type="button" (click)="cancelEdit()">Cancel</button>
+            </div>
+          </fieldset>
+        </form>
+      }
+      @if (correction; as c) {
+        <form class="card" (ngSubmit)="saveCorrection()">
+          <fieldset [disabled]="pending() || busy()">
+            <legend>Correct clause — original facts and source remain in history</legend>
+            <p class="muted">
+              Choose a clause type supported by the policy used for this analysis. A newly added
+              type may require a new analysis.
+            </p>
+            @if (taxonomyNext) {
+              <button type="button" (click)="moreTypes()">Load more clause types</button>
+            }
+            <label
+              >Classification<select
+                name="classification"
+                [ngModel]="classification"
+                (ngModelChange)="reclassify($event)"
+                [disabled]="!taxonomyReady()"
+              >
+                @for (t of taxonomy(); track t.uuid) {
+                  <option [value]="t.uuid" [disabled]="!t.is_active">{{ t.name }}</option>
+                }
+              </select></label
+            >
+            @for (f of factEdits; track f.key; let i = $index) {
+              <section class="rule-group">
+                <h3>{{ label(f.key) }}</h3>
+                <label class="check"
+                  ><input
+                    type="checkbox"
+                    [name]="'unknown' + i"
+                    [ngModel]="f.value === null"
+                    (ngModelChange)="
+                      f.value = $event ? null : factType(f.key) === 'boolean' ? false : ''
+                    "
+                  />Unknown / insufficient evidence</label
+                >
+                @if (f.value !== null) {
+                  <label
+                    >Normalized {{ factType(f.key) }} value
+                    @if (factType(f.key) === 'boolean') {
+                      <select [name]="'value' + i" [(ngModel)]="f.value">
+                        <option [ngValue]="true">Yes</option>
+                        <option [ngValue]="false">No</option>
+                      </select>
+                    } @else if (factType(f.key) === 'enum') {
+                      <select [name]="'value' + i" [(ngModel)]="f.value">
+                        @for (v of enumValues(f.key); track v) {
+                          <option [value]="v">{{ v }}</option>
+                        }
+                      </select>
+                    } @else {
+                      <input
+                        [name]="'value' + i"
+                        [(ngModel)]="f.value"
+                        [type]="factType(f.key) === 'date' ? 'date' : 'text'"
+                        [attr.inputmode]="factType(f.key) === 'decimal' ? 'decimal' : 'text'"
+                        maxlength="2000"
+                      />
+                    }</label
+                  ><label
+                    >Verbatim source text<textarea
+                      [name]="'raw' + i"
+                      [(ngModel)]="f.raw_value"
+                      maxlength="2000"
+                    ></textarea></label
+                  ><button type="button" (click)="useProof(i)">
+                    Use current clause source boundaries
+                  </button>
+                  <p class="muted">
+                    {{ f.evidence.length }} source reference(s). Server checks value and source
+                    containment.
+                  </p>
+                }
+              </section>
+            }
+            <details>
+              <summary>Correct source boundary</summary>
+              <p class="warning">
+                Use actual offsets and verbatim text from this authorized document. The server
+                checks source text and governance revision. Approximate chunks stay approximate
+                until a verified exact range is supplied.
+              </p>
+              <div class="grid">
+                <label
+                  >Start offset<input
+                    type="number"
+                    min="0"
+                    name="proofStart"
+                    [(ngModel)]="proofStart" /></label
+                ><label
+                  >End offset<input
+                    type="number"
+                    min="1"
+                    name="proofEnd"
+                    [(ngModel)]="proofEnd" /></label
+                ><label
+                  >Page (when known)<input
+                    type="number"
+                    min="1"
+                    name="proofPage"
+                    [(ngModel)]="proofPage"
+                /></label>
+              </div>
+              <label
+                >Verbatim excerpt<textarea
+                  name="proofText"
+                  [(ngModel)]="proofText"
+                  maxlength="500"
+                ></textarea></label
+              ><label class="check"
+                ><input type="checkbox" name="proofConfirm" [(ngModel)]="proofConfirmed" />I
+                verified this exact range in the source document</label
+              ><button type="button" (click)="replaceProof()" [disabled]="!proofConfirmed">
+                Apply source boundary
+              </button>
+              <p>
+                Changing clause boundaries clears fact evidence; bind each fact to its current
+                source before saving.
+              </p>
+            </details>
+            <label
+              >Reason for correction<textarea
+                name="correctionReason"
+                [(ngModel)]="correctionReason"
+                maxlength="2000"
+                required
+              ></textarea>
+            </label>
+            <div class="actions">
+              <button type="submit" [disabled]="!correctionValid()">Save correction revision</button
+              ><button type="button" (click)="cancelEdit()">Cancel correction</button>
+            </div>
+          </fieldset>
+        </form>
+      }
+      @if (proofs().length) {
+        <section class="card">
+          <div class="rule-heading">
+            <h3>Source evidence</h3>
+            <button type="button" (click)="proofs.set([]); closePreview()">Close evidence</button>
+          </div>
+          @for (p of proofs(); track $index) {
+            <article class="source-proof">
+              <span class="badge">{{
+                p.boundary === 'exact_text_offsets'
+                  ? 'Exact text offsets'
+                  : 'Approximate chunk boundary'
+              }}</span>
+              <p>
+                Document {{ p.document_uuid }} · Page {{ p.page || 'Not supplied' }} · Governance
+                revision {{ p.governance_revision }}
+              </p>
+              @if (p.boundary === 'exact_text_offsets') {
+                <p>Offsets {{ p.start }}–{{ p.end }} · Method {{ p.method }}</p>
+              } @else {
+                <p>Chunk {{ p.chunk_uuid }} · Exact offsets unavailable</p>
+              }
+              <blockquote>{{ p.preview }}</blockquote>
+              <p class="muted">Bounding box unavailable; no visual highlight is inferred.</p>
+              <button
+                type="button"
+                (click)="asyncPreview(p)"
+                [disabled]="previewBusy() || pending() || !sourceAccess()"
+              >
+                Open authenticated source preview
+              </button>
+            </article>
+          }
+          @if (previewBusy()) {
+            <p role="status">Loading protected preview…</p>
+          }
+          @if (preview(); as url) {
+            <button type="button" (click)="closePreview()">Close preview</button>
+            @if (previewImage()) {
+              <img class="legal-preview" [src]="url" alt="Authorized source document" />
+            } @else {
+              <iframe class="legal-preview" [src]="url" title="Authorized source document"></iframe>
+            }
+          }
+        </section>
+      }
+      @if (tab() === 'history') {
+        <section class="card">
+          <h3>Current analysis decisions</h3>
+          <p class="muted">
+            Decisions below apply to the current analysis revision. Correction and output history
+            preserve earlier source facts; earlier decision revisions and other analyses are
+            unavailable in this view.
+          </p>
+          @for (d of a.decisions; track $index) {
+            <article class="rule-group">
+              <p>
+                {{ label(d.decision) }} · {{ d.target_type }} · Actor
+                {{ d.actor_id || 'Not supplied' }} · {{ d.created_at | date: 'medium' }}
+              </p>
+              <p>{{ d.reason }}</p>
+            </article>
+          } @empty {
+            <p>No current decisions.</p>
+          }
+          <h3>Immutable correction lineage</h3>
+          @for (c of corrections(); track c.uuid) {
+            <article class="rule-group">
+              <h4>Correction revision {{ c.revision }}</h4>
+              <p>
+                Actor {{ c.actor_id || 'Not supplied' }} · {{ c.created_at | date: 'medium' }} ·
+                {{ c.reason }}
+              </p>
+              <p>Original classification {{ c.original.clause_type }} → {{ c.clause_type }}</p>
+              <div class="comparison-grid">
+                <section>
+                  <h4>Original facts</h4>
+                  @for (f of c.original.facts | keyvalue; track f.key) {
+                    <p>{{ label(f.key) }}: {{ value(f.value.value) }}</p>
+                  }
+                  <button type="button" (click)="showEvidence(c.original.evidence)">
+                    Original evidence
+                  </button>
+                </section>
+                <section>
+                  <h4>Corrected facts</h4>
+                  @for (f of c.facts | keyvalue; track f.key) {
+                    <p>{{ label(f.key) }}: {{ value(f.value.value) }}</p>
+                  }
+                  <button type="button" (click)="showEvidence(c.evidence)">
+                    Corrected evidence
+                  </button>
+                </section>
+              </div>
+            </article>
+          } @empty {
+            <p>No corrections recorded.</p>
+          }
+          <nav class="pagination">
+            <button
+              type="button"
+              (click)="loadHistory(-1)"
+              [disabled]="!historyPrevious || pending()"
+            >
+              Previous</button
+            ><span>Page {{ historyPage }}</span
+            ><button type="button" (click)="loadHistory(1)" [disabled]="!historyNext || pending()">
+              Next
+            </button>
+          </nav>
+          <h3>Structured final outputs</h3>
+          @for (o of outputs(); track o.uuid) {
+            <article class="rule-group">
+              <h4>Output revision {{ o.revision }}</h4>
+              <p>{{ o.created_at | date: 'medium' }} · Digest {{ o.digest }}</p>
+              <p>
+                Pinned version {{ o.data.playbook_version_uuid }} ·
+                {{ o.data.clauses.length }} clauses · {{ o.data.deviations.length }} comparisons
+              </p>
+              <p>
+                Coverage {{ o.data.coverage.complete ? 'Complete' : 'Insufficient' }} · Approval
+                {{ o.data.approval_uuid || 'Not supplied' }}
+              </p>
+              <button type="button" (click)="inspectedOutput.set(o)">
+                Inspect structured output revision {{ o.revision }}
+              </button>
+            </article>
+          } @empty {
+            <p>No final output is available.</p>
+          }
+          @if (inspectedOutput(); as output) {
+            <section class="card">
+              <div class="rule-heading">
+                <h3>Immutable output revision {{ output.revision }}</h3>
+                <button type="button" (click)="inspectedOutput.set(null)">Close output</button>
+              </div>
+              <h4>Reviewed clauses</h4>
+              <div class="legal-grid">
+                @for (c of output.data.clauses; track c.uuid) {
+                  <app-legal-clause-card [clause]="c" (evidence)="showEvidence($event)" />
+                }
+              </div>
+              <h4>Policy comparisons</h4>
+              <div class="legal-grid">
+                @for (d of output.data.deviations; track d.uuid) {
+                  <app-legal-comparison
+                    [deviation]="d"
+                    [state]="outputState(output, d.uuid)"
+                    [complete]="output.data.coverage.complete"
+                    (evidence)="showEvidence($event)"
+                  />
+                }
+              </div>
+              <h4>Review decisions</h4>
+              @for (d of output.data.decisions; track $index) {
+                <p>
+                  {{ label(d.decision) }} · Actor {{ d.actor_id || 'Not supplied' }} ·
+                  {{ d.created_at | date: 'medium' }} · {{ d.reason }}
+                </p>
+              }
+            </section>
+          }
+        </section>
+      }
+    </section>
+    <p>Workflow status: {{ label(run().status) }}</p>
+    @for (step of steps(); track step.uuid) {
+      @if (step.approval_uuid) {
+        <a [routerLink]="['/approvals', step.approval_uuid]"
+          >Open existing legal workflow approval</a
+        >
+      }
+    }
+    <div class="actions">
+      @if (run().status === 'completed') {
+        <button
+          type="button"
+          (click)="export()"
+          [disabled]="pending() || busy() || !sourceAccess()"
+        >
+          Export server legal result
+        </button>
+      }
+      @if (run().capabilities['administer']) {
+        <button type="button" (click)="openReanalysis()" [disabled]="pending() || busy()">
+          Re-analyze into a new run
+        </button>
+      }
+    </div>
+    @if (reanalysisOpen) {
+      <section class="card">
+        <h3>New analysis run</h3>
+        <label
+          >Published workflow version<select [(ngModel)]="reanalyzeVersion" [disabled]="pending()">
+            @for (v of workflowVersions(); track v.uuid) {
+              <option [value]="v.uuid">Workflow version {{ v.number }} · {{ v.uuid }}</option>
+            }
+          </select></label
+        >
+        <p class="muted">
+          Each workflow version pins its legal policy. Inspect the definition before selecting a
+          different version. Historical analysis is preserved.
+        </p>
+        <a [routerLink]="['/workflows/definitions', run().definition_uuid]"
+          >Inspect workflow definition</a
+        ><label class="check"
+          ><input type="checkbox" [(ngModel)]="reanalyzeConfirmed" [disabled]="pending()" />Create a
+          new run with this published workflow version</label
+        ><button type="button" (click)="reanalyze()" [disabled]="pending() || !reanalyzeConfirmed">
+          Create new analysis
+        </button>
+      </section>
+    }
+    @if (newRun(); as uuid) {
+      <p class="notice">
+        <a [routerLink]="['/workflows/runs', uuid]">Open new analysis run</a>. This historical
+        result was preserved.
+      </p>
+    }
+  }
+</section>

@@ -1,0 +1,78 @@
+<section class="page">
+  <nav class="tabs" aria-label="Workflow navigation">
+    <a routerLink="/workflows/definitions">Definitions</a
+    ><a routerLink="/workflows/runs" aria-current="page">Runs</a
+    ><a routerLink="/workflows/extractions">Extraction runs</a>
+  </nav>
+  <header>
+    <div>
+      <h1>Workflow runs</h1>
+      <p class="muted">Track document work and open reviews across available workflows.</p>
+    </div>
+    <button [disabled]="loading()" (click)="load(page)">Refresh</button>
+  </header>
+  <label
+    >Status<select [(ngModel)]="status" (ngModelChange)="filterChanged($event)">
+      <option value="">All statuses</option>
+      @for (s of statuses; track s) {
+        <option [value]="s">{{ label(s) }}</option>
+      }
+    </select></label
+  >
+  @if (error()) {
+    <p class="error" role="alert">{{ error() }}</p>
+  }
+  @if (loading()) {
+    <div class="workflow-loading" role="status">
+      <span>Loading workflow runs...</span>
+      <div aria-hidden="true"><i></i><i></i><i></i></div>
+    </div>
+  }
+  @if (result(); as rows) {
+    <div class="card table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Workflow / run</th>
+            <th scope="col">Status</th>
+            <th scope="col">Current step</th>
+            <th scope="col">Documents</th>
+            <th scope="col">Initiated by</th>
+            <th scope="col">Started</th>
+            <th scope="col">Completed</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (r of rows.results; track r.uuid) {
+            <tr>
+              <td>
+                <a [routerLink]="['/workflows/runs', r.uuid]">{{
+                  names()[r.definition_uuid] || 'Workflow run'
+                }}</a>
+                <p class="muted">{{ r.uuid }}</p>
+              </td>
+              <td><app-workflow-status [status]="r.status" /></td>
+              <td>{{ r.current_step || '--' }}</td>
+              <td>{{ r.documents.length }}</td>
+              <td>{{ r.initiated_by ?? 'Unavailable' }}</td>
+              <td>{{ r.started_at | date: 'medium' }}</td>
+              <td>{{ r.completed_at | date: 'medium' }}</td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="7" class="empty">No workflow runs match this status.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <div class="list-count">{{ rows.count }} workflow runs available</div>
+    @if (rows.next || rows.previous) {
+      <nav class="pager" aria-label="Run pages">
+        <button [disabled]="!rows.previous" (click)="changePage(page - 1)">Previous</button
+        ><span>Page {{ page }} | {{ rows.count }} runs</span
+        ><button [disabled]="!rows.next" (click)="changePage(page + 1)">Next</button>
+      </nav>
+    }
+  }
+</section>

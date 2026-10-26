@@ -1,31 +1,24 @@
-import {
-  Injectable,
-} from '@angular/core';
+import { Injectable } from '@angular/core';
 
-import {
-  AiConversationMessage,
-  LocalChatMessage,
-} from '../models/ai-chat.model';
+import { AiConversationMessage, LocalChatMessage } from '../models/ai-chat.model';
 
-import {
-  ExternalDocumentScopeService,
-} from './external-document-scope.service';
-
+import { ExternalDocumentScopeService } from './external-document-scope.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class ExternalConversationMessageMapperService {
-  constructor(
-    private readonly documentScope:
-      ExternalDocumentScopeService,
-  ) {}
+  constructor(private readonly documentScope: ExternalDocumentScopeService) {}
 
-
-  map(
-    message:
-      AiConversationMessage,
-  ): LocalChatMessage {
+  map(message: AiConversationMessage): LocalChatMessage {
+    if (message.metadata?.protected_context_omitted)
+      return {
+        role: message.role === 'assistant' ? 'assistant' : 'user',
+        content: message.content,
+        created_at: message.created_at,
+        sources: [],
+        attachments: [],
+      };
     /*
      * External AI stores the exact document UUIDs
      * used for each user query.
@@ -36,81 +29,42 @@ export class ExternalConversationMessageMapperService {
      * with current filename/status/readiness data.
      */
     const requestedDocumentUuids =
-      message.role === 'user' &&
-      Array.isArray(
-        message.metadata
-          ?.requested_document_uuids,
-      )
-        ? this.documentScope
-            .normalize(
-              message.metadata
-                .requested_document_uuids,
-            )
+      message.role === 'user' && Array.isArray(message.metadata?.requested_document_uuids)
+        ? this.documentScope.normalize(message.metadata.requested_document_uuids)
         : [];
 
     return {
-      role:
-        message.role ===
-        'assistant'
-          ? 'assistant'
-          : 'user',
+      role: message.role === 'assistant' ? 'assistant' : 'user',
 
-      content:
-        /^Uploaded\s+\d+\s+file/i
-          .test(
-            message.content ||
-            '',
-          )
-          ? ''
-          : message.content,
+      content: /^Uploaded\s+\d+\s+file/i.test(message.content || '') ? '' : message.content,
 
-      created_at:
-        message.created_at,
+      created_at: message.created_at,
 
-      sources:
-        message.retrieved_sources ||
-        message.sources ||
-        [],
+      sources: message.retrieved_sources || message.sources || [],
 
-      model_provider:
-        message.model_provider,
+      model_provider: message.model_provider,
 
-      model_name:
-        message.model_name,
+      model_name: message.model_name,
 
       usage: {
-        prompt_tokens:
-          message.prompt_tokens ||
-          0,
+        prompt_tokens: message.prompt_tokens || 0,
 
-        completion_tokens:
-          message.completion_tokens ||
-          0,
+        completion_tokens: message.completion_tokens || 0,
 
-        total_tokens:
-          message.total_tokens ||
-          0,
+        total_tokens: message.total_tokens || 0,
       },
 
-      external_context:
-        message.metadata
-          ?.external_context,
+      external_context: message.metadata?.external_context,
 
-      attachments:
-        requestedDocumentUuids.map(
-          (uuid) => ({
-            uuid,
+      attachments: requestedDocumentUuids.map((uuid) => ({
+        uuid,
 
-            title:
-              'Attached document',
+        title: 'Attached document',
 
-            status:
-              'processing',
+        status: 'processing',
 
-            is_ai_ready:
-              false,
-          }),
-        ),
+        is_ai_ready: false,
+      })),
     };
   }
 }

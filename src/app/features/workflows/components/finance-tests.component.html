@@ -1,0 +1,264 @@
+@if (!reconciliation()) {
+  <section class="card">
+    <h2>Protected deterministic test library</h2>
+    <p>
+      Library version {{ s.library()?.version }} ?
+      {{ s.library()?.protected ? 'Read-only system definitions' : 'Definitions' }}
+    </p>
+    <div class="grid">
+      @for (t of s.library()?.tests || []; track t.code) {
+        <article class="source">
+          <h3>{{ t.name }}</h3>
+          <code>{{ t.code }}</code>
+          <p>
+            {{
+              s.audit()?.policy?.tests?.includes(t.code) ? 'Enabled in audit policy' : 'Not enabled'
+            }}
+          </p>
+        </article>
+      }
+    </div>
+    <details>
+      <summary>Current policy, severity and materiality parameters</summary>
+      <app-finance-value [value]="json(s.audit()?.policy)" />
+    </details>
+  </section>
+  <section class="card">
+    <h2>Reproducible sampling</h2>
+    @if (s.canEdit()) {
+      <fieldset [disabled]="s.pending() || s.loading()">
+        <legend>Create stored sample</legend>
+        <div class="grid">
+          <label
+            >Method<select [(ngModel)]="method">
+              @for (m of s.library()?.sampling_methods || []; track m) {
+                <option [value]="m">{{ m.replaceAll('_', ' ') }}</option>
+              }
+            </select></label
+          ><label>Sample size<input type="number" min="1" max="5000" [(ngModel)]="size" /></label>
+          @if (method === 'random' || method === 'stratified') {
+            <label>Reproducible seed<input [(ngModel)]="seed" maxlength="128" /></label>
+          }
+        </div>
+        @if (method === 'value_threshold') {
+          @for (row of thresholds; track $index) {
+            <div class="grid">
+              <label>Currency<input [(ngModel)]="row.currency" maxlength="3" /></label
+              ><label>Exact threshold<input [(ngModel)]="row.amount" inputmode="decimal" /></label
+              ><button (click)="thresholds.splice($index, 1)">Remove threshold</button>
+            </div>
+          }
+          <button (click)="thresholds.push({ currency: '', amount: '' })">
+            Add currency threshold
+          </button>
+        }
+        @if (method === 'stratified') {
+          <p>Server stratifies by currency and transaction type.</p>
+        }
+        @if (method === 'risk_based') {
+          <p>
+            Server selects using explainable missing-invoice-reference and manual-entry signals.
+          </p>
+        }
+        <button class="primary" (click)="sample()" [disabled]="s.pending() || s.loading()">
+          Generate sample
+        </button>
+      </fieldset>
+    }
+    @for (sample of samples.rows(); track sample.uuid) {
+      <article class="source">
+        <h3>
+          {{ sample.method.replaceAll('_', ' ') }} | Population {{ sample.population_revision }}
+        </h3>
+        <p>{{ sample.created_at | date: 'medium' }} | {{ sample.selected.length }} selected</p>
+        @if (sample.population_revision !== s.audit()?.population_revision) {
+          <p class="warning">
+            Historical sample: based on an earlier population. Cannot be used for current tests.
+          </p>
+        }
+        <p class="pre">Population digest: {{ sample.population_digest }}</p>
+        <app-finance-value [value]="json(sample.parameters)" /><button
+          (click)="selectedSample.set(sample); samplePage = 1"
+        >
+          Inspect selected items
+        </button>
+      </article>
+    } @empty {
+      <p>No samples on this page.</p>
+    }
+    <app-finance-pager
+      [page]="samples.page"
+      [next]="samples.next"
+      [previous]="samples.previous"
+      [count]="samples.count"
+      [busy]="samples.loading() || s.pending()"
+      (changed)="samples.load($event)"
+    />
+    @if (selectedSample(); as sample) {
+      <h3>Selected sample | population {{ sample.population_revision }}</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Transaction UUID</th>
+              <th scope="col">Currency</th>
+              <th scope="col">Selection reason</th>
+              <th scope="col">Signals</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (
+              item of sample.selected.slice((samplePage - 1) * 50, samplePage * 50);
+              track item.transaction_uuid
+            ) {
+              <tr>
+                <td>{{ item.transaction_uuid }}</td>
+                <td>{{ item.currency }}</td>
+                <td>{{ item.reason.replaceAll('_', ' ') }}</td>
+                <td><app-finance-value [value]="item.signals" /></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <app-finance-pager
+        [page]="samplePage"
+        [next]="samplePage * 50 < sample.selected.length"
+        [previous]="samplePage > 1"
+        [count]="sample.selected.length"
+        (changed)="samplePage = $event"
+      />
+    }
+  </section>
+}
+<section class="card">
+  <h2>
+    {{
+      reconciliation()
+        ? 'Invoice / payment / PO / receipt reconciliation'
+        : 'Audit test runs and retests'
+    }}
+  </h2>
+  <p>
+    Results are deterministic server observations. Comparisons stay within currency; unavailable FX
+    comparisons remain unavailable. Duplicate and anomaly signals are candidates for review.
+  </p>
+  @if (!reconciliation() && s.canReview()) {
+    <fieldset [disabled]="s.pending() || s.loading()">
+      <legend>Execute / retest current population</legend>
+      <label
+        >Stored sample<select [(ngModel)]="sampleUuid">
+          <option value="">Full population (up to 10,000 records)</option>
+          @for (sample of samples.rows(); track sample.uuid) {
+            <option
+              [value]="sample.uuid"
+              [disabled]="sample.population_revision !== s.audit()?.population_revision"
+            >
+              {{ sample.method }} | population {{ sample.population_revision }} | {{ sample.uuid }}
+            </option>
+          }
+        </select></label
+      >
+      <p class="muted">
+        Sample choices are from the current sample history page. Use its pagination to select an
+        older stored sample.
+      </p>
+      <label
+        >Previous test (optional retest lineage)<select [(ngModel)]="previousUuid">
+          <option value="">Latest test chosen by server</option>
+          @for (test of tests.rows(); track test.uuid) {
+            <option [value]="test.uuid">{{ test.created_at }} | {{ test.uuid }}</option>
+          }
+        </select></label
+      ><button class="primary" (click)="execute()" [disabled]="s.pending() || s.loading()">
+        Execute / retest
+      </button>
+    </fieldset>
+  }
+  @for (test of tests.rows(); track test.uuid) {
+    <article class="source">
+      <h3>
+        {{ test.previous_uuid ? 'Retest' : 'Original test' }} ?
+        {{ test.created_at | date: 'medium' }}
+      </h3>
+      <p>
+        Population {{ test.population_revision }} | Sample
+        {{ test.sample_uuid || 'Full population' }}
+      </p>
+      @if (test.previous_uuid) {
+        <p class="pre">Previous test: {{ test.previous_uuid }}</p>
+      }
+      @if (test.population_revision !== s.audit()?.population_revision) {
+        <p class="warning">
+          Historical population; retained results do not describe the current population.
+        </p>
+      }
+      <p class="pre">Population digest: {{ test.population_digest }}</p>
+      <h4>Server result counts</h4>
+      <app-finance-value [value]="test.counts" />
+      <details>
+        <summary>Frozen scope and test parameters</summary>
+        <app-finance-value [value]="test.definitions" />
+      </details>
+      <button (click)="selectTest(test)" [disabled]="s.pending()">Inspect test results</button>
+    </article>
+  } @empty {
+    <p>No test runs on this page. Initial tests are executed when the audit workflow starts.</p>
+  }
+  <app-finance-pager
+    [page]="tests.page"
+    [next]="tests.next"
+    [previous]="tests.previous"
+    [count]="tests.count"
+    [busy]="tests.loading() || s.pending()"
+    (changed)="tests.load($event)"
+  />
+  @if (selectedTest(); as test) {
+    <h3>Results | {{ test.uuid }} | population {{ test.population_revision }}</h3>
+    <div class="grid">
+      <label
+        >Test code<select [(ngModel)]="code">
+          <option value="">All tests</option>
+          @for (t of s.library()?.tests || []; track t.code) {
+            <option [value]="t.code">{{ t.name }}</option>
+          }
+        </select></label
+      ><label
+        >Server status<input
+          [(ngModel)]="status"
+          placeholder="exception, passed, unavailable..." /></label
+      ><button (click)="filterResults()">Apply server filters</button>
+    </div>
+    @for (result of results.rows(); track result.uuid) {
+      <article class="source">
+        <h4>
+          {{ result.code.replaceAll('_', ' ') }}
+          <span class="badge">{{ result.status.replaceAll('_', ' ') }}</span>
+        </h4>
+        <p class="pre">Transaction: {{ result.transaction_uuid }}</p>
+        <h4>Calculation / matching evidence from server</h4>
+        <app-finance-value [value]="result.evidence" />
+        <button (click)="selectedEvidence.set(result.transaction_uuid)" [disabled]="s.pending()">
+          Inspect supporting documents
+        </button>
+        @if (result.finding_uuid) {
+          <p class="pre">Finding: {{ result.finding_uuid }} | Review in Findings / remediation</p>
+        }
+      </article>
+    } @empty {
+      <p>No results for these server filters.</p>
+    }
+    <app-finance-pager
+      [page]="results.page"
+      [next]="results.next"
+      [previous]="results.previous"
+      [count]="results.count"
+      [busy]="results.loading() || s.pending()"
+      (changed)="filterResults($event)"
+    />
+  }
+</section>
+
+@if (selectedEvidence()) {
+  <app-finance-transaction-evidence [transaction]="selectedEvidence()" />
+}

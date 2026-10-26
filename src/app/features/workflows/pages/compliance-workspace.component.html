@@ -1,0 +1,1241 @@
+<main class="page compliance">
+  <header>
+    <div>
+      <p class="muted">Document workflows</p>
+      <h1>Compliance workspace</h1>
+      <p class="muted">
+        Evidence-based control assessments. Results are not regulatory certification.
+      </p>
+    </div>
+    <button [disabled]="s.pending() || s.loading()" (click)="s.reload()">
+      Refresh access and state
+    </button>
+  </header>
+  <nav class="tabs" aria-label="Compliance navigation">
+    <a routerLink="/workflows/compliance/frameworks">Frameworks</a
+    ><a routerLink="/workflows/compliance/controls">Control library</a
+    ><a routerLink="/workflows/compliance/assessments">Assessments</a>
+  </nav>
+  @if (s.error()) {
+    <p class="card danger" role="alert">{{ s.error() }}</p>
+  }
+  @if (s.loading()) {
+    <p role="status">Loading authorized Compliance data…</p>
+  }
+  @if (s.pending()) {
+    <p role="status">Saving command. Please wait…</p>
+  }
+  @if (!s.id && !s.loading()) {
+    <section class="card">
+      <header>
+        <h2>{{ label(s.mode) }}</h2>
+        @if (s.mode === 'frameworks' ? s.admin() : s.canCreate()) {
+          <button class="primary" [disabled]="s.pending()" (click)="openForm()">
+            Create
+            {{
+              s.mode === 'frameworks'
+                ? 'framework'
+                : s.mode === 'controls'
+                  ? 'control'
+                  : 'assessment'
+            }}
+          </button>
+        }
+      </header>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Name / reference</th>
+              <th>Scope</th>
+              <th>State</th>
+            </tr>
+          </thead>
+          <tbody>
+            @if (s.mode === 'frameworks') {
+              @for (f of s.frameworks(); track f.uuid) {
+                <tr>
+                  <td>
+                    <a [routerLink]="['/workflows/compliance/frameworks', f.uuid]">{{ f.name }}</a>
+                    <p>{{ f.code }}</p>
+                  </td>
+                  <td>{{ f.scope === 'system' ? 'System — protected' : 'Company' }}</td>
+                  <td>
+                    {{ f.is_active ? 'Active' : 'Retired' }} ·
+                    {{ f.active_version_uuid ? 'Published' : 'Draft' }}
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="3">No frameworks available.</td>
+                </tr>
+              }
+            }
+            @if (s.mode === 'controls') {
+              @for (c of s.controls(); track c.uuid) {
+                <tr>
+                  <td>
+                    <a [routerLink]="['/workflows/compliance/controls', c.uuid]">{{ c.name }}</a>
+                    <p>{{ c.code }}</p>
+                  </td>
+                  <td>Department {{ c.department ?? 'Company-wide' }}</td>
+                  <td>{{ label(c.definition.status) }} · Revision {{ c.revision }}</td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="3">No controls available.</td>
+                </tr>
+              }
+            }
+            @if (s.mode === 'assessments') {
+              @for (a of s.assessments(); track a.uuid) {
+                <tr>
+                  <td>
+                    <a [routerLink]="['/workflows/compliance/assessments', a.uuid]">{{
+                      a.title
+                    }}</a>
+                    <p>Framework version reference {{ a.framework_version_uuid }}</p>
+                  </td>
+                  <td>Department {{ a.department ?? 'Company-wide' }}</td>
+                  <td><app-compliance-status [status]="a.status" /> · Revision {{ a.revision }}</td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="3">No assessments available.</td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+      <app-finance-pager
+        [page]="s.page"
+        [next]="s.next"
+        [previous]="s.previous"
+        [count]="s.count"
+        [busy]="s.pending() || s.loading()"
+        (changed)="s.list($event)"
+      />
+    </section>
+  }
+  @if (framework(); as f) {
+    <section class="card">
+      <h2>{{ f.name }}</h2>
+      <p>
+        {{ f.code }} · {{ f.scope === 'system' ? 'System — protected and read-only' : 'Company' }} ·
+        Revision {{ f.revision }}
+      </p>
+      <p>{{ f.description }}</p>
+      <p>
+        {{ f.jurisdiction || 'No jurisdiction specified' }} ·
+        {{ f.source || 'Customer-provided framework' }}
+      </p>
+      @if (manageFramework()) {
+        <div class="actions">
+          <button [disabled]="s.pending()" (click)="editFramework()">Edit company draft</button
+          ><button [disabled]="s.pending()" (click)="publish()">
+            Publish new immutable version
+          </button>
+          @if (f.is_active) {
+            <button [disabled]="s.pending()" (click)="activate(null)">Retire framework</button>
+          }
+        </div>
+      }
+    </section>
+    <section class="card">
+      <h2>Published version history</h2>
+      <p>Published versions are immutable. Editing the draft never changes a historical version.</p>
+      @for (v of versions().results; track v.uuid) {
+        <article class="version">
+          <h3>Version {{ v.number }} — {{ label(v.state) }}</h3>
+          <p class="reference">{{ v.uuid }}</p>
+          <button (click)="selectedVersion = v.uuid; loadRequirements()" [disabled]="s.pending()">
+            Inspect requirements
+          </button>
+          @if (manageFramework() && v.state !== 'active') {
+            <button [disabled]="s.pending()" (click)="activate(v.uuid)">
+              Activate this version
+            </button>
+          }
+        </article>
+      } @empty {
+        <p>No published versions.</p>
+      }
+      <app-finance-pager
+        [page]="versionPage"
+        [next]="!!versions().next"
+        [previous]="!!versions().previous"
+        (changed)="loadVersions($event)"
+      />
+    </section>
+    <section class="card">
+      <h2>Requirements — selected version</h2>
+      <p class="reference">{{ selectedVersion || 'Select a version' }}</p>
+      @for (r of requirements().results; track r.uuid) {
+        <article class="requirement" [style.margin-inline-start.px]="requirementDepth(r) * 6">
+          <h3>{{ r.code }} · {{ r.title }}</h3>
+          <p>{{ r.category }} · {{ r.type }} · {{ label(r.obligation) }}</p>
+          @if (r.parent) {
+            <p>Child of requirement {{ r.parent }}</p>
+          }
+          <p class="reference">Requirement reference: {{ r.uuid }}</p>
+          @if (r.applicability.dimension) {
+            <p>
+              Conditional scope: {{ label(r.applicability.dimension) }} ·
+              {{ r.applicability.values?.join(', ') }}
+            </p>
+          }
+          @for (entry of entries(r.source); track entry[0]) {
+            <p>{{ label(entry[0]) }}: {{ entry[1] }}</p>
+          }
+        </article>
+      } @empty {
+        <p>No requirements on this page.</p>
+      }
+      <app-finance-pager
+        [page]="requirementPage"
+        [next]="!!requirements().next"
+        [previous]="!!requirements().previous"
+        [count]="requirements().count"
+        (changed)="loadRequirements($event)"
+      />
+    </section>
+  }
+  @if (control(); as c) {
+    <section class="card">
+      <h2>{{ c.name }}</h2>
+      <p>{{ c.code }} · Revision {{ c.revision }} · {{ label(c.definition.status) }}</p>
+      <p>{{ c.definition.objective }}</p>
+      <p>{{ c.definition.description }}</p>
+      <p>
+        Department {{ c.department ?? 'Company-wide' }} · {{ label(c.definition.type) }} ·
+        {{ label(c.definition.frequency) }}
+      </p>
+      <p>Owner {{ c.definition.owner | json }}</p>
+      <p>
+        Evidence expectations:
+        {{ c.definition.evidence_expectations.join(', ') || 'Human review of linked evidence' }}
+      </p>
+      <p>
+        Effective {{ c.definition.effective_from || 'Not provided' }} to
+        {{ c.definition.effective_until || 'Not provided' }}
+      </p>
+      <p>Protected tests: {{ c.definition.tests.join(', ') }}</p>
+      @if (s.canManage(c.department)) {
+        <button (click)="editControl()" [disabled]="s.pending()">Edit control</button>
+      }
+    </section>
+    <section class="card">
+      <h2>Requirement mappings / cross-framework reuse</h2>
+      @for (m of mappings().results; track m.uuid) {
+        <article class="requirement">
+          <p>Requirement {{ m.requirement_uuid }}</p>
+          <p>
+            Framework version {{ m.framework_version_uuid }} ·
+            {{ m.is_active ? 'Mapped' : 'Inactive mapping' }}
+          </p>
+          @if (s.canManage(c.department)) {
+            <button [disabled]="s.pending()" (click)="map(m.requirement_uuid, !m.is_active)">
+              {{ m.is_active ? 'Deactivate mapping' : 'Restore mapping' }}
+            </button>
+          }
+        </article>
+      } @empty {
+        <p>No mappings on this page.</p>
+      }
+      <app-finance-pager
+        [page]="mappingPage"
+        [next]="!!mappings().next"
+        [previous]="!!mappings().previous"
+        (changed)="loadMappings($event)"
+      />
+      @if (s.canManage(c.department)) {
+        <form (ngSubmit)="map()">
+          <fieldset [disabled]="s.pending()">
+            <legend>Reuse this control for a requirement</legend>
+            <label
+              >Published requirement reference<input
+                name="requirement"
+                [(ngModel)]="mapRequirement"
+                required /></label
+            ><a routerLink="/workflows/compliance/frameworks"
+              >Browse framework requirement references</a
+            ><button type="submit" [disabled]="!mapRequirement">Map this requirement</button>
+          </fieldset>
+        </form>
+      }
+    </section>
+  }
+
+  @if (
+    (showForm || editing) &&
+    s.mode === 'frameworks' &&
+    s.admin() &&
+    (!framework() || manageFramework())
+  ) {
+    <form class="card" (ngSubmit)="saveFramework()">
+      <h2>{{ editing ? 'Edit company draft' : 'Create company framework' }}</h2>
+      <fieldset [disabled]="s.pending()">
+        <legend>Framework configuration</legend>
+        @if (!editing) {
+          <div class="grid">
+            <label>Name<input name="name" [(ngModel)]="name" required maxlength="200" /></label
+            ><label
+              >Stable code<input name="code" [(ngModel)]="code" required maxlength="80" /></label
+            ><label
+              >Jurisdiction<input
+                name="jurisdiction"
+                [(ngModel)]="jurisdiction"
+                maxlength="100" /></label
+            ><label
+              >Source reference<input name="source" [(ngModel)]="source" maxlength="500"
+            /></label>
+          </div>
+          <label
+            >Description<textarea
+              name="description"
+              [(ngModel)]="description"
+              maxlength="4000"
+            ></textarea>
+          </label>
+        }
+        @for (
+          r of draft.requirements.slice((draftPage - 1) * 10, draftPage * 10);
+          track $index;
+          let i = $index
+        ) {
+          <fieldset>
+            <legend>Requirement {{ (draftPage - 1) * 10 + i + 1 }}</legend>
+            <div class="grid">
+              <label
+                >Code<input
+                  [name]="'code' + i"
+                  [(ngModel)]="r.code"
+                  required
+                  maxlength="80" /></label
+              ><label
+                >Title<input
+                  [name]="'title' + i"
+                  [(ngModel)]="r.title"
+                  required
+                  maxlength="200" /></label
+              ><label
+                >Category<input
+                  [name]="'category' + i"
+                  [(ngModel)]="r.category"
+                  maxlength="80" /></label
+              ><label
+                >Type<select [name]="'type' + i" [(ngModel)]="r.type">
+                  <option>control</option>
+                  <option>policy</option>
+                  <option>process</option>
+                  <option>reporting</option>
+                  <option>record</option>
+                </select></label
+              ><label
+                >Obligation<select [name]="'obligation' + i" [(ngModel)]="r.obligation">
+                  <option>mandatory</option>
+                  <option>optional</option>
+                  <option>conditional</option>
+                </select></label
+              ><label
+                >Parent requirement code<input
+                  [name]="'parent' + i"
+                  [(ngModel)]="r.parent" /></label
+              ><label
+                >Conditional scope<select
+                  [name]="'dimension' + i"
+                  [ngModel]="r.applicability.dimension || ''"
+                  (ngModelChange)="
+                    r.applicability = $event ? { dimension: $event, values: [] } : {}
+                  "
+                >
+                  <option value="">Explicit human applicability review</option>
+                  <option value="locations">Locations</option>
+                  <option value="systems">Systems</option>
+                  <option value="business_units">Business units</option>
+                </select></label
+              >
+              @if (r.applicability.dimension) {
+                <label
+                  >Matching scope values, comma-separated<input
+                    [name]="'values' + i"
+                    [ngModel]="r.applicability.values?.join(', ')"
+                    (ngModelChange)="r.applicability.values = split($event)"
+                    required
+                /></label>
+              }
+              <label
+                >Source reference<input
+                  [name]="'reference' + i"
+                  [(ngModel)]="r.source['reference']"
+                  maxlength="1000"
+              /></label>
+            </div>
+            <button
+              type="button"
+              [disabled]="draft.requirements.length === 1"
+              (click)="removeRequirement((draftPage - 1) * 10 + i)"
+            >
+              Remove requirement
+            </button>
+          </fieldset>
+        }
+        <app-finance-pager
+          [page]="draftPage"
+          [next]="draftPage * 10 < draft.requirements.length"
+          [previous]="draftPage > 1"
+          [count]="draft.requirements.length"
+          [busy]="s.pending()"
+          (changed)="draftPage = $event"
+        />
+        <button
+          type="button"
+          (click)="addRequirement()"
+          [disabled]="draft.requirements.length >= 500"
+        >
+          Add requirement</button
+        ><label
+          >Finding severity<select name="severity" [(ngModel)]="draft.policy.severity">
+            <option>info</option>
+            <option>low</option>
+            <option>medium</option>
+            <option>high</option>
+            <option>critical</option>
+          </select></label
+        ><label class="check"
+          ><input
+            type="checkbox"
+            name="risk"
+            [(ngModel)]="draft.policy.allow_risk_acceptance"
+          />Allow authorized risk acceptance</label
+        >
+        <p>
+          Not-applicable decisions and accepted risks remain subject to final assessment approval.
+        </p>
+        <button class="primary" type="submit">Save company draft</button
+        ><button type="button" (click)="showForm = false; editing = false">Cancel</button>
+      </fieldset>
+    </form>
+  }
+  @if ((showForm || editing) && s.mode === 'controls' && s.canCreate()) {
+    <form class="card" (ngSubmit)="saveControl()">
+      <h2>{{ editing ? 'Edit control' : 'Create reusable control' }}</h2>
+      <fieldset [disabled]="s.pending()">
+        <legend>Control definition</legend>
+        <div class="grid">
+          <label
+            >Code<input
+              name="code"
+              [(ngModel)]="code"
+              [readonly]="editing"
+              required
+              maxlength="80" /></label
+          ><label>Name<input name="name" [(ngModel)]="name" required maxlength="200" /></label
+          ><label
+            >Department<select name="department" [(ngModel)]="department">
+              <option [ngValue]="null">Company-wide</option>
+              @for (m of s.members(); track m.uuid) {
+                <option [ngValue]="m.department">{{ m.department_name }}</option>
+              }
+            </select></label
+          ><label
+            >Type<select name="type" [(ngModel)]="definition.type">
+              <option>preventive</option>
+              <option>detective</option>
+              <option>corrective</option>
+            </select></label
+          ><label
+            >Frequency<select name="frequency" [(ngModel)]="definition.frequency">
+              @for (
+                v of [
+                  'continuous',
+                  'daily',
+                  'weekly',
+                  'monthly',
+                  'quarterly',
+                  'annual',
+                  'on_event',
+                ];
+                track v
+              ) {
+                <option [value]="v">{{ label(v) }}</option>
+              }
+            </select></label
+          ><label
+            >State<select name="state" [(ngModel)]="definition.status">
+              <option>active</option>
+              <option>draft</option>
+              <option>retired</option>
+            </select></label
+          ><label
+            >Effective from<input
+              type="date"
+              name="from"
+              [(ngModel)]="definition.effective_from" /></label
+          ><label
+            >Effective until<input
+              type="date"
+              name="until"
+              [(ngModel)]="definition.effective_until"
+          /></label>
+        </div>
+        <label
+          >Objective<textarea
+            name="objective"
+            [(ngModel)]="definition.objective"
+            required
+            maxlength="2000"
+          ></textarea></label
+        ><label
+          >Description<textarea
+            name="description"
+            [(ngModel)]="definition.description"
+            maxlength="2000"
+          ></textarea></label
+        ><label
+          >Evidence expectations, one per line<textarea
+            name="expectations"
+            [ngModel]="definition.evidence_expectations.join('\n')"
+            (ngModelChange)="definition.evidence_expectations = split($event)"
+          ></textarea>
+        </label>
+        <h3>Control owner</h3>
+        <app-workflow-assignment
+          [memberships]="s.members()"
+          [disabled]="s.pending()"
+          (changed)="owner = $event"
+        /><button type="button" (click)="owner = { user: s.user() }">Assign owner to me</button>
+        <p>{{ owner | json }}</p>
+        <fieldset>
+          <legend>Protected deterministic tests</legend>
+          @for (test of tests; track test) {
+            <label class="check"
+              ><input
+                type="checkbox"
+                [name]="test"
+                [ngModel]="definition.tests.includes(test)"
+                (ngModelChange)="toggleTest(test, $event)"
+              />{{ label(test) }}</label
+            >
+          }
+        </fieldset>
+        @if (editing) {
+          <label class="check"
+            ><input name="active" type="checkbox" [(ngModel)]="active" />Available for new
+            assessments</label
+          >
+        }
+        <button class="primary" type="submit" [disabled]="!owner || !s.canManage(department)">
+          Save control</button
+        ><button type="button" (click)="showForm = false; editing = false">Cancel</button>
+      </fieldset>
+    </form>
+  }
+  @if (showForm && s.mode === 'assessments' && s.canCreate()) {
+    <form
+      class="card"
+      #assessmentForm="ngForm"
+      (ngSubmit)="assessmentForm.valid && createAssessment()"
+    >
+      <h2>{{ previousId ? 'Create separate reassessment' : 'Create assessment scope' }}</h2>
+      <fieldset [disabled]="s.pending()">
+        <legend>1. Assessment details and framework</legend>
+        @if (previousId) {
+          <p>Original assessment {{ previousId }}. Its history is preserved.</p>
+        }
+        <div class="grid">
+          <label>Title<input name="title" [(ngModel)]="title" required maxlength="200" /></label
+          ><app-entity-picker
+            kind="departments"
+            label="Department"
+            name="department"
+            [(ngModel)]="department"
+          /><label
+            >Framework<select
+              name="framework"
+              [(ngModel)]="selectedFramework"
+              (ngModelChange)="chooseFramework($event)"
+            >
+              <option value="">Choose framework</option>
+              @for (f of choices().results; track f.uuid) {
+                <option [value]="f.uuid">{{ f.name }} · {{ f.scope }}</option>
+              }
+            </select></label
+          ><label
+            >Published version<select name="version" [(ngModel)]="selectedVersion" required>
+              <option value="">Choose active version</option>
+              @for (v of versions().results; track v.uuid) {
+                @if (v.state === 'active') {
+                  <option [value]="v.uuid">Version {{ v.number }} · {{ v.state }}</option>
+                }
+              }
+            </select></label
+          ><label>Period start<input type="date" name="start" [(ngModel)]="start" required /></label
+          ><label>Period end<input type="date" name="end" [(ngModel)]="end" required /></label
+          ><label>Locations<input name="locations" [(ngModel)]="locations" /></label
+          ><label>Systems / applications<input name="systems" [(ngModel)]="systems" /></label
+          ><label>Business units<input name="units" [(ngModel)]="businessUnits" /></label>
+        </div>
+        <app-finance-pager
+          [page]="choicePage"
+          [next]="!!choices().next"
+          [previous]="!!choices().previous"
+          (changed)="loadChoices($event)"
+        />
+        <h3>2. Supporting evidence</h3>
+        <app-entity-picker
+          kind="documents"
+          label="Supporting documents"
+          [required]="true"
+          [multiple]="true"
+          [max]="20"
+          name="documents"
+          [ngModel]="documentIds()"
+          (ngModelChange)="setDocuments($event)"
+        />
+        <p>
+          Only selected, authorized documents can support this assessment. Select up to 20
+          documents.
+        </p>
+        <app-entity-picker
+          kind="controls"
+          label="Controls (optional)"
+          [contextVersion]="selectedVersion"
+          [disabled]="!selectedVersion"
+          [multiple]="true"
+          name="controls"
+          [ngModel]="controlIds()"
+          (ngModelChange)="setControls($event)"
+        />
+        <section class="assessment-summary" aria-label="Assessment summary">
+          <h3>3. Review assessment scope</h3>
+          <p>
+            {{ title || 'Untitled assessment' }} &middot; {{ start || 'Start date required' }} to
+            {{ end || 'End date required' }}
+          </p>
+          <p>
+            {{ documentIds().length }} supporting documents &middot;
+            {{
+              controlIds().length
+                ? controlIds().length + ' selected controls'
+                : 'All eligible mapped controls'
+            }}
+          </p>
+          <p class="muted">
+            Creation saves a draft. Evaluation, review and approval remain separate required
+            actions.
+          </p>
+        </section>
+        <button class="primary" type="submit" [disabled]="!s.canManage(department) || s.pending()">
+          Create assessment</button
+        ><button type="button" (click)="showForm = false">Cancel</button>
+      </fieldset>
+    </form>
+  }
+
+  @if (s.detail(); as a) {
+    <section class="card">
+      <header>
+        <div>
+          <h2>{{ a.title }}</h2>
+          <p>Framework version {{ a.framework_version }} · Assessment revision {{ a.revision }}</p>
+          <p class="reference">{{ a.framework_version_uuid }}</p>
+        </div>
+        <app-compliance-status [status]="a.status" />
+      </header>
+      <p>{{ a.assurance }}</p>
+      <div class="actions">
+        @if (a.run_uuid) {
+          <a [routerLink]="['/workflows/runs', a.run_uuid]">Open existing workflow / approval</a>
+        }
+        @if (
+          s.canManage(a.department) &&
+          ['completed', 'rejected', 'failed', 'cancelled'].includes(a.status)
+        ) {
+          <button [disabled]="s.pending()" (click)="reassess()">Create reassessment</button>
+        }
+      </div>
+    </section>
+    <nav class="compliance-tabs" aria-label="Assessment sections">
+      @for (t of tabs; track t) {
+        <button [attr.aria-pressed]="tab() === t" (click)="selectTab(t)" [disabled]="s.pending()">
+          {{ t }}
+        </button>
+      }
+    </nav>
+    @if (tab() === 'Overview') {
+      <section class="card">
+        <h2>Assessment coverage</h2>
+        <div class="grid">
+          <article>
+            <h3>Requirements</h3>
+            <p>{{ a.coverage.requirements }}</p>
+          </article>
+          <article>
+            <h3>Control assessments</h3>
+            <p>{{ a.coverage.control_assessments }}</p>
+          </article>
+          <article>
+            <h3>Reviewed</h3>
+            <p>{{ a.coverage.reviewed }}</p>
+          </article>
+          @for (c of entries(a.counts); track c[0]) {
+            <article>
+              <h3>{{ label(c[0]) }}</h3>
+              <p>{{ c[1] }}</p>
+            </article>
+          }
+        </div>
+        <p>
+          {{
+            a.evaluation_current
+              ? 'Evaluation matches current evidence.'
+              : 'Review required: no current evaluation or the evidence basis changed.'
+          }}
+        </p>
+        <h3>Frozen scope</h3>
+        <p>
+          Department {{ a.department ?? 'Company-wide' }} · {{ a.scope.start }} to {{ a.scope.end }}
+        </p>
+        <p>Locations: {{ a.scope.locations.join(', ') || 'Not specified' }}</p>
+        <p>Systems: {{ a.scope.systems.join(', ') || 'Not specified' }}</p>
+        <p>Business units: {{ a.scope.business_units.join(', ') || 'Not specified' }}</p>
+        <details>
+          <summary>Explicit document and control references</summary>
+          <p>{{ a.scope.document_uuids.join(', ') }}</p>
+          <p>{{ a.scope.control_uuids.join(', ') || 'Available mapped controls in scope' }}</p>
+        </details>
+      </section>
+    }
+    @if (tab() === 'Requirements / controls') {
+      @if (s.canReview()) {
+        <button [disabled]="s.pending()" (click)="evaluate()">Re-evaluate current evidence</button>
+      }
+      @for (row of rows(); track row.target) {
+        <article class="card">
+          <div class="split">
+            <section>
+              <h3>Requirement</h3>
+              <p>{{ req(row.requirement_uuid)?.code }} · {{ req(row.requirement_uuid)?.title }}</p>
+              <app-compliance-status [status]="row.applicability" />
+              <p>{{ req(row.requirement_uuid)?.obligation }}</p>
+              @if (s.canReview()) {
+                <button
+                  (click)="prepareDecision('applicability', row.requirement_uuid, 'applicable')"
+                  [disabled]="s.pending()"
+                >
+                  Review applicability
+                </button>
+              }
+            </section>
+            <section>
+              <h3>Control</h3>
+              <p>{{ mapped(row)?.code || 'Mapping missing' }} · {{ mapped(row)?.name }}</p>
+              <p>{{ mapped(row)?.definition?.objective }}</p>
+              <p>Pinned control revision {{ mapped(row)?.control_revision ?? 'Not available' }}</p>
+            </section>
+          </div>
+          <section>
+            <h3>Assessment outcome</h3>
+            <app-compliance-status [status]="row.reviewed_outcome || row.outcome" />
+            <p>Evidence basis date {{ row.date_basis }}</p>
+            <ul>
+              @for (check of entries(row.checks); track check[0]) {
+                <li>{{ label(check[0]) }}: {{ check[1] ? 'Passed' : 'Gap identified' }}</li>
+              }
+            </ul>
+          </section>
+          <section>
+            <h3>Evidence references</h3>
+            @for (ref of row.evidence; track ref) {
+              <p>{{ ref }}</p>
+            } @empty {
+              <p>No linked evidence.</p>
+            }
+          </section>
+          <section>
+            <h3>Finding</h3>
+            <p>{{ row.finding_uuid || 'No deterministic gap recorded for this evaluation' }}</p>
+          </section>
+          @if (s.canReview()) {
+            <div class="actions">
+              <button (click)="prepareDecision('control', row.target)" [disabled]="s.pending()">
+                Review control assessment</button
+              ><button
+                (click)="prepareDecision('evidence_request', row.target, 'open')"
+                [disabled]="s.pending()"
+              >
+                Request evidence</button
+              ><button
+                (click)="prepareDecision('remediation', row.target, 'open')"
+                [disabled]="s.pending()"
+              >
+                Record remediation
+              </button>
+              @if (riskAllowed()) {
+                <button
+                  (click)="prepareDecision('risk_acceptance', row.target, 'accepted_risk')"
+                  [disabled]="s.pending()"
+                >
+                  Review risk acceptance
+                </button>
+              }
+            </div>
+          }
+        </article>
+      } @empty {
+        <p class="card">
+          No evaluated controls. Start the workflow or evaluate at its review step.
+        </p>
+      }
+      <app-finance-pager
+        [page]="rowPage"
+        [next]="rowPage * 20 < a.rows.length"
+        [previous]="rowPage > 1"
+        [count]="a.rows.length"
+        (changed)="rowPage = $event"
+      />
+    }
+    @if (tab() === 'Evidence') {
+      <section class="card">
+        <h2>Evidence register</h2>
+        <p>
+          Only valid, reviewed evidence can support a satisfied control. Proposal claims require
+          independent review.
+        </p>
+        @for (e of evidence().results; track e.uuid) {
+          <article class="evidence">
+            <header>
+              <h3>{{ label(e.source_kind) }}</h3>
+              <app-compliance-status [status]="e.state" />
+            </header>
+            <p class="reference">Source reference {{ e.source_uuid }}</p>
+            <p>
+              Pinned source version / revision
+              {{ e.pin.version ?? e.pin.revision ?? 'Document digest pin' }}
+            </p>
+            <p>{{ e.pin.domain_uuid || e.pin.policy_uuid || '' }}</p>
+            <p>
+              Collected {{ e.collected_at | date: 'medium' }} · Reviewer decision
+              {{ e.review_uuid || 'Pending review' }}
+            </p>
+            <p>
+              Issued {{ e.dates.issued || 'Not provided' }} · Effective
+              {{ e.dates.effective || 'Not provided' }}
+            </p>
+            <p>
+              Expires {{ e.dates.expires || 'Not provided' }} · Review due
+              {{ e.dates.review_due || 'Not provided' }}
+            </p>
+            <p>
+              {{
+                e.externally_shareable
+                  ? 'Disclosure flag recorded; export still needs server authorization.'
+                  : 'Internal-only evidence — external disclosure not authorized.'
+              }}
+            </p>
+            @if (e.source_kind === 'rfp_output') {
+              <p>
+                Approved proposal provenance is not an independent determination of control
+                satisfaction.
+              </p>
+            }
+            @for (d of e.pin.documents; track d.uuid) {
+              <app-compliance-source [document]="d.uuid" />
+            }
+            @if (s.canReview()) {
+              <button
+                [disabled]="s.pending()"
+                (click)="prepareDecision('evidence', e.uuid, 'valid')"
+              >
+                Review this evidence
+              </button>
+            }
+          </article>
+        } @empty {
+          <p>No evidence on this page.</p>
+        }
+        <app-finance-pager
+          [page]="evidencePage"
+          [next]="!!evidence().next"
+          [previous]="!!evidence().previous"
+          [count]="evidence().count"
+          (changed)="loadEvidence($event)"
+        />
+      </section>
+      @if (s.canLink()) {
+        <form class="card" (ngSubmit)="link()">
+          <h2>Link governed evidence</h2>
+          <fieldset [disabled]="s.pending()">
+            <legend>Exact source and mapped target</legend>
+            <label
+              >Requirement / control<select name="target" [(ngModel)]="selectedTarget" required>
+                <option value="">Choose frozen mapping</option>
+                @for (m of a.mappings; track m.requirement_uuid + ':' + m.control_uuid) {
+                  <option [value]="m.requirement_uuid + ':' + m.control_uuid">
+                    {{ req(m.requirement_uuid)?.code }} → {{ m.code }}
+                  </option>
+                }
+              </select></label
+            >
+            <div class="grid">
+              <label
+                >Source type<select
+                  name="kind"
+                  [(ngModel)]="sourceKind"
+                  (ngModelChange)="sourceId = ''"
+                >
+                  @for (kind of sourceKinds; track kind) {
+                    <option [value]="kind">{{ label(kind) }}</option>
+                  }
+                </select></label
+              >
+              @for (kind of [sourceKind]; track kind) {
+                <app-entity-picker
+                  kind="sources"
+                  label="Evidence source"
+                  [contextId]="s.id"
+                  [sourceKind]="sourceKind"
+                  name="source"
+                  [(ngModel)]="sourceId"
+                  [required]="true"
+                />
+              }
+              <label>Issued<input type="date" name="issued" [(ngModel)]="issued" /></label
+              ><label>Effective<input type="date" name="effective" [(ngModel)]="effective" /></label
+              ><label
+                >Expires<input type="date" name="expires" [(ngModel)]="evidenceExpires" /></label
+              ><label
+                >Review due<input type="date" name="reviewDue" [(ngModel)]="evidenceReviewDue"
+              /></label>
+            </div>
+            <label class="check"
+              ><input type="checkbox" name="shareable" [(ngModel)]="shareable" />Record external
+              disclosure flag, subject to approval and policy</label
+            ><button class="primary" type="submit">Link evidence for review</button>
+          </fieldset>
+        </form>
+      }
+      <form class="card" (ngSubmit)="discover()">
+        <h2>Find text within selected documents</h2>
+        <label
+          >Exact search text<input
+            name="query"
+            [(ngModel)]="query"
+            maxlength="200"
+            required /></label
+        ><button type="submit" [disabled]="s.pending()">Search authorized scope</button>
+        @if (discovery(); as d) {
+          <p>Advisory candidates — {{ label(d.method) }}</p>
+          @for (c of d.candidates; track c.document_uuid) {
+            <p>{{ c.document_uuid }} · characters {{ c.start }}–{{ c.end }}</p>
+            <blockquote>{{ c.quote }}</blockquote>
+          } @empty {
+            <p>No matching current evidence.</p>
+          }
+        }
+      </form>
+    }
+    @if (tab() === 'Findings / exceptions') {
+      <section>
+        <h2>Workflow findings</h2>
+        @for (f of s.findings(); track f.uuid) {
+          <app-workflow-finding [finding]="f" [canReview]="false" />
+        } @empty {
+          <p class="card">No findings.</p>
+        }
+      </section>
+      <section class="card">
+        <h2>Workflow exceptions</h2>
+        @for (e of s.exceptions(); track e.uuid) {
+          <article>
+            <h3>{{ label(e.category) }}</h3>
+            <p>{{ e.safe_message }}</p>
+            <p>{{ label(e.status) }}</p>
+          </article>
+        } @empty {
+          <p>No exceptions.</p>
+        }
+        @if (a.run_uuid) {
+          <a [routerLink]="['/workflows/runs', a.run_uuid]"
+            >Open existing workflow exception resolution</a
+          >
+        }
+      </section>
+    }
+
+    @if (tab() === 'Requests / remediation / risk' || tab() === 'History') {
+      <section class="card">
+        <h2>
+          {{
+            tab() === 'History'
+              ? 'Append-only review history'
+              : 'Evidence requests, remediation and risk acceptance'
+          }}
+        </h2>
+        <p>
+          Accepted risk does not make the underlying control satisfied. Final assessment approval
+          covers recorded risk acceptance.
+        </p>
+        @for (d of history().results; track d.uuid) {
+          <article class="decision">
+            <h3>{{ label(d.kind) }} · {{ label(d.outcome) }}</h3>
+            <p class="reference">Target {{ d.target }}</p>
+            <p>{{ d.reason }}</p>
+            <p>
+              Actor {{ d.actor }} · {{ d.created_at | date: 'medium' }} · Revision
+              {{ d.data.assessment_revision ?? 'Not provided' }}
+            </p>
+            <p>Owner {{ d.data.owner | json }} · Due {{ d.data.due || 'Not provided' }}</p>
+            <p>
+              Expires {{ d.data.expires || 'Not provided' }} · Review due
+              {{ d.data.review_due || 'Not provided' }}
+            </p>
+            @if (d.kind === 'risk_acceptance') {
+              <strong
+                >Control gap: still recorded. Risk acceptance: {{ label(d.outcome) }}; expiry and
+                approval are checked by the server.</strong
+              >
+            }
+            @if (d.data.evidence_uuids?.length) {
+              <p>Submitted evidence {{ d.data.evidence_uuids?.join(', ') }}</p>
+            }
+            @if (s.canReview() && ['evidence_request', 'remediation'].includes(d.kind)) {
+              <button [disabled]="s.pending()" (click)="historyAction(d)">
+                Update request / remediation
+              </button>
+            }
+          </article>
+        } @empty {
+          <p>No decisions on this page.</p>
+        }
+        <app-finance-pager
+          [page]="historyPage"
+          [next]="!!history().next"
+          [previous]="!!history().previous"
+          [count]="history().count"
+          (changed)="loadHistory($event)"
+        />
+      </section>
+      @if (tab() === 'History') {
+        <section class="card">
+          <h2>Evaluation history</h2>
+          @for (e of evaluations().results; track e.uuid) {
+            <p>
+              {{ e.uuid }} · Evidence revision {{ e.evidence_revision }} ·
+              {{ e.created_at | date: 'medium' }} ·
+              {{
+                e.uuid === a.evaluation_uuid
+                  ? 'Current evaluation reference'
+                  : 'Historical evaluation'
+              }}
+            </p>
+          } @empty {
+            <p>No evaluations.</p>
+          }
+          <app-finance-pager
+            [page]="evaluationPage"
+            [next]="!!evaluations().next"
+            [previous]="!!evaluations().previous"
+            (changed)="loadEvaluations($event)"
+          />
+        </section>
+      }
+    }
+    @if (tab() === 'Review / approval') {
+      <section class="card">
+        <h2>Existing workflow review / approval</h2>
+        <p>
+          The server validates current evidence, applicability, required reviews, findings and
+          approvals. Final output is generated automatically after approval.
+        </p>
+        @if (!a.run_uuid && s.canManage(a.department)) {
+          <h3>Reviewer</h3>
+          <app-workflow-assignment
+            [memberships]="s.members()"
+            [disabled]="s.pending()"
+            (changed)="reviewer = $event"
+          /><button (click)="reviewer = { user: s.user() }" [disabled]="s.pending()">
+            Assign review to me
+          </button>
+          <h3>Approver</h3>
+          <app-workflow-assignment
+            [memberships]="s.members()"
+            [disabled]="s.pending()"
+            (changed)="approver = $event"
+          /><button (click)="approver = { user: s.user() }" [disabled]="s.pending()">
+            Assign approval to me</button
+          ><button
+            class="primary"
+            [disabled]="s.pending() || !reviewer || !approver"
+            (click)="submit()"
+          >
+            Start Compliance workflow
+          </button>
+        }
+        @if (s.run(); as r) {
+          <p>{{ label(r.status) }} · {{ label(r.current_step) }}</p>
+          <div class="actions">
+            @if (r.status === 'review_required' && r.capabilities.review) {
+              <button [disabled]="s.pending()" (click)="s.command({ action: 'accept' })">
+                Submit review for server validation
+              </button>
+            }
+            @if (r.status === 'approval_required' && r.capabilities.approve) {
+              <button [disabled]="s.pending()" (click)="s.command({ action: 'approve' })">
+                Approve assessment through existing workflow
+              </button>
+            }
+            @if (
+              ['review_required', 'approval_required'].includes(r.status) && r.capabilities.reject
+            ) {
+              <button [disabled]="s.pending()" (click)="s.command({ action: 'reject' })">
+                Reject assessment
+              </button>
+            }
+          </div>
+        }
+      </section>
+    }
+    @if (tab() === 'Final output') {
+      <section class="card">
+        <h2>Immutable assessment outputs</h2>
+        <p>Structured assessment output — not a certification report.</p>
+        @for (o of outputs().results; track o.uuid) {
+          <article class="version">
+            <h3>
+              Output version {{ o.data.output_version }} ·
+              {{
+                o.uuid === outputs().results[0]?.uuid && outputPage === 1
+                  ? 'Current output'
+                  : 'Historical output'
+              }}
+            </h3>
+            <p>
+              {{ o.created_at | date: 'medium' }} · Framework version
+              {{ o.data.framework_version }} · {{ label(o.data.status) }}
+            </p>
+            <p class="reference">{{ o.digest }}</p>
+            <button (click)="selectedOutput.set(o)" [disabled]="s.pending()">
+              Inspect immutable output</button
+            ><button (click)="export(o)" [disabled]="s.pending()">Export authorized JSON</button>
+          </article>
+        } @empty {
+          <p>No finalized output. Complete workflow review and approval.</p>
+        }
+        <label class="check"
+          ><input type="checkbox" [(ngModel)]="external" />Request external disclosure export; the
+          server checks source policies</label
+        ><app-finance-pager
+          [page]="outputPage"
+          [next]="!!outputs().next"
+          [previous]="!!outputs().previous"
+          (changed)="loadOutputs($event)"
+        />
+        @if (selectedOutput(); as o) {
+          <section>
+            <h3>Read-only output version {{ o.data.output_version }}</h3>
+            <p>{{ o.data.assurance }}</p>
+            <p>Approval reference {{ o.data.approval_uuid }}</p>
+            @if (o.data.previous_assessment_uuid) {
+              <a
+                [routerLink]="[
+                  '/workflows/compliance/assessments',
+                  o.data.previous_assessment_uuid,
+                ]"
+                >Open original assessment</a
+              >
+            }
+            <pre>{{ o.data | json }}</pre>
+          </section>
+        }
+      </section>
+    }
+    @if (target && s.canReview()) {
+      <form class="card review-form" (ngSubmit)="decide()">
+        <h2>Record {{ label(decisionKind) }} decision</h2>
+        <p class="reference">Target {{ target }}</p>
+        <fieldset [disabled]="s.pending()">
+          <legend>Structured human review</legend>
+          <label
+            >Decision<select name="outcome" [(ngModel)]="outcome">
+              @if (decisionKind === 'control') {
+                @for (v of outcomes; track v) {
+                  @if (v !== 'not_applicable' || s.canManage(a.department)) {
+                    <option [value]="v">{{ label(v) }}</option>
+                  }
+                }
+              } @else if (decisionKind === 'evidence') {
+                @for (v of ['valid', 'revoked', 'insufficient']; track v) {
+                  <option [value]="v">{{ label(v) }}</option>
+                }
+              } @else if (decisionKind === 'applicability') {
+                @for (
+                  v of ['applicable', 'not_applicable', 'conditionally_applicable', 'undetermined'];
+                  track v
+                ) {
+                  @if (v !== 'not_applicable' || s.canManage(a.department)) {
+                    <option [value]="v">{{ label(v) }}</option>
+                  }
+                }
+              } @else if (decisionKind === 'risk_acceptance') {
+                <option value="accepted_risk">Accept risk — underlying gap remains</option>
+                <option value="revoked">Revoke risk acceptance</option>
+              } @else {
+                @for (v of ['open', 'in_progress', 'submitted', 'resolved', 'rejected']; track v) {
+                  <option [value]="v">{{ label(v) }}</option>
+                }
+              }
+            </select></label
+          ><label
+            >Reason / planned action<textarea
+              name="reason"
+              [(ngModel)]="reason"
+              required
+              maxlength="2000"
+            ></textarea>
+          </label>
+          @if (['evidence_request', 'remediation'].includes(decisionKind)) {
+            <app-workflow-assignment
+              [memberships]="s.members()"
+              [disabled]="s.pending()"
+              (changed)="actionOwner = $event"
+            /><button type="button" (click)="actionOwner = { user: s.user() }">
+              Assign action to me</button
+            ><label
+              >Due date<input
+                type="date"
+                name="due"
+                [(ngModel)]="due"
+                [required]="outcome === 'open'" /></label
+            ><label
+              >Original request reference<input
+                name="request"
+                [(ngModel)]="requestId"
+                [required]="outcome !== 'open'" /></label
+            ><label
+              >Submitted evidence references, one per line<textarea
+                name="submitted"
+                [(ngModel)]="submitted"
+                [required]="outcome === 'submitted'"
+              ></textarea>
+            </label>
+          }
+          @if (decisionKind === 'risk_acceptance') {
+            <p>Risk acceptance preserves the control gap and requires final assessment approval.</p>
+            <label
+              >Expiry<input
+                name="expiry"
+                type="date"
+                [(ngModel)]="expires"
+                [required]="outcome === 'accepted_risk'" /></label
+            ><label>Review due<input name="review" type="date" [(ngModel)]="reviewDue" /></label>
+          }
+          <button class="primary" type="submit" [disabled]="!reason.trim()">Record decision</button
+          ><button type="button" (click)="target = ''">Cancel decision</button>
+        </fieldset>
+      </form>
+    }
+  }
+</main>

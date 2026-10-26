@@ -1,14 +1,12 @@
+import { DistributionChartComponent } from '../../../shared/charts/distribution-chart.component';
 import { DatePipe, NgIf } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
-import { timeout } from 'rxjs';
+import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { catchError, finalize, forkJoin, of, timeout } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
-import {
-  DashboardOverview,
-  RecentActivity,
-} from '../models/dashboard.model';
+import { DashboardOverview, RecentActivity } from '../models/dashboard.model';
 import { MetricCardComponent } from '../components/metric-card.component';
 import { RecentActivityListComponent } from '../components/recent-activity-list.component';
-import { StatusBreakdownCardComponent } from '../components/status-breakdown-card.component';
 import { DashboardService } from '../services/dashboard.service';
 
 @Component({
@@ -19,12 +17,13 @@ import { DashboardService } from '../services/dashboard.service';
     MetricCardComponent,
     NgIf,
     RecentActivityListComponent,
-    StatusBreakdownCardComponent,
+    DistributionChartComponent,
   ],
   templateUrl: './dashboard-page.component.html',
   styleUrls: ['./dashboard-page.component.scss'],
 })
 export class DashboardPageComponent {
+  private readonly destroy = inject(DestroyRef);
   private readonly dashboardService = inject(DashboardService);
 
   readonly overview = signal<DashboardOverview | null>(null);
@@ -37,54 +36,34 @@ export class DashboardPageComponent {
   }
 
   loadDashboard(): void {
+    if (this.isLoading()) return;
     this.isLoading.set(true);
     this.errorMessage.set('');
-
-    let overviewDone = false;
-    let activityDone = false;
-
-    const finishIfDone = () => {
-      if (overviewDone && activityDone) {
-        this.isLoading.set(false);
-      }
-    };
-
-    this.dashboardService
-      .getOverview()
-      .pipe(timeout(15000))
-      .subscribe({
-        next: (overview) => {
-          console.log('Dashboard overview loaded:', overview);
-          this.overview.set(overview);
-        },
-        error: (error) => {
-          console.error('Dashboard overview error:', error);
-          this.errorMessage.set(
-            error?.error?.detail ||
-              'Unable to load dashboard overview. Check backend logs and browser Network tab.',
-          );
-        },
-        complete: () => {
-          overviewDone = true;
-          finishIfDone();
-        },
-      });
-
-    this.dashboardService
-      .getRecentActivity(20)
-      .pipe(timeout(15000))
-      .subscribe({
-        next: (response) => {
-          console.log('Recent activity loaded:', response);
-          this.recentActivities.set(response.results || []);
-        },
-        error: (error) => {
-          console.error('Recent activity error:', error);
-        },
-        complete: () => {
-          activityDone = true;
-          finishIfDone();
-        },
+    this.overview.set(null);
+    this.recentActivities.set([]);
+    forkJoin({
+      overview: this.dashboardService.getOverview().pipe(
+        timeout(15000),
+        catchError(() => {
+          this.errorMessage.set('Unable to load workspace metrics. Please retry.');
+          return of(null);
+        }),
+      ),
+      activity: this.dashboardService.getRecentActivity(20).pipe(
+        timeout(15000),
+        catchError(() => {
+          this.errorMessage.set('Recent activity is unavailable. Please retry.');
+          return of(null);
+        }),
+      ),
+    })
+      .pipe(
+        takeUntilDestroyed(this.destroy),
+        finalize(() => this.isLoading.set(false)),
+      )
+      .subscribe(({ overview, activity }) => {
+        this.overview.set(overview);
+        this.recentActivities.set(activity?.results || []);
       });
   }
 

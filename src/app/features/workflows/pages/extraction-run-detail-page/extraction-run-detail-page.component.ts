@@ -1,20 +1,16 @@
+import { DocumentDetail } from '../../../documents/models/document.model';
+import { DocumentsService } from '../../../documents/services/documents.service';
+import { AiApiErrorMessageService } from '../../../ai-chat/services/ai-api-error-message.service';
+import { HttpErrorResponse } from '@angular/common/http';
 import { DatePipe, NgIf } from '@angular/common';
-import {
-  ChangeDetectorRef,
-  Component,
-  NgZone,
-  OnInit,
-  inject,
-} from '@angular/core';
+import { ChangeDetectorRef, Component, NgZone, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
-import {
-  ExtractionResultField,
-  ExtractionRun,
-} from '../../models/extraction-workflow.model';
+import { ExtractionResultField, ExtractionRun } from '../../models/extraction-workflow.model';
 import { ExtractionWorkflowService } from '../../services/extraction-workflow.service';
 import { ExtractionStatusBadgeComponent } from '../../components/extraction-status-badge/extraction-status-badge.component';
 import { ExtractionFieldReviewListComponent } from '../../components/extraction-field-review-list/extraction-field-review-list.component';
+import { ToastService } from '../../../../core/notifications/toast.service';
 
 @Component({
   selector: 'app-extraction-run-detail-page',
@@ -35,7 +31,20 @@ export class ExtractionRunDetailPageComponent implements OnInit {
   private readonly service = inject(ExtractionWorkflowService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly ngZone = inject(NgZone);
+  private readonly toasts = inject(ToastService);
 
+  private readonly documents = inject(DocumentsService);
+  private readonly errors = inject(AiApiErrorMessageService);
+  document: DocumentDetail | null = null;
+  correctionDenied = false;
+  exportDenied = false;
+  get canCorrect(): boolean {
+    return (
+      !this.correctionDenied &&
+      ['review', 'approve', 'admin'].includes(this.document?.current_user_access || '') &&
+      !['approved', 'submitted_for_approval'].includes(this.run?.status || '')
+    );
+  }
   run: ExtractionRun | null = null;
   fields: ExtractionResultField[] = [];
 
@@ -56,7 +65,7 @@ export class ExtractionRunDetailPageComponent implements OnInit {
     const uuid = this.route.snapshot.paramMap.get('uuid');
 
     if (!uuid) {
-      this.router.navigate(['/workflows']);
+      this.router.navigate(['/workflows/extractions']);
       return;
     }
 
@@ -68,7 +77,20 @@ export class ExtractionRunDetailPageComponent implements OnInit {
     this.service.getRun(uuid).subscribe({
       next: (run) => {
         this.ngZone.run(() => {
-          console.log('Extraction run detail loaded:', run);
+          this.document = null;
+          this.correctionDenied = false;
+          this.exportDenied = false;
+          if (run.document_uuid)
+            this.documents.getDocument(run.document_uuid).subscribe({
+              next: (doc) => {
+                this.document = doc;
+                this.cdr.markForCheck();
+              },
+              error: () => {
+                this.document = null;
+                this.cdr.markForCheck();
+              },
+            });
           this.run = run;
           this.fields = run.result_fields || run.fields || [];
           this.isLoading = false;
@@ -78,8 +100,13 @@ export class ExtractionRunDetailPageComponent implements OnInit {
       },
       error: (error) => {
         this.ngZone.run(() => {
-          console.error('Extraction run detail error:', error);
-          this.errorMessage = 'Unable to load extraction run detail.';
+          this.run = null;
+          this.fields = [];
+          this.document = null;
+          this.errorMessage = this.errors.getMessage(
+            error,
+            'Unable to load extraction run detail.',
+          );
           this.isLoading = false;
           this.cdr.detectChanges();
         });
@@ -95,8 +122,14 @@ export class ExtractionRunDetailPageComponent implements OnInit {
           this.cdr.detectChanges();
         });
       },
-      error: () => {
-        // Detail serializer may already include fields. Keep existing fields.
+      error: (error: unknown) => {
+        if (error instanceof HttpErrorResponse && [401, 403, 404].includes(error.status)) {
+          this.fields = [];
+          this.run = null;
+          this.document = null;
+          this.errorMessage = this.errors.getMessage(error, 'Extraction unavailable.');
+          this.cdr.markForCheck();
+        }
       },
     });
   }
@@ -122,7 +155,6 @@ export class ExtractionRunDetailPageComponent implements OnInit {
       },
       error: (error) => {
         this.ngZone.run(() => {
-          console.error('Extraction rerun error:', error);
           this.errorMessage = error?.error?.detail || 'Unable to rerun extraction.';
           this.isRerunning = false;
           this.cdr.detectChanges();
@@ -151,7 +183,6 @@ export class ExtractionRunDetailPageComponent implements OnInit {
       },
       error: (error) => {
         this.ngZone.run(() => {
-          console.error('Submit for approval error:', error);
           this.errorMessage =
             error?.error?.detail ||
             error?.error?.assigned_to?.[0] ||
@@ -185,17 +216,19 @@ export class ExtractionRunDetailPageComponent implements OnInit {
             link.download = `extraction-${this.run?.uuid}.json`;
             link.click();
             window.URL.revokeObjectURL(url);
+            this.toasts.success('Extraction export downloaded.');
           }
-
-          this.successMessage = 'Extraction export downloaded.';
           this.isExporting = false;
           this.cdr.detectChanges();
         });
       },
       error: (error) => {
         this.ngZone.run(() => {
-          console.error('Extraction export error:', error);
-          this.errorMessage = error?.error?.detail || 'Unable to export extraction.';
+          this.errorMessage = this.errors.getMessage(
+            error,
+            'Export is not permitted for protected document data.',
+          );
+          this.exportDenied = true;
           this.isExporting = false;
           this.cdr.detectChanges();
         });
@@ -212,6 +245,8 @@ export class ExtractionRunDetailPageComponent implements OnInit {
       return;
     }
 
+    if (!this.canCorrect || this.fields.find((field) => field.uuid === event.fieldUuid)?.restricted)
+      return;
     this.isSavingFieldUuid = event.fieldUuid;
     this.errorMessage = '';
     this.successMessage = '';
@@ -235,8 +270,13 @@ export class ExtractionRunDetailPageComponent implements OnInit {
         },
         error: (error) => {
           this.ngZone.run(() => {
-            console.error('Field correction error:', error);
-            this.errorMessage = error?.error?.detail || 'Unable to save field correction.';
+            this.errorMessage = this.errors.getMessage(
+              error,
+              'You can view this document but cannot modify extraction values.',
+            );
+            this.correctionDenied = true;
+            this.fields = [];
+            this.loadFields(this.run!.uuid);
             this.isSavingFieldUuid = null;
             this.cdr.detectChanges();
           });
@@ -265,7 +305,9 @@ export class ExtractionRunDetailPageComponent implements OnInit {
   }
 
   get rawData(): Record<string, unknown> | null {
-    return this.run?.raw_output || this.run?.extracted_data || null;
+    return this.fields.some((field) => field.restricted)
+      ? null
+      : this.run?.raw_output || this.run?.extracted_data || null;
   }
 
   get confidenceLabel(): string {

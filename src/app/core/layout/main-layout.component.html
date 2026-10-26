@@ -1,6 +1,15 @@
+﻿<a class="sr-only focus:not-sr-only ui-button" href="#workspace-main">Skip to workspace</a>
 <div class="docux-shell" [class.docux-shell--ai-launching]="isLaunchingAi">
-  <aside class="docux-sidebar">
-    <div class="docux-brand" title="Hover to expand sidebar">
+  <aside
+    id="main-sidebar"
+    [attr.role]="mobileNavigationOpen() ? 'dialog' : null"
+    [attr.aria-modal]="mobileNavigationOpen() ? true : null"
+    aria-label="Workspace navigation"
+    class="docux-sidebar"
+    [class.mobile-open]="mobileNavigationOpen()"
+    (keydown)="escapeNavigation($event)"
+  >
+    <div class="docux-brand">
       <span class="docux-brand__mark">D</span>
 
       <span class="docux-brand__text">
@@ -10,74 +19,255 @@
     </div>
 
     <nav class="docux-sidebar__nav" aria-label="Main navigation">
-      <a
-        *ngFor="let item of navItems"
-        [routerLink]="item.path"
-        routerLinkActive="is-active"
-        class="docux-sidebar__link"
-        [title]="item.label"
-      >
-        <span class="docux-sidebar__icon" [ngSwitch]="item.icon">
-          <svg *ngSwitchCase="'dashboard'" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M4 11.5 12 5l8 6.5"></path>
-            <path d="M6.5 10.5V19h11v-8.5"></path>
-            <path d="M10 19v-5h4v5"></path>
-          </svg>
+      @for (item of navItems; track item.path) {
+        @if (item.icon === 'workflows') {
+          <div
+            class="docux-workflow-group"
+            (pointerenter)="openWorkflowMenu($event)"
+            (pointerleave)="leaveWorkflowMenu($event)"
+            (focusout)="workflowFocusOut($event)"
+          >
+            <button
+              id="workflow-menu-toggle"
+              type="button"
+              class="docux-sidebar__link"
+              [class.is-active]="workflowActive()"
+              aria-label="Workflows"
+              aria-controls="workflow-submenu"
+              [attr.aria-expanded]="workflowMenuOpen()"
+              (click)="toggleWorkflowMenu()"
+            >
+              <span class="docux-sidebar__icon"
+                ><svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M7 7h7a4 4 0 0 1 0 8H8" />
+                  <path d="M10 4 7 7l3 3M14 20l3-3-3-3" /></svg
+              ></span>
+              <span class="docux-sidebar__label">Workflows</span
+              ><span
+                class="docux-workflow-chevron"
+                [class.is-open]="workflowMenuOpen()"
+                aria-hidden="true"
+                ><svg viewBox="0 0 20 20"><path d="m7 4 6 6-6 6" /></svg
+              ></span>
+            </button>
+            <div
+              id="workflow-submenu"
+              class="docux-workflow-dropdown"
+              [class.is-open]="workflowMenuOpen()"
+              [attr.aria-hidden]="!workflowMenuOpen()"
+              [attr.inert]="workflowMenuOpen() ? null : ''"
+            >
+              <div class="docux-workflow-dropdown__clip">
+                <div class="docux-workflow-menu">
+                  <a
+                    routerLink="/workflows"
+                    [routerLinkActiveOptions]="{ exact: true }"
+                    routerLinkActive="is-active"
+                    (click)="closeNavigation()"
+                    >All workflows</a
+                  >
+                  <a
+                    routerLinkActive="is-active"
+                    ariaCurrentWhenActive="page"
+                    routerLink="/workflows/invoices"
+                    (click)="closeNavigation()"
+                    ><span>Invoices</span><small>Accounts payable</small></a
+                  >
+                  <a
+                    routerLinkActive="is-active"
+                    ariaCurrentWhenActive="page"
+                    routerLink="/workflows/definitions"
+                    [queryParams]="{ type: 'contract_review' }"
+                    (click)="closeNavigation()"
+                    ><span>Contract review</span><small>Available</small></a
+                  >
+                  <a
+                    routerLinkActive="is-active"
+                    ariaCurrentWhenActive="page"
+                    routerLink="/workflows/definitions"
+                    [queryParams]="{ type: 'legal_clause_intelligence' }"
+                    (click)="closeNavigation()"
+                    ><span>Legal clause intelligence</span><small>Available</small></a
+                  >
+                  @if (
+                    ['company_admin', 'platform_admin', 'department_admin'].includes(
+                      profile()?.role || ''
+                    )
+                  ) {
+                    <a
+                      routerLinkActive="is-active"
+                      ariaCurrentWhenActive="page"
+                      routerLink="/workflows/legal/playbooks"
+                      (click)="closeNavigation()"
+                      >Legal playbooks</a
+                    >
+                  }
+                  <a
+                    routerLinkActive="is-active"
+                    ariaCurrentWhenActive="page"
+                    routerLink="/workflows/hr-policies"
+                    (click)="closeNavigation()"
+                    >HR policies &amp; Q&amp;A</a
+                  >
+                  <a
+                    routerLinkActive="is-active"
+                    ariaCurrentWhenActive="page"
+                    routerLink="/workflows/rfp-projects"
+                    (click)="closeNavigation()"
+                    ><span>RFP &amp; proposals</span><small>Available</small></a
+                  >
+                  <a
+                    routerLinkActive="is-active"
+                    ariaCurrentWhenActive="page"
+                    routerLink="/workflows/compliance"
+                    (click)="closeNavigation()"
+                    ><span>Compliance</span><small>Available</small></a
+                  >
+                  <a
+                    routerLinkActive="is-active"
+                    ariaCurrentWhenActive="page"
+                    routerLink="/workflows/finance-audits"
+                    (click)="closeNavigation()"
+                    ><span>Finance audit</span><small>Available</small></a
+                  >
+                </div>
+              </div>
+            </div>
+          </div>
+        } @else {
+          <a
+            [routerLink]="item.path"
+            routerLinkActive="is-active"
+            class="docux-sidebar__link"
+            [attr.aria-label]="item.label"
+            [title]="item.label"
+            (click)="closeNavigation()"
+          >
+            <span class="docux-sidebar__icon" [ngSwitch]="item.icon">
+              <svg *ngSwitchCase="'dashboard'" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 11.5 12 5l8 6.5"></path>
+                <path d="M6.5 10.5V19h11v-8.5"></path>
+                <path d="M10 19v-5h4v5"></path>
+              </svg>
 
-          <svg *ngSwitchCase="'documents'" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M7 3.5h7l3 3V20.5H7z"></path>
-            <path d="M14 3.5v4h4"></path>
-            <path d="M9.5 11h5"></path>
-            <path d="M9.5 14h5"></path>
-            <path d="M9.5 17h3"></path>
-          </svg>
+              <svg *ngSwitchCase="'documents'" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M7 3.5h7l3 3V20.5H7z"></path>
+                <path d="M14 3.5v4h4"></path>
+                <path d="M9.5 11h5"></path>
+                <path d="M9.5 14h5"></path>
+                <path d="M9.5 17h3"></path>
+              </svg>
 
-          <svg *ngSwitchCase="'approvals'" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M5 12.5 9.2 17 19 7"></path>
-          </svg>
+              <svg *ngSwitchCase="'approvals'" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 12.5 9.2 17 19 7"></path>
+              </svg>
 
-          <svg *ngSwitchCase="'workflows'" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M7 7h7a4 4 0 0 1 0 8H8"></path>
-            <path d="M10 4 7 7l3 3"></path>
-            <path d="M14 20l3-3-3-3"></path>
-          </svg>
+              <svg *ngSwitchCase="'workflows'" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M7 7h7a4 4 0 0 1 0 8H8"></path>
+                <path d="M10 4 7 7l3 3"></path>
+                <path d="M14 20l3-3-3-3"></path>
+              </svg>
 
-          <svg *ngSwitchCase="'notifications'" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M18 9a6 6 0 0 0-12 0c0 7-2.5 7-2.5 7h17S18 16 18 9"></path>
-            <path d="M10 20h4"></path>
-          </svg>
+              <svg *ngSwitchCase="'notifications'" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M18 9a6 6 0 0 0-12 0c0 7-2.5 7-2.5 7h17S18 16 18 9"></path>
+                <path d="M10 20h4"></path>
+              </svg>
 
-          <svg *ngSwitchDefault viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M5 12h14"></path>
-          </svg>
-        </span>
+              <svg *ngSwitchDefault viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 12h14"></path>
+              </svg>
+            </span>
 
-        <span class="docux-sidebar__label">{{ item.label }}</span>
-      </a>
+            <span class="docux-sidebar__label">{{ item.label }}</span>
+          </a>
+        }
+      }
+      @if (profile()?.is_superuser || profile()?.role === 'company_admin' || profile()?.role === 'platform_admin') {
+        <div class="docux-workflow-group docux-admin-group" (pointerenter)="openAdminMenu($event)" (pointerleave)="leaveAdminMenu($event)" (focusout)="adminFocusOut($event)">
+          <button id="admin-menu-toggle" type="button" class="docux-sidebar__link" [class.is-active]="adminActive()" aria-label="Administration" aria-controls="admin-submenu" [attr.aria-expanded]="adminMenuOpen()" (click)="toggleAdminMenu()">
+            <span class="docux-sidebar__icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M6 20V7l6-3 6 3v13M9 10h2m2 0h2m-6 4h2m2 0h2m-4 6v-3h2v3" /></svg></span>
+            <span class="docux-sidebar__label">Administration</span>
+            <span class="docux-workflow-chevron" [class.is-open]="adminMenuOpen()" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="m7 4 6 6-6 6" /></svg></span>
+          </button>
+          <div id="admin-submenu" class="docux-workflow-dropdown" [class.is-open]="adminMenuOpen()" [attr.aria-hidden]="!adminMenuOpen()" [attr.inert]="adminMenuOpen() ? null : ''">
+            <div class="docux-workflow-dropdown__clip"><div class="docux-workflow-menu">
+              @if (profile()?.is_superuser) { <a routerLink="/administration/organizations" routerLinkActive="is-active" ariaCurrentWhenActive="page" (click)="closeNavigation()">Organizations</a> }
+              <a routerLink="/administration/company" routerLinkActive="is-active" ariaCurrentWhenActive="page" (click)="closeNavigation()">Company</a>
+              <a routerLink="/administration/users" routerLinkActive="is-active" ariaCurrentWhenActive="page" (click)="closeNavigation()">Users</a>
+              <a routerLink="/administration/departments" routerLinkActive="is-active" ariaCurrentWhenActive="page" (click)="closeNavigation()">Departments</a>
+              <a routerLink="/administration/access" routerLinkActive="is-active" ariaCurrentWhenActive="page" (click)="closeNavigation()">Department access</a>
+            </div></div>
+          </div>
+        </div>
+      }
     </nav>
   </aside>
 
+  @if (mobileNavigationOpen()) {
+    <button
+      type="button"
+      class="docux-nav-scrim"
+      aria-label="Close navigation"
+      (click)="closeNavigation()"
+    ></button>
+  }
   <div class="docux-main">
     <header class="docux-header">
+      @if (navigating()) {
+        <span class="docux-route-status" role="status">Opening workspace...</span>
+      }
+      <button
+        id="mobile-navigation-toggle"
+        type="button"
+        class="docux-mobile-toggle"
+        aria-controls="main-sidebar"
+        [attr.aria-expanded]="mobileNavigationOpen()"
+        (click)="toggleMobileNavigation()"
+        aria-label="Toggle navigation"
+      >
+        &#9776;
+      </button>
       <div>
-        <h2>DocuX Workspace</h2>
-        <p>Secure AI document processing and review</p>
+        <span class="docux-header__context"
+          >Workspace <span aria-hidden="true">/</span> <strong>{{ contextTitle() }}</strong></span
+        >
       </div>
 
       <div class="docux-header__actions">
-        <div class="docux-header__user">
-          <strong>admin</strong>
-          <span>company_admin</span>
-        </div>
-
-        <button type="button" class="docux-header__logout" (click)="logout()">
-          Logout
-        </button>
+        <app-notification-bell />
+        <details class="docux-account" #account (keydown.escape)="account.open = false">
+          <summary aria-label="Account menu">
+            <span class="docux-avatar" aria-hidden="true">{{
+              (profile()?.username || 'U').slice(0, 1).toUpperCase()
+            }}</span
+            ><span class="docux-header__user"
+              ><strong>{{ profile()?.username || 'Signed in' }}</strong
+              ><span>{{
+                profile()?.is_superuser ? 'Superuser' : (profile()?.role || 'Workspace account').replaceAll('_', ' ')
+              }}</span></span
+            >
+          </summary>
+          <div class="docux-account__panel">
+            <strong>Account preferences</strong><label for="appearance-choice">Appearance</label
+            ><select
+              id="appearance-choice"
+              #appearanceChoice
+              [value]="appearance()"
+              (change)="changeAppearance(appearanceChoice.value)"
+            >
+              <option value="system">System default</option>
+              <option value="light">Light</option>
+              <option value="dark">Dark</option></select
+            ><button type="button" class="docux-header__logout ui-button" (click)="logout()">
+              Logout
+            </button>
+          </div>
+        </details>
       </div>
     </header>
 
-    <main class="docux-content">
-      <router-outlet></router-outlet>
+    <main id="workspace-main" class="docux-content" tabindex="-1" [attr.aria-busy]="navigating()">
+      <app-workflow-breadcrumbs /><router-outlet (activate)="focusWorkspace()"></router-outlet>
     </main>
   </div>
   <div class="docux-ai-intro" *ngIf="isAiIntroVisible">
@@ -87,8 +277,8 @@
       <strong>Your document assistant is here</strong>
 
       <p>
-        Ask questions, summarize files, compare information, and find risks from
-        your workspace documents.
+        Ask questions, summarize files, compare information, and find risks from your workspace
+        documents.
       </p>
 
       <div class="docux-ai-intro__actions">
@@ -108,45 +298,9 @@
     title="Open DocuX AI"
     (click)="openAiChat()"
   >
-    <span class="docux-ai-fab__glow"></span>
-
-    <span class="docux-ai-fab__icon-stage" aria-hidden="true">
-      <ng-container
-        *ngFor="
-          let visual of floatingAiVisuals;
-          let i = index;
-          trackBy: trackFloatingAiVisual
-        "
-      >
-        <span
-          class="docux-ai-fab__icon-layer"
-          [class.docux-ai-fab__icon-layer--active]="
-            i === activeFloatingAiVisualIndex
-          "
-        >
-          <img
-            *ngIf="visual.kind === 'image'"
-            [src]="visual.value"
-            [alt]="visual.alt"
-            class="docux-ai-fab__image"
-          />
-
-          <span
-            *ngIf="visual.kind === 'emoji'"
-            class="docux-ai-fab__emoji"
-            [attr.aria-label]="visual.alt"
-          >
-            {{ visual.value }}
-          </span>
-        </span>
-      </ng-container>
-    </span>
-
-    <span class="docux-ai-fab__popup">
-      <span class="docux-ai-fab__popup-title">DocuX AI</span>
-      <span class="docux-ai-fab__popup-subtitle">
-        Smart document assistant
-      </span>
-    </span>
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M6 3h9l4 4v14H6zM14 3v5h5M9 12h7M9 16h5" /></svg
+    ><span>DocuX AI</span>
   </button>
 </div>
+

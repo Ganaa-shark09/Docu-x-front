@@ -3,7 +3,6 @@ import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
 import { publicGuard } from './core/guards/public.guard';
 import { MainLayoutComponent } from './core/layout/main-layout.component';
-import { PlaceholderPageComponent } from './shared/components/placeholder-page.component';
 
 export const routes: Routes = [
   {
@@ -20,14 +19,12 @@ export const routes: Routes = [
   {
     path: 'ai',
     canActivate: [authGuard],
-    loadChildren: () =>
-      import('./features/ai-chat/ai.routes').then((m) => m.AI_ROUTES),
+    loadChildren: () => import('./features/ai-chat/ai.routes').then((m) => m.AI_ROUTES),
   },
   {
     path: 'ai-chat',
     canActivate: [authGuard],
-    loadChildren: () =>
-      import('./features/ai-chat/ai-chat.routes').then((m) => m.AI_CHAT_ROUTES),
+    loadChildren: () => import('./features/ai-chat/ai-chat.routes').then((m) => m.AI_CHAT_ROUTES),
   },
 
   {
@@ -59,9 +56,26 @@ export const routes: Routes = [
       },
       {
         path: 'notifications',
-        component: PlaceholderPageComponent,
-        data: { title: 'Notifications' },
+        loadComponent: () =>
+          import('./features/workflows/pages/workflow-notifications.component').then(
+            (m) => m.WorkflowNotificationsComponent,
+          ),
       },
+      {
+        path: 'administration',
+        pathMatch: 'full',
+        redirectTo: 'administration/company',
+      },
+      ...(['organizations', 'company', 'users', 'departments', 'access'] as const).map(
+        (section) => ({
+          path: `administration/${section}`,
+          data: { section },
+          loadComponent: () =>
+            import('./features/administration/administration.component').then(
+              (m) => m.AdministrationComponent,
+            ),
+        }),
+      ),
       {
         path: '',
         pathMatch: 'full',

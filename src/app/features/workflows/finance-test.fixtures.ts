@@ -1,0 +1,173 @@
+import {
+  FinanceDetail,
+  FinanceLibrary,
+  FinanceDataset,
+  FinanceTransaction,
+  FinanceSample,
+  FinanceTestRun,
+  FinanceFinding,
+  FinanceOutput,
+} from './models/finance.model';
+import { Run, Page } from './models/workflow.model';
+export const financeId = '11111111-1111-4111-8111-111111111111',
+  financeDoc = '22222222-2222-4222-8222-222222222222';
+export const financeAudit: FinanceDetail = {
+  uuid: financeId,
+  title: 'Quarterly finance review',
+  department: null,
+  revision: 5,
+  population_revision: 2,
+  status: 'review_required',
+  run_uuid: financeId,
+  scope: {
+    start: '2026-04-01',
+    end: '2026-06-30',
+    period: 'quarterly',
+    fiscal_year: 'Organization FY27',
+    objectives: ['Payment verification'],
+  },
+  policy: {
+    tests: ['invoice', 'amount', 'duplicates', 'three_way'],
+    materiality: { USD: '9007199254740993.12345678' },
+    tolerance: { USD: '0.00000001' },
+    blocking_severities: ['high', 'critical'],
+  },
+};
+export const financeLibrary: FinanceLibrary = {
+  version: 1,
+  protected: true,
+  tests: [
+    'integrity',
+    'period',
+    'cutoff',
+    'amount',
+    'duplicates',
+    'support',
+    'invoice',
+    'vendor',
+    'three_way',
+    'journal',
+    'frequency',
+  ].map((code) => ({ code, name: code.replace('_', ' ') })),
+  sampling_methods: [
+    'random',
+    'systematic',
+    'high_value',
+    'value_threshold',
+    'risk_based',
+    'stratified',
+  ],
+};
+export const financeRun: Run = {
+  uuid: financeId,
+  definition_uuid: financeId,
+  version_uuid: financeId,
+  department: null,
+  initiated_by: 1,
+  status: 'review_required',
+  current_step: 'review_audit',
+  started_at: '2026-10-12T00:00:00Z',
+  completed_at: null,
+  error_type: '',
+  error_message: '',
+  correlation_id: financeId,
+  revision: 6,
+  documents: [financeDoc],
+  capabilities: {
+    view: true,
+    cancel: false,
+    assign: false,
+    review: true,
+    approve: false,
+    reject: true,
+    resolve_exception: false,
+    comment: true,
+    administer: true,
+    request_changes: false,
+  },
+};
+export const financeDataset: FinanceDataset = {
+  uuid: financeId,
+  number: 1,
+  created_at: '2026-10-12T00:00:00Z',
+  document_uuid: financeDoc,
+  checksum: 'a'.repeat(64),
+  mapping: { Amount: 'gross_amount' },
+  kind: 'csv',
+  row_count: 40,
+  totals: { USD: { gross_amount: '9007199254740993.12345678' } },
+};
+export const financeTx: FinanceTransaction = {
+  uuid: financeId,
+  dataset_uuid: financeId,
+  row: 3,
+  correction_uuid: null,
+  data: {
+    transaction_id: 'TX-001',
+    transaction_date: '2026-04-12',
+    transaction_type: 'payment',
+    currency: 'USD',
+    gross_amount: '9007199254740993.12345678',
+    invoice_reference: 'INV-01',
+    lines: [{ account_code: 'AP', debit: '9007199254740993.12345678' }],
+  },
+  provenance: { source_row: 3 },
+};
+export const financeSample: FinanceSample = {
+  uuid: financeId,
+  number: null,
+  created_at: '2026-10-12T00:00:00Z',
+  population_revision: 2,
+  population_digest: 'b'.repeat(64),
+  method: 'random',
+  parameters: { method: 'random', size: 1, seed: 'explicit-seed' },
+  selected: [{ transaction_uuid: financeId, reason: 'random', currency: 'USD', signals: {} }],
+};
+export const financeTest: FinanceTestRun = {
+  uuid: financeId,
+  number: null,
+  created_at: '2026-10-12T00:00:00Z',
+  population_revision: 2,
+  population_digest: 'b'.repeat(64),
+  counts: { exception: 1, passed: 3 },
+  definitions: { library_version: 1 },
+  previous_uuid: null,
+  sample_uuid: null,
+};
+export const financeFinding: FinanceFinding = {
+  uuid: financeId,
+  category: 'finance_duplicates',
+  severity: 'high',
+  status: 'open',
+  review_state: 'unreviewed',
+  data: { transaction_uuid: financeId, rule: 'duplicates' },
+  evidence: [{ candidate: true, gross_amount: '9007199254740993.12345678', currency: 'USD' }],
+};
+export const financeOutput: FinanceOutput = {
+  uuid: financeId,
+  number: 1,
+  created_at: '2026-10-12T00:00:00Z',
+  data: {
+    assistance_only: true,
+    population_revision: 2,
+    scope: { start: '2026-04-01', end: '2026-06-30' },
+    population_summary: { USD: { gross_amount: '9007199254740993.12345678' } },
+    approval_uuid: financeId,
+  },
+};
+export const financePage = <T>(results: T[], next = false): Page<T> => ({
+  count: results.length,
+  next: next ? '?page=2' : null,
+  previous: null,
+  results,
+});
+export const financeMember = {
+  uuid: financeId,
+  user: 1,
+  username: 'Reviewer',
+  user_email: 'reviewer@company.test',
+  department: 1,
+  department_name: 'Finance',
+  role: 'department_admin',
+  is_active: true,
+};

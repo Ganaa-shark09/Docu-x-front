@@ -1,0 +1,194 @@
+<section class="card">
+  <h2>Findings / remediation</h2>
+  <p>Server severity and review state | a management response does not resolve a finding.</p>
+  <form (ngSubmit)="apply()">
+    <div class="grid">
+      <label
+        >Status<select name="status" [(ngModel)]="filters['status']">
+          <option value="">All</option>
+          <option value="open">Open</option>
+          <option value="accepted">Accepted</option>
+          <option value="resolved">Resolved</option>
+          <option value="dismissed">Dismissed</option>
+        </select></label
+      ><label
+        >Severity<select name="severity" [(ngModel)]="filters['severity']">
+          <option value="">All</option>
+          <option value="info">Info</option>
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+          <option value="critical">Critical</option>
+        </select></label
+      ><label
+        >Category<input
+          name="category"
+          [(ngModel)]="filters['category']"
+          placeholder="finance_duplicates" /></label
+      ><button [disabled]="s.pending()">Apply server filters</button>
+    </div>
+  </form>
+  @for (f of findings.rows(); track f.uuid) {
+    <article class="source">
+      <h3>{{ f.category.replaceAll('_', ' ') }}</h3>
+      <p>
+        <span class="badge">Severity: {{ f.severity }}</span
+        ><span class="badge">{{ f.status }}</span
+        ><span class="badge">{{ f.review_state }}</span>
+      </p>
+      <app-finance-value [value]="f.data" /><button (click)="select(f)" [disabled]="s.pending()">
+        Review finding and evidence
+      </button>
+    </article>
+  } @empty {
+    <p>No findings on this page.</p>
+  }
+  <app-finance-pager
+    [page]="findings.page"
+    [next]="findings.next"
+    [previous]="findings.previous"
+    [count]="findings.count"
+    [busy]="findings.loading() || s.pending()"
+    (changed)="findings.load($event, applied)"
+  />
+</section>
+@if (selected(); as f) {
+  <section class="card">
+    <header>
+      <h2>{{ f.category.replaceAll('_', ' ') }} | Original finding</h2>
+      <button (click)="close()">Close review</button>
+    </header>
+    <p>Severity {{ f.severity }} | {{ f.status }} | {{ f.review_state }}</p>
+    <app-finance-value [value]="f.data" />
+    <h3>Deterministic calculation / source evidence</h3>
+    <app-finance-value [value]="f.evidence" />
+    @if (transaction(f.data)) {
+      <button (click)="selectedEvidence.set(transaction(f.data))" [disabled]="s.pending()">
+        Inspect affected transaction support
+      </button>
+    }
+    @if (selectedEvidence()) {
+      <app-finance-transaction-evidence [transaction]="selectedEvidence()" />
+    }
+    <h3>Evidence requests and management responses</h3>
+    @for (r of responses.rows(); track r.uuid) {
+      <article class="source">
+        <h4>Version {{ r.number }} | Actor {{ r.actor }} | {{ r.created_at | date: 'medium' }}</h4>
+        <p class="pre">Response / request UUID: {{ r.uuid }}</p>
+        <app-finance-value [value]="r.data" />
+        @for (doc of sources(r.data); track doc) {
+          <app-finance-source [document]="doc" />
+        }
+      </article>
+    } @empty {
+      <p>No responses on this page.</p>
+    }
+    <app-finance-pager
+      [page]="responses.page"
+      [next]="responses.next"
+      [previous]="responses.previous"
+      [busy]="s.pending()"
+      (changed)="responses.load($event)"
+    />
+    <h3>Controlled remediation / accepted-risk history</h3>
+    @for (d of decisions.rows(); track d.uuid) {
+      <article class="source">
+        <h4>{{ d.decision.replaceAll('_', ' ') }} | version {{ d.number }}</h4>
+        <p>Actor {{ d.actor }} | {{ d.created_at | date: 'medium' }}</p>
+        <p class="pre">{{ d.reason }}</p>
+      </article>
+    } @empty {
+      <p>No decisions on this page.</p>
+    }
+    <app-finance-pager
+      [page]="decisions.page"
+      [next]="decisions.next"
+      [previous]="decisions.previous"
+      [busy]="s.pending()"
+      (changed)="decisions.load($event)"
+    />
+    @if (s.canReview()) {
+      <fieldset [disabled]="s.pending() || s.loading()">
+        <legend>Evidence / response ownership</legend>
+        <app-workflow-assignment
+          [memberships]="s.members()"
+          [disabled]="s.pending()"
+          (changed)="owner = $event"
+        />
+      </fieldset>
+      <details>
+        <summary>Request missing evidence</summary>
+        <fieldset [disabled]="s.pending() || s.loading()">
+          <label
+            >Requested item<textarea [(ngModel)]="requestedItem" maxlength="2000"></textarea></label
+          ><label>Due date (optional)<input type="date" [(ngModel)]="dueDate" /></label
+          ><button (click)="request()" [disabled]="!requestedItem.trim() || !owner || s.pending()">
+            Send evidence request
+          </button>
+        </fieldset>
+      </details>
+      <details>
+        <summary>Record management response</summary>
+        <fieldset [disabled]="s.pending() || s.loading()">
+          <label>Response<textarea [(ngModel)]="response" maxlength="8000"></textarea></label
+          ><label
+            >Planned action<textarea [(ngModel)]="plannedAction" maxlength="8000"></textarea></label
+          ><label>Target date (optional)<input type="date" [(ngModel)]="targetDate" /></label
+          ><label
+            >Responding to request (optional)<select [(ngModel)]="requestUuid">
+              <option value="">No specific request</option>
+              @for (r of responses.rows(); track r.uuid) {
+                <option [value]="r.uuid">{{ requestLabel(r) }}</option>
+              }
+            </select></label
+          >
+          <app-entity-picker
+            kind="documents"
+            label="Evidence documents"
+            [multiple]="true"
+            [ngModel]="evidenceIds()"
+            (ngModelChange)="setEvidenceIds($event)"
+          />
+          <button
+            (click)="respond()"
+            [disabled]="!response.trim() || !plannedAction.trim() || s.pending()"
+          >
+            Record response
+          </button>
+        </fieldset>
+      </details>
+      <fieldset [disabled]="s.pending() || s.loading()">
+        <legend>Controlled finding decision</legend>
+        <label
+          >Decision<select [(ngModel)]="decision" (ngModelChange)="riskConfirmed = false">
+            <option value="under_review">Under review</option>
+            <option value="remediation_in_progress">Remediation in progress</option>
+            <option value="resolved">Resolved</option>
+            <option value="closed">Closed</option>
+            @if (s.canManage(s.audit()?.department ?? null)) {
+              <option value="accepted_risk">Accept risk</option>
+            }
+          </select></label
+        ><label>Reason<textarea [(ngModel)]="reason" maxlength="1000"></textarea></label>
+        @if (decision === 'accepted_risk') {
+          <label class="check"
+            ><input type="checkbox" [(ngModel)]="riskConfirmed" />I deliberately accept this risk
+            with the recorded reason.</label
+          >
+        }
+        <p>
+          Resolution and closure require a preserved management response. The server enforces all
+          review and readiness rules.
+        </p>
+        <button
+          (click)="decide()"
+          [disabled]="
+            !reason.trim() || s.pending() || (decision === 'accepted_risk' && !riskConfirmed)
+          "
+        >
+          Record decision
+        </button>
+      </fieldset>
+    }
+  </section>
+}

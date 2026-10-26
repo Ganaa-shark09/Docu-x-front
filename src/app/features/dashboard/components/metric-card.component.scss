@@ -1,0 +1,64 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+.ui-metric {
+  height: 100%;
+  padding: 18px;
+  border: 1px solid var(--app-border);
+  border-radius: 9px;
+  background: var(--app-surface);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 2%);
+}
+.ui-metric .metric-value {
+  font-size: 29px;
+  line-height: 1.2;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.035em;
+  color: var(--app-text);
+}
+.ui-metric .metric-label {
+  color: var(--app-text-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+.ui-metric .metric-tag {
+  background: var(--app-selected);
+  color: var(--app-primary);
+  border-radius: 5px;
+  font-size: 10px;
+  padding: 5px 7px;
+  font-weight: 550;
+}
+.ui-metric > p {
+  font-size: 12px;
+  margin-top: 12px;
+}
+:host-context(.dashboard-secondary) .ui-metric {
+  padding: 12px 16px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  border-left: 1px solid var(--app-border);
+  border-radius: 0;
+}
+:host-context(.dashboard-secondary) .ui-metric .metric-value {
+  font-size: 21px;
+  margin-top: 7px;
+}
+:host-context(.dashboard-secondary) .ui-metric .metric-tag {
+  display: none;
+}
+:host-context(.dashboard-secondary) .ui-metric > p {
+  margin-top: 7px;
+  font-size: 11px;
+}
+@media (max-width: 480px) {
+  .ui-metric {
+    padding: 15px;
+  }
+  .ui-metric .metric-value {
+    font-size: 26px;
+  }
+}

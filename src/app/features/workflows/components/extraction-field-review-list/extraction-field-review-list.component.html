@@ -21,22 +21,18 @@
         </span>
       </div>
 
-      <p class="field-card__source" *ngIf="field.source_text">
+      <p class="field-card__source" *ngIf="!field.restricted && field.source_text">
         {{ field.source_text }}
       </p>
 
-      <div class="field-card__correction">
+      <div class="field-card__correction" *ngIf="canCorrect && !field.restricted && field.uuid">
         <input
           type="text"
-          [(ngModel)]="corrections[field.uuid]"
+          [(ngModel)]="corrections[field.uuid!]"
           [placeholder]="getFieldValue(field)"
         />
 
-        <input
-          type="text"
-          [(ngModel)]="comments[field.uuid]"
-          placeholder="Reviewer comment"
-        />
+        <input type="text" [(ngModel)]="comments[field.uuid!]" placeholder="Reviewer comment" />
 
         <button
           type="button"
@@ -49,6 +45,7 @@
     </article>
   </div>
 
+  <p *ngIf="!canCorrect">Viewing only. Corrections require review permission.</p>
   <div class="field-review__list" *ngIf="!hasFields && hasRawData">
     <article class="field-card" *ngFor="let item of rawData | keyvalue">
       <div class="field-card__top">

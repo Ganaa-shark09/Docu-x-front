@@ -1,0 +1,180 @@
+﻿<main class="admin-page">
+  <header class="admin-header">
+    <div>
+      <span class="admin-eyebrow">Administration</span>
+      <h1>{{ title[section] }}</h1>
+      <p>{{ description[section] }}</p>
+    </div>
+    <div class="admin-header__actions">
+      <button type="button" class="ui-button" (click)="loadCompanies()" [disabled]="loading() || busy()">Refresh</button>
+      @if ((profile()?.is_superuser || profile()?.role === 'company_admin' || profile()?.role === 'platform_admin') && section !== 'company' && (section !== 'organizations' || profile()?.is_superuser)) {
+        <button type="button" class="ui-button ui-button--primary" (click)="openCreate()"
+          [disabled]="loading() || busy() || (section !== 'organizations' && !companyActive())">
+          {{ section === 'organizations' ? 'Create company' : section === 'users' ? 'Create user' : section === 'departments' ? 'Create department' : 'Assign access' }}
+        </button>
+      }
+    </div>
+  </header>
+
+  @if (loading()) { <div class="admin-feedback" role="status">Loading {{ title[section].toLowerCase() }}...</div> }
+  @if (error()) { <div class="admin-feedback admin-feedback--error" role="alert">{{ error() }}</div> }
+
+  @if (section === 'organizations' && profile() && !profile()?.is_superuser) {
+    <div class="admin-feedback admin-feedback--error" role="alert">Only a superuser can manage organizations.</div>
+  }
+
+  @if (!loading() && (profile()?.is_superuser || profile()?.role === 'company_admin' || profile()?.role === 'platform_admin')) {
+    @if (section !== 'organizations') {
+      <section class="admin-context" aria-label="Current company">
+        <div><span class="admin-context__label">Current company</span>
+          <strong>{{ profile()?.is_superuser ? 'Choose a company to manage' : 'Your company workspace' }}</strong></div>
+        @if (profile()?.is_superuser) {
+          <label class="admin-context__selector"><span class="sr-only">Managing company</span>
+            <select name="selectedCompany" [(ngModel)]="selectedCompany" (ngModelChange)="changeCompany($event)">
+              @for (company of companies(); track company.id) { <option [ngValue]="company.id">{{ company.name }} ({{ company.status }})</option> }
+            </select>
+          </label>
+        } @else {
+          <span class="admin-pill">{{ companies()[0]?.name || 'No company' }}</span>
+        }
+      </section>
+    }
+
+    @if (section === 'organizations' && profile()?.is_superuser) {
+      <section class="admin-card" aria-labelledby="organization-list-heading">
+        <div class="admin-card__head"><div><h2 id="organization-list-heading">Companies</h2><p>Open a company to manage its profile, people and departments.</p></div>
+          <span class="admin-count">{{ companies().length }} total</span></div>
+        <div class="admin-list">
+          @for (company of companies(); track company.id) {
+            <div class="admin-row">
+              <div class="admin-row__identity"><span class="admin-avatar">{{ company.name.slice(0, 1).toUpperCase() }}</span>
+                <div><strong>{{ company.name }}</strong><small>{{ company.legal_name || company.slug }}</small></div></div>
+              <span class="admin-pill" [class.admin-pill--active]="company.status === 'active'">{{ company.status }}</span>
+              <button type="button" class="ui-button" (click)="selectCompany(company.id)">Manage</button>
+            </div>
+          } @empty { <div class="admin-empty">No companies yet. Create one to get started.</div> }
+        </div>
+      </section>
+    }
+
+    @if (section === 'company') {
+      <section class="admin-card" aria-labelledby="company-heading">
+        <div class="admin-card__head"><div><h2 id="company-heading">Company profile</h2><p>Keep business details accurate for this workspace.</p></div></div>
+        @for (company of companies(); track company.id) {
+          @if (company.id === selectedCompany) {
+            <form class="admin-form" (ngSubmit)="updateCompany(company)">
+              <div class="admin-form__grid">
+                <label>Company name<input name="name" [(ngModel)]="company.name" required maxlength="255"></label>
+                <label>Legal name<input name="legal" [(ngModel)]="company.legal_name" maxlength="255"></label>
+                <label>Website<input name="url" type="url" [(ngModel)]="company.website" placeholder="https://example.com"></label>
+                @if (profile()?.is_superuser) {
+                  <label>Status<select name="status" [(ngModel)]="company.status"><option value="active">Active</option><option value="inactive">Inactive</option><option value="suspended">Suspended</option></select></label>
+                }
+              </div>
+              <div class="admin-form__footer"><button type="submit" class="ui-button ui-button--primary" [disabled]="busy()">Save changes</button></div>
+            </form>
+          }
+        } @empty { <div class="admin-empty">No company is available to manage.</div> }
+      </section>
+    }
+
+    @if (section !== 'organizations' && section !== 'company' && !companyActive()) {
+      <div class="admin-feedback">Select an active company to manage this section.</div>
+    }
+
+    @if (section === 'users' && companyActive()) {
+      <section class="admin-card" aria-labelledby="users-heading">
+        <div class="admin-card__head"><div><h2 id="users-heading">People and roles</h2><p>Update account roles, status or password as needed.</p></div><span class="admin-count">{{ users().length }} users</span></div>
+        <div class="admin-list">
+          @for (user of users(); track user.id) {
+            <div class="admin-row admin-row--editable">
+              <div class="admin-row__identity"><span class="admin-avatar">{{ user.username.slice(0, 1).toUpperCase() }}</span>
+                <div><strong>{{ user.username }}</strong><small>{{ user.email || 'No email address' }}</small></div></div>
+              <label>Role<select [name]="'role' + user.id" [(ngModel)]="user.role">@for (role of userRoles; track role) { <option [value]="role">{{ role.replaceAll('_', ' ') }}</option> }</select></label>
+              <label>New password<input type="password" [name]="'password' + user.id" [(ngModel)]="user.passwordDraft" minlength="12" autocomplete="new-password" placeholder="Leave unchanged"></label>
+              <label class="admin-check"><input type="checkbox" [name]="'active' + user.id" [(ngModel)]="user.is_active"> Active</label>
+              <button type="button" class="ui-button" (click)="updateUser(user)" [disabled]="busy()">Save</button>
+            </div>
+          } @empty { <div class="admin-empty">No users in this company. Create a user to begin.</div> }
+        </div>
+      </section>
+    }
+
+    @if (section === 'departments' && companyActive()) {
+      <section class="admin-card" aria-labelledby="departments-heading">
+        <div class="admin-card__head"><div><h2 id="departments-heading">Departments</h2><p>Keep your teams and workspaces organized.</p></div><span class="admin-count">{{ departments().length }} total</span></div>
+        <div class="admin-list">
+          @for (department of departments(); track department.uuid) {
+            <div class="admin-row">
+              <div class="admin-row__identity"><span class="admin-avatar">{{ department.name.slice(0, 1).toUpperCase() }}</span>
+                <div><strong>{{ department.name }}</strong><small>{{ department.department_type }}</small></div></div>
+              <label class="admin-check"><input type="checkbox" [name]="'department' + department.id" [(ngModel)]="department.is_active"> Active</label>
+              <button type="button" class="ui-button" (click)="updateDepartment(department)" [disabled]="busy()">Save</button>
+            </div>
+          } @empty { <div class="admin-empty">No departments yet. Create one to organize access.</div> }
+        </div>
+      </section>
+    }
+
+    @if (section === 'access' && companyActive()) {
+      <section class="admin-card" aria-labelledby="access-heading">
+        <div class="admin-card__head"><div><h2 id="access-heading">Department assignments</h2><p>Manage membership and department-level roles.</p></div><span class="admin-count">{{ memberships().length }} assignments</span></div>
+        <div class="admin-list">
+          @for (membership of memberships(); track membership.uuid) {
+            <div class="admin-row">
+              <div class="admin-row__identity"><span class="admin-avatar">{{ membership.username.slice(0, 1).toUpperCase() }}</span>
+                <div><strong>{{ membership.username }}</strong><small>{{ membership.department_name }}</small></div></div>
+              <label>Access role<select [name]="'memberRole' + membership.uuid" [(ngModel)]="membership.role">@for (role of membershipRoles; track role) { <option [value]="role">{{ role.replaceAll('_', ' ') }}</option> }</select></label>
+              <label class="admin-check"><input type="checkbox" [name]="'memberActive' + membership.uuid" [(ngModel)]="membership.is_active"> Active</label>
+              <button type="button" class="ui-button" (click)="updateMembership(membership)" [disabled]="busy()">Save</button>
+            </div>
+          } @empty { <div class="admin-empty">No department assignments yet. Assign access to connect a user and department.</div> }
+        </div>
+      </section>
+    }
+  }
+
+  <dialog #createDialog class="admin-dialog" aria-labelledby="create-dialog-title" aria-describedby="create-dialog-description"
+    (cancel)="onDialogCancel($event)" (click)="onDialogClick($event)" (close)="dialogError.set('')">
+    <div class="admin-dialog__head"><div><span class="admin-eyebrow">Administration</span>
+      <h2 id="create-dialog-title">{{ section === 'organizations' ? 'Create company' : section === 'users' ? 'Create user' : section === 'departments' ? 'Create department' : 'Assign department access' }}</h2>
+      <p id="create-dialog-description">{{ section === 'organizations' ? 'Add a new company to the platform.' : section === 'users' ? 'Add a user to the selected company.' : section === 'departments' ? 'Add a department to the selected company.' : 'Connect a user to a department.' }}</p></div>
+      <button type="button" class="admin-dialog__close" aria-label="Close dialog" (click)="closeCreate()" [disabled]="busy()">&times;</button>
+    </div>
+    @if (dialogError()) { <div class="admin-feedback admin-feedback--error" role="alert">{{ dialogError() }}</div> }
+    @if (section === 'organizations') {
+      <form class="admin-form" (ngSubmit)="createCompany()">
+        <div class="admin-form__grid"><label>Company name<input name="companyName" [(ngModel)]="newCompany.name" required maxlength="255" autocomplete="organization"></label>
+          <label>Legal name<input name="legalName" [(ngModel)]="newCompany.legal_name" maxlength="255"></label>
+          <label>Website<input name="website" type="url" [(ngModel)]="newCompany.website" placeholder="https://example.com"></label></div>
+        <div class="admin-form__footer"><button type="button" class="ui-button" (click)="closeCreate()" [disabled]="busy()">Cancel</button><button type="submit" class="ui-button ui-button--primary" [disabled]="busy()">Create company</button></div>
+      </form>
+    }
+    @if (section === 'users') {
+      <form class="admin-form" (ngSubmit)="createUser()">
+        <div class="admin-form__grid"><label>Username<input name="username" [(ngModel)]="newUser.username" required maxlength="150" autocomplete="off"></label>
+          <label>Email<input name="email" type="email" [(ngModel)]="newUser.email" autocomplete="off"></label>
+          <label>Initial password<input name="password" type="password" [(ngModel)]="newUser.password" required minlength="12" autocomplete="new-password"></label>
+          <label>Role<select name="role" [(ngModel)]="newUser.role">@for (role of userRoles; track role) { <option [value]="role">{{ role.replaceAll('_', ' ') }}</option> }</select></label></div>
+        <p class="admin-form__hint">Share the initial password privately and ask the user to change it.</p>
+        <div class="admin-form__footer"><button type="button" class="ui-button" (click)="closeCreate()" [disabled]="busy()">Cancel</button><button type="submit" class="ui-button ui-button--primary" [disabled]="busy()">Create user</button></div>
+      </form>
+    }
+    @if (section === 'departments') {
+      <form class="admin-form" (ngSubmit)="createDepartment()">
+        <div class="admin-form__grid"><label>Name<input name="departmentName" [(ngModel)]="newDepartment.name" required maxlength="255"></label>
+          <label>Type<select name="departmentType" [(ngModel)]="newDepartment.department_type">@for (type of departmentTypes; track type) { <option [value]="type">{{ type }}</option> }</select></label>
+          <label class="admin-form__wide">Description<input name="description" [(ngModel)]="newDepartment.description"></label></div>
+        <div class="admin-form__footer"><button type="button" class="ui-button" (click)="closeCreate()" [disabled]="busy()">Cancel</button><button type="submit" class="ui-button ui-button--primary" [disabled]="busy()">Create department</button></div>
+      </form>
+    }
+    @if (section === 'access') {
+      <form class="admin-form" (ngSubmit)="createMembership()">
+        <div class="admin-form__grid"><label>User<select name="memberUser" [(ngModel)]="newMembership.user" required><option [ngValue]="0">Select user</option>@for (user of users(); track user.id) { @if (user.is_active) { <option [ngValue]="user.id">{{ user.username }}</option> } }</select></label>
+          <label>Department<select name="memberDepartment" [(ngModel)]="newMembership.department" required><option [ngValue]="0">Select department</option>@for (department of departments(); track department.id) { @if (department.is_active) { <option [ngValue]="department.id">{{ department.name }}</option> } }</select></label>
+          <label>Access role<select name="memberRole" [(ngModel)]="newMembership.role">@for (role of membershipRoles; track role) { <option [value]="role">{{ role.replaceAll('_', ' ') }}</option> }</select></label></div>
+        <div class="admin-form__footer"><button type="button" class="ui-button" (click)="closeCreate()" [disabled]="busy()">Cancel</button><button type="submit" class="ui-button ui-button--primary" [disabled]="busy() || !newMembership.user || !newMembership.department">Assign access</button></div>
+      </form>
+    }
+  </dialog>
+</main>

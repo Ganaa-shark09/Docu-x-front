@@ -1,0 +1,256 @@
+<section class="governance" aria-labelledby="governance-heading">
+  <header>
+    <div>
+      <h2 id="governance-heading">Security &amp; Governance</h2>
+      <p>Document access and organization policies are enforced by the server.</p>
+    </div>
+    @if (canAdminister) {
+      <button type="button" (click)="beginEdit()" [disabled]="busy">Edit governance</button>
+    }
+    @if (canManagePolicies) {
+      <a routerLink="/documents/policies">Manage policies</a>
+    }
+  </header>
+  @if (error) {
+    <p role="alert">{{ error }}</p>
+  }
+  @if (governance; as g) {
+    <dl class="grid">
+      <div>
+        <dt>Owning department</dt>
+        <dd>{{ document.department_name || 'Not assigned' }}</dd>
+      </div>
+      <div>
+        <dt>Owner</dt>
+        <dd>{{ userLabel(g.owner_user) }}</dd>
+      </div>
+      <div>
+        <dt>Custodian</dt>
+        <dd>{{ userLabel(g.custodian) }}</dd>
+      </div>
+      <div>
+        <dt>Uploader</dt>
+        <dd>{{ document.uploaded_by_email || 'Unavailable' }}</dd>
+      </div>
+      <div>
+        <dt>Sensitivity</dt>
+        <dd>{{ g.sensitivity_label }}</dd>
+      </div>
+      <div>
+        <dt>Retention policy</dt>
+        <dd>{{ policyLabel(g.retention_policy) }}</dd>
+      </div>
+      <div>
+        <dt>Retention start</dt>
+        <dd>{{ g.retention_start | date: 'medium' }}</dd>
+      </div>
+      <div>
+        <dt>Retention expiry</dt>
+        <dd>{{ g.retention_expires_at | date: 'medium' }}</dd>
+      </div>
+      <div>
+        <dt>Legal hold</dt>
+        <dd>{{ g.legal_hold ? 'Active ? deletion blocked' : 'No legal hold' }}</dd>
+      </div>
+      <div>
+        <dt>Retention state</dt>
+        <dd>{{ expired ? 'Expired' : 'Active' }}</dd>
+      </div>
+      <div>
+        <dt>Disposition</dt>
+        <dd>{{ g.deletion_eligible ? 'Eligible for deletion' : 'Not eligible for deletion' }}</dd>
+      </div>
+      <div>
+        <dt>Your document access</dt>
+        <dd>{{ document.current_user_access || 'Unavailable' }}</dd>
+      </div>
+    </dl>
+    @if (editing) {
+      <form #governanceForm="ngForm" (ngSubmit)="save()" class="grid">
+        <label
+          >Owner<select name="owner" [(ngModel)]="draft.owner_user">
+            <option [ngValue]="null">Not assigned</option>
+            @for (user of users; track user.id) {
+              <option [ngValue]="user.id">{{ user.name }}</option>
+            }
+          </select></label
+        >
+        <label
+          >Custodian<select name="custodian" [(ngModel)]="draft.custodian">
+            <option [ngValue]="null">Not assigned</option>
+            @for (user of users; track user.id) {
+              <option [ngValue]="user.id">{{ user.name }}</option>
+            }
+          </select></label
+        >
+        <details>
+          <summary>Assign an entry missing from the list</summary>
+          <p>
+            The available directory is based on department memberships. Enter a colleague's
+            identifier when they are not listed; the server verifies organization membership.
+          </p>
+          <label
+            >Owner user ID<input
+              type="number"
+              name="ownerId"
+              min="1"
+              [(ngModel)]="draft.owner_user"
+          /></label>
+          <label
+            >Custodian user ID<input
+              type="number"
+              name="custodianId"
+              min="1"
+              [(ngModel)]="draft.custodian"
+          /></label>
+          @if (canManagePolicies) {
+            <label
+              >Owning department ID<input
+                type="number"
+                name="departmentId"
+                min="1"
+                [(ngModel)]="draft.department"
+            /></label>
+          }
+        </details>
+        @if (canManagePolicies) {
+          <label
+            >Department<select name="department" [(ngModel)]="draft.department">
+              <option [ngValue]="null">Not assigned</option>
+              @for (department of departments; track department.id) {
+                <option [ngValue]="department.id">{{ department.name }}</option>
+              }
+            </select></label
+          >
+          <label
+            >Sensitivity<select name="sensitivity" [(ngModel)]="draft.sensitivity_label">
+              @for (policy of sensitivityOptions; track policy.code) {
+                <option [value]="policy.code">{{ policy.name }}</option>
+              }
+            </select></label
+          >
+          <label
+            >Retention policy<select name="retention" [(ngModel)]="draft.retention_policy">
+              <option [ngValue]="null">Company default</option>
+              @for (policy of retention; track policy.uuid) {
+                @if (policy.is_active) {
+                  <option [value]="policy.uuid">
+                    {{ policy.name }} ({{ policy.duration_days }} days)
+                  </option>
+                }
+              }
+            </select></label
+          >
+          <label
+            >Retention start<input
+              name="start"
+              type="datetime-local"
+              [ngModel]="startInput"
+              (ngModelChange)="setStart($event)"
+              required
+          /></label>
+          <label
+            ><input name="hold" type="checkbox" [(ngModel)]="draft.legal_hold" /> Legal hold
+            active</label
+          >
+        }
+        <div>
+          <button [disabled]="busy || governanceForm.invalid" type="submit">
+            {{ busy ? 'Saving?' : 'Save changes' }}</button
+          ><button type="button" (click)="editing = false" [disabled]="busy">Cancel</button>
+        </div>
+      </form>
+    }
+  } @else {
+    <p>Loading governance?</p>
+  }
+  @if (canAdminister) {
+    <details>
+      <summary>Field permissions ({{ fields.length }})</summary>
+      <p>
+        Protected fields default to denied for unmatched users. Denials take precedence. Free-text
+        AI, downloads, and exports may be blocked for the whole document.
+      </p>
+      @for (field of fields; track field.uuid) {
+        <article>
+          <strong>{{ field.field_key }}</strong> ?
+          {{ field.user ? userLabel(field.user) : field.role || 'Everyone' }}
+          <p>
+            {{ field.can_view ? 'Visible' : field.masked_view ? 'Masked' : 'Restricted' }} ?
+            {{ field.can_use_ai ? 'AI allowed' : 'AI restricted' }} ?
+            {{ field.can_export ? 'Export allowed' : 'Export restricted' }}
+          </p>
+          <button type="button" (click)="revoke(field.uuid, 'field')" [disabled]="busy">
+            Remove field rule
+          </button>
+        </article>
+      } @empty {
+        <p>No field rules configured.</p>
+      }
+      <form #fieldForm="ngForm" (ngSubmit)="addField()" class="grid">
+        <label
+          >Field identifier<input
+            name="field"
+            [(ngModel)]="rule.field_key"
+            pattern="[a-zA-Z0-9_-]+"
+            required
+        /></label>
+        <label
+          >Applies to<select
+            name="principal"
+            [(ngModel)]="rule.user"
+            (ngModelChange)="rule.role = ''"
+          >
+            <option [ngValue]="null">Everyone</option>
+            @for (user of users; track user.id) {
+              <option [ngValue]="user.id">{{ user.name }}</option>
+            }
+          </select></label
+        >
+        <label
+          >Role (leave blank for the selected user or everyone)<select
+            name="role"
+            [(ngModel)]="rule.role"
+            (ngModelChange)="rule.user = null"
+          >
+            <option value="">No role filter</option>
+            @for (role of roles; track role) {
+              <option [value]="role">{{ role }}</option>
+            }
+          </select></label
+        >
+        <label
+          ><input type="checkbox" name="view" [(ngModel)]="rule.can_view" /> Allow viewing</label
+        >
+        <label
+          ><input type="checkbox" name="ai" [(ngModel)]="rule.can_use_ai" /> Allow AI use</label
+        >
+        <label
+          ><input type="checkbox" name="export" [(ngModel)]="rule.can_export" /> Allow export</label
+        >
+        <label
+          ><input type="checkbox" name="mask" [(ngModel)]="rule.masked_view" /> Show mask when
+          restricted</label
+        >
+        <button type="submit" [disabled]="busy || fieldForm.invalid">Add field rule</button>
+      </form>
+    </details>
+    <details>
+      <summary>Document permission grants</summary>
+      @for (grant of document.access_policies || []; track grant.uuid) {
+        <article>
+          {{ grant.user_email || grant.role }} ? {{ grant.access_level
+          }}<button type="button" [disabled]="busy" (click)="revoke(grant.uuid, 'access')">
+            Revoke grant
+          </button>
+        </article>
+      } @empty {
+        <p>No explicit permission grants.</p>
+      }
+    </details>
+  } @else {
+    <p>
+      Permission administration is unavailable. Protected field values remain hidden by the server.
+    </p>
+  }
+</section>

@@ -1,3 +1,5 @@
+import { DocumentGovernanceService } from '../services/document-governance.service';
+import { DocumentRealtimeService } from '../../../core/realtime/document-realtime.service';
 import { DatePipe, NgFor, NgIf } from '@angular/common';
 import { ChangeDetectorRef, Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -6,14 +8,8 @@ import { Subscription, finalize } from 'rxjs';
 
 import { DocumentUploadFormComponent } from '../components/document-upload-form.component';
 import { DocumentsService } from '../services/documents.service';
-import {
-  DepartmentOption,
-  DocumentListRecord,
-} from '../models/document.model';
-import {
-  DocumentProcessingStore,
-} from '../../../core/realtime/document-processing.store';
-
+import { DepartmentOption, DocumentListRecord } from '../models/document.model';
+import { DocumentProcessingStore } from '../../../core/realtime/document-processing.store';
 
 type DocumentScope = 'internal' | 'external';
 
@@ -30,9 +26,16 @@ export class DocumentListPageComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly cdr = inject(ChangeDetectorRef);
-  private readonly processingStore =
-    inject(DocumentProcessingStore);
+  private readonly processingStore = inject(DocumentProcessingStore);
 
+  private readonly governance = inject(DocumentGovernanceService);
+  private readonly realtime = inject(DocumentRealtimeService);
+  private listSubscription?: Subscription;
+  private routeSubscription?: Subscription;
+  private generation = 0;
+  private destroyed = false;
+  private governanceSubscription?: Subscription;
+  private revocationSubscription?: Subscription;
   private processingStatesSubscription?: Subscription;
 
   documents: DocumentListRecord[] = [];
@@ -114,87 +117,80 @@ export class DocumentListPageComponent implements OnInit, OnDestroy {
       });
   }
 
-
   ngOnInit(): void {
-    this.processingStatesSubscription =
-      this.processingStore.states$
-        .subscribe((states) => {
-          if (!this.documents.length) {
-            return;
-          }
+    this.governanceSubscription = this.governance.changes$.subscribe(() => {
+      this.documents = [];
+      this.loadDocuments();
+    });
+    this.revocationSubscription = this.realtime.revoked$.subscribe(() => {
+      this.loadDocuments();
+    });
+    this.processingStatesSubscription = this.processingStore.states$.subscribe((states) => {
+      if (!this.documents.length) {
+        return;
+      }
 
-          let changed = false;
+      let changed = false;
 
-          const updatedDocuments =
-            this.documents.map((document) => {
-              const uuid =
-                document.uuid;
+      const updatedDocuments = this.documents.map((document) => {
+        const uuid = document.uuid;
 
-              if (!uuid) {
-                return document;
-              }
+        if (!uuid) {
+          return document;
+        }
 
-              const processingState =
-                states.get(uuid);
+        const processingState = states.get(uuid);
 
-              if (!processingState) {
-                return document;
-              }
+        if (!processingState) {
+          return document;
+        }
 
-              changed = true;
+        changed = true;
 
-              return {
-                ...document,
+        return {
+          ...document,
 
-                status:
-                  processingState.status ||
-                  document.status,
+          status: processingState.status || document.status,
 
-                processing_stage:
-                  processingState.stage,
+          processing_stage: processingState.stage,
 
-                processing_progress:
-                  processingState.progress,
+          processing_progress: processingState.progress,
 
-                is_ai_ready:
-                  processingState.isAiReady,
+          is_ai_ready: processingState.isAiReady,
 
-                is_indexed:
-                  processingState.isIndexed,
+          is_indexed: processingState.isIndexed,
 
-                is_ocr_completed:
-                  processingState.isOcrCompleted,
+          is_ocr_completed: processingState.isOcrCompleted,
 
-                processing_error:
-                  processingState.error ??
-                  document.processing_error,
-              };
-            });
+          processing_error: processingState.error ?? document.processing_error,
+        };
+      });
 
-          if (changed) {
-            this.documents =
-              updatedDocuments;
+      if (changed) {
+        this.documents = updatedDocuments;
 
-            this.cdr.detectChanges();
-          }
-        });
-
-    this.route.data.subscribe((data) => {
-    this.scope = (data['scope'] || 'internal') as DocumentScope;
-    this.isUploadOpen = false;
-    this.uploadErrorMessage = '';
-    if (this.isInternalScope) {
-    this.loadDepartments();
-    }
+        this.cdr.detectChanges();
+      }
     });
 
-    // docuxInitialDocumentLoadFix: hard refresh can render before route/auth state settles.
-    window.setTimeout(() => {
+    this.routeSubscription = this.route.data.subscribe((data) => {
+      this.scope = (data['scope'] || 'internal') as DocumentScope;
+      this.isUploadOpen = false;
+      this.uploadErrorMessage = '';
+      if (this.isInternalScope) {
+        this.loadDepartments();
+      }
       this.loadDocuments();
-    }, 180);
+    });
   }
 
   ngOnDestroy(): void {
+    this.destroyed = true;
+    this.generation++;
+    this.listSubscription?.unsubscribe();
+    this.routeSubscription?.unsubscribe();
+    this.governanceSubscription?.unsubscribe();
+    this.revocationSubscription?.unsubscribe();
     this.processingStatesSubscription?.unsubscribe();
 
     /*
@@ -205,6 +201,9 @@ export class DocumentListPageComponent implements OnInit, OnDestroy {
   }
 
   loadDocuments(): void {
+    if (this.destroyed) return;
+    const generation = ++this.generation;
+    this.listSubscription?.unsubscribe();
     this.isLoading = true;
     this.errorMessage = '';
     this.documents = [];
@@ -219,9 +218,9 @@ export class DocumentListPageComponent implements OnInit, OnDestroy {
       }
     });
 
-    this.documentsService.getDocuments(this.scope, filters).subscribe({
+    this.listSubscription = this.documentsService.getDocuments(this.scope, filters).subscribe({
       next: (documents) => {
-
+        if (generation !== this.generation || this.destroyed) return;
         this.documents = documents;
 
         /*
@@ -232,19 +231,11 @@ export class DocumentListPageComponent implements OnInit, OnDestroy {
          */
         this.processingStore.subscribeDocuments(
           documents
-            .filter(
-              (document) =>
-                !!(
-                  document.uuid
-                ),
-            )
-            .map(
-              (document) => ({
-                ...document,
-                uuid:
-                  document.uuid,
-              }),
-            ),
+            .filter((document) => !!document.uuid)
+            .map((document) => ({
+              ...document,
+              uuid: document.uuid,
+            })),
         );
 
         this.isLoading = false;
@@ -256,9 +247,7 @@ export class DocumentListPageComponent implements OnInit, OnDestroy {
         this.documents = [];
         this.isLoading = false;
         this.errorMessage =
-          error?.error?.detail ||
-          error?.error?.message ||
-          'Unable to load documents.';
+          error?.error?.detail || error?.error?.message || 'Unable to load documents.';
         this.cdr.detectChanges();
       },
     });
@@ -289,11 +278,17 @@ export class DocumentListPageComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.router.navigate(['/documents', 'detail', uuid]);
+    this.router.navigate(['/documents', 'detail', uuid], { queryParams: { scope: this.scope } });
   }
 
   getDocumentTitle(document: DocumentListRecord): string {
-    return document.title || document.document_title || document.original_filename || document.filename || 'Untitled document';
+    return (
+      document.title ||
+      document.document_title ||
+      document.original_filename ||
+      document.filename ||
+      'Untitled document'
+    );
   }
 
   getDocumentFilename(document: DocumentListRecord): string {
@@ -301,9 +296,7 @@ export class DocumentListPageComponent implements OnInit, OnDestroy {
   }
 
   getDocumentSize(document: DocumentListRecord): string {
-    const size =
-      document.file_size ??
-      document.size;
+    const size = document.file_size ?? document.size;
 
     if (!size) {
       return '';
@@ -317,76 +310,61 @@ export class DocumentListPageComponent implements OnInit, OnDestroy {
   }
 
   getDocumentStatus(document: DocumentListRecord): string {
-    const stage =
-      String(
-        document.processing_stage || '',
-      ).toLowerCase();
+    const stage = String(document.processing_stage || '').toLowerCase();
 
-    const labels:
-      Record<string, string> = {
-        queued: 'Queued',
-        extracting: 'Extracting content',
-        classifying: 'Analyzing document',
-        firewall_scan: 'Security scan',
-        chunking: 'Preparing content',
-        embedding: 'Creating embeddings',
-        indexing: 'Indexing document',
-        ready: 'Ready',
-        failed: 'Failed',
-      };
+    const labels: Record<string, string> = {
+      queued: 'Queued',
+      extracting: 'Extracting content',
+      classifying: 'Analyzing document',
+      firewall_scan: 'Security scan',
+      chunking: 'Preparing content',
+      embedding: 'Creating embeddings',
+      indexing: 'Indexing document',
+      ready: 'Ready',
+      failed: 'Failed',
+    };
 
     if (stage && labels[stage]) {
       return labels[stage];
     }
 
-    const status =
-      String(
-        document.status ||
-        document.processing_status ||
-        '',
-      ).toLowerCase();
+    const status = String(document.status || document.processing_status || '').toLowerCase();
 
     if (status === 'failed') {
       return 'Failed';
     }
 
-    if (
-      status === 'ready' ||
-      document.is_ai_ready === true
-    ) {
+    if (status === 'ready' || document.is_ai_ready === true) {
       return 'Ready';
     }
 
-    if (
-      status === 'processing' ||
-      status === 'uploaded'
-    ) {
+    if (status === 'processing' || status === 'uploaded') {
       return 'Processing';
     }
 
     return status || 'Ready';
   }
 
-  getDocumentProcessingProgress(
-    document: DocumentListRecord,
-  ): number {
-    const progress =
-      Number(
-        document.processing_progress ?? 0,
-      );
+  getDocumentProcessingProgress(document: DocumentListRecord): number {
+    const progress = Number(document.processing_progress ?? 0);
 
-    return Math.max(
-      0,
-      Math.min(100, progress),
-    );
+    return Math.max(0, Math.min(100, progress));
   }
 
   getAiStatus(document: DocumentListRecord): string {
-    if (document.ai_ready === true || document.is_indexed === true || document.is_ai_ready === true) {
+    if (
+      document.ai_ready === true ||
+      document.is_indexed === true ||
+      document.is_ai_ready === true
+    ) {
       return 'Ready';
     }
 
-    if (document.ai_ready === false || document.is_indexed === false || document.is_ai_ready === false) {
+    if (
+      document.ai_ready === false ||
+      document.is_indexed === false ||
+      document.is_ai_ready === false
+    ) {
       return 'Pending';
     }
 

@@ -9,11 +9,7 @@ export type DocumentProcessingStage =
   | 'ready'
   | 'failed';
 
-export type RealtimeConnectionState =
-  | 'disconnected'
-  | 'connecting'
-  | 'connected'
-  | 'reconnecting';
+export type RealtimeConnectionState = 'disconnected' | 'connecting' | 'connected' | 'reconnecting';
 
 export interface WebSocketTicketResponse {
   ticket: string;
@@ -25,6 +21,7 @@ export interface DocumentProcessingEvent {
   event:
     | 'connection.ready'
     | 'subscription.updated'
+    | 'subscription.revoked'
     | 'document.processing.snapshot'
     | 'document.processing.updated'
     | string;

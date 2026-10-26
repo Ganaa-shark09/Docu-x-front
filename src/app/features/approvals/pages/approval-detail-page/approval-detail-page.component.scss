@@ -38,7 +38,7 @@
 
 .approval-detail-header h1 {
   margin: 0;
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 600;
 }
 
@@ -52,7 +52,7 @@
   grid-template-columns: repeat(4, 1fr);
   gap: 16px;
   border: 1px solid var(--app-border);
-  border-radius: 18px;
+  border-radius: var(--app-radius-lg);
   background: var(--app-surface);
   padding: 18px;
 }
@@ -98,7 +98,6 @@
     position: static;
   }
 }
-
 
 .approval-detail-grid--single {
   grid-template-columns: minmax(0, 1fr);

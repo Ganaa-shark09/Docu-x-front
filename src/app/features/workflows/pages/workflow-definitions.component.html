@@ -1,0 +1,279 @@
+<section class="page">
+  <nav class="tabs" aria-label="Workflow navigation">
+    <a routerLink="/workflows/invoice-batches">Invoice workspace</a>
+    <a routerLink="/workflows/definitions" aria-current="page">Definitions</a
+    ><a routerLink="/workflows/rfp-projects">RFP projects</a><a routerLink="/workflows/runs">Runs</a
+    ><a routerLink="/workflows/extractions">Extraction runs</a>
+  </nav>
+  <header>
+    <div>
+      <span class="eyebrow">DOCUMENT OPERATIONS</span>
+      <h1>
+        {{
+          type()
+            ? type() === 'invoice'
+              ? 'Invoice workflows'
+              : type() === 'legal_clause_intelligence'
+                ? 'Legal clause workflows'
+                : 'Contract review workflows'
+            : 'Enterprise workflows'
+        }}
+      </h1>
+      <p class="muted">Reusable document workflows with review, approvals and traceable results.</p>
+    </div>
+    <div class="actions">
+      <button (click)="load()" [disabled]="loading() || pending() || invoiceCreating()">
+        Refresh
+      </button>
+      @if (canCreate()) {
+        <button
+          class="primary"
+          type="button"
+          (click)="toggleCreate('invoice')"
+          [attr.aria-expanded]="showInvoiceCreate"
+          [disabled]="pending() || invoiceCreating()"
+        >
+          {{ showInvoiceCreate ? 'Close invoice form' : 'Create invoice workflow' }}
+        </button>
+        <button
+          type="button"
+          (click)="toggleCreate('generic')"
+          [attr.aria-expanded]="showCreate"
+          [disabled]="pending() || invoiceCreating()"
+        >
+          {{ showCreate ? 'Close definition form' : 'Create definition' }}
+        </button>
+      }
+    </div>
+  </header>
+  <div class="workflow-toolbar">
+    <div class="workflow-type-links" aria-label="Workflow categories">
+      <a
+        routerLink="/workflows/definitions"
+        [class.selected]="!type()"
+        [attr.aria-current]="!type() ? 'page' : null"
+        >All workflows</a
+      >
+      <a
+        routerLink="/workflows/definitions"
+        [queryParams]="{ type: 'invoice' }"
+        [class.selected]="type() === 'invoice'"
+        [attr.aria-current]="type() === 'invoice' ? 'page' : null"
+        >Invoice extraction</a
+      >
+      <a
+        routerLink="/workflows/definitions"
+        [queryParams]="{ type: 'contract_review' }"
+        [class.selected]="type() === 'contract_review'"
+        [attr.aria-current]="type() === 'contract_review' ? 'page' : null"
+        >Contract review</a
+      >
+    </div>
+    <a
+      class="button"
+      routerLink="/workflows/definitions"
+      [queryParams]="{ type: 'legal_clause_intelligence' }"
+      >Legal clause intelligence</a
+    >
+    @if (canCreate()) {
+      <a class="button" routerLink="/workflows/legal/playbooks">Legal playbooks</a>
+    }
+    <a class="button" routerLink="/workflows/runs">View workflow runs</a>
+  </div>
+  @if (directoryError()) {
+    <p class="notice" role="status">{{ directoryError() }}</p>
+  }
+  @if (error()) {
+    <p role="alert" class="error">{{ error() }}</p>
+  }
+  @if (canCreate()) {
+    <button
+      (click)="toggleCreate('contract')"
+      [disabled]="pending() || invoiceCreating()"
+      [attr.aria-expanded]="showContractCreate()"
+    >
+      {{ showContractCreate() ? 'Close contract form' : 'Create contract review workflow' }}
+    </button>
+  }
+  @if (canCreate()) {
+    <button
+      type="button"
+      (click)="toggleCreate('legal')"
+      [disabled]="pending() || invoiceCreating()"
+      [attr.aria-expanded]="showLegalCreate()"
+    >
+      {{ showLegalCreate() ? 'Close legal form' : 'Create legal clause workflow' }}
+    </button>
+  }
+  @if (showLegalCreate() && canCreate()) {
+    <app-legal-definition
+      [memberships]="memberships()"
+      [companyAdmin]="companyAdmin()"
+      [authorized]="canCreate()"
+      (created)="invoiceCreated($event)"
+      (accessDenied)="invoiceDenied()"
+      (busyChange)="invoiceCreating.set($event)"
+    />
+  }
+  @if (showContractCreate() && canCreate()) {
+    <app-contract-definition
+      [memberships]="memberships()"
+      [companyAdmin]="companyAdmin()"
+      [authorized]="canCreate()"
+      (created)="invoiceCreated($event)"
+      (accessDenied)="invoiceDenied()"
+      (busyChange)="invoiceCreating.set($event)"
+    />
+  }
+  @if (showInvoiceCreate && canCreate()) {
+    <app-invoice-definition
+      [memberships]="memberships()"
+      [companyAdmin]="companyAdmin()"
+      [authorized]="canCreate()"
+      (created)="invoiceCreated($event)"
+      (accessDenied)="invoiceDenied()"
+      (busyChange)="invoiceCreating.set($event)"
+    />
+  }
+  @if (showCreate && canCreate()) {
+    <form class="card" (ngSubmit)="create()">
+      <h2>Create workflow definition</h2>
+      <div class="grid">
+        <label>Name<input name="name" [(ngModel)]="input.name" required maxlength="150" /></label
+        ><label
+          >Code<input
+            name="code"
+            [(ngModel)]="input.code"
+            required
+            pattern="[-a-zA-Z0-9_]+"
+            maxlength="80" /></label
+        ><label
+          >Workflow type<input
+            name="type"
+            [(ngModel)]="input.workflow_type"
+            required
+            pattern="[-a-zA-Z0-9_]+"
+            maxlength="80" /></label
+        ><label
+          >Department<select name="department" [(ngModel)]="input.department">
+            @if (companyAdmin()) {
+              <option [ngValue]="null">Company wide</option>
+            }
+            @for (m of departments(); track m.department) {
+              <option [ngValue]="m.department">{{ m.department_name }}</option>
+            }
+          </select></label
+        >
+      </div>
+      <label
+        >Description<textarea
+          name="description"
+          [(ngModel)]="input.description"
+          maxlength="4000"
+        ></textarea></label
+      ><button type="submit" class="primary" [disabled]="pending()">
+        {{ pending() ? 'Creating...' : 'Create definition' }}
+      </button>
+    </form>
+  }
+  @if (loading()) {
+    <div class="workflow-loading" role="status">
+      <span>Loading workflow definitions...</span>
+      <div aria-hidden="true"><i></i><i></i><i></i></div>
+    </div>
+  }
+  @if (result(); as rows) {
+    <div class="grid">
+      @for (d of visibleDefinitions(); track d.uuid) {
+        <article class="card definition-card">
+          <header>
+            <h2>
+              <a [routerLink]="['/workflows/definitions', d.uuid]">{{ d.name }}</a>
+            </h2>
+            <span class="badge">{{ d.is_active ? 'Active' : 'Inactive' }}</span>
+          </header>
+          <p>{{ d.description }}</p>
+          <p class="muted">
+            {{ d.workflow_type === 'invoice' ? 'Invoice extraction' : d.workflow_type }} |
+            {{ d.department === null ? 'Company wide' : 'Department ' + d.department }}
+          </p>
+          <p>
+            {{
+              d.latest_version
+                ? 'Published version ' + d.latest_version.number
+                : 'No published version'
+            }}
+          </p>
+          <div class="actions">
+            <a
+              class="button"
+              [class.primary]="d.capabilities.start && !!d.latest_version"
+              [routerLink]="['/workflows/definitions', d.uuid]"
+              >{{
+                d.capabilities.start && d.latest_version
+                  ? 'Open and start workflow'
+                  : 'View workflow'
+              }}</a
+            >
+          </div>
+        </article>
+      }
+    </div>
+    @if (!visibleDefinitions().length) {
+      <div class="card workflow-empty-state">
+        <span class="empty-icon" aria-hidden="true">&#8644;</span>
+        <h2>
+          {{
+            type()
+              ? type() === 'invoice'
+                ? 'No invoice workflows are available'
+                : type() === 'legal_clause_intelligence'
+                  ? 'No legal clause workflows are available'
+                  : 'No contract review workflows are available'
+              : 'No workflow definitions are available yet'
+          }}
+        </h2>
+        <p class="muted">
+          {{
+            canCreate()
+              ? 'Create and publish this workflow with a reviewer and approver. Then select a ready internal document to start it.'
+              : 'No workflow definition in this category is visible to your account. A company or department administrator must create and publish one for your team; uploading a document does not create a workflow.'
+          }}
+        </p>
+        <div class="actions">
+          @if (canCreate()) {
+            <button
+              type="button"
+              class="primary"
+              [disabled]="pending() || invoiceCreating()"
+              (click)="toggleCreate(type() === 'contract_review' ? 'contract' : type() === 'legal_clause_intelligence' ? 'legal' : 'invoice')"
+            >
+              {{ type() === 'contract_review' ? 'Create contract review workflow' : type() === 'legal_clause_intelligence' ? 'Create legal clause workflow' : 'Create invoice workflow' }}
+            </button>
+          }
+          <a class="button" routerLink="/documents/internal">Open documents</a>
+        </div>
+      </div>
+    }
+    <div class="list-count">
+      {{ visibleDefinitions().length }}
+      {{
+        type()
+          ? type() === 'invoice'
+            ? 'invoice workflows'
+            : type() === 'legal_clause_intelligence'
+              ? 'legal workflows'
+              : 'contract workflows'
+          : 'workflows'
+      }}
+      on this page
+    </div>
+    @if (rows.next || rows.previous) {
+      <nav class="pager" aria-label="Definition pages">
+        <button [disabled]="!rows.previous" (click)="load(page - 1)">Previous</button
+        ><span>Page {{ page }} | {{ rows.count }} definitions</span
+        ><button [disabled]="!rows.next" (click)="load(page + 1)">Next</button>
+      </nav>
+    }
+  }
+</section>

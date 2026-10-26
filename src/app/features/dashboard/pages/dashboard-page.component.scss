@@ -1,0 +1,43 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+.dashboard {
+  max-width: 1360px;
+  margin: auto;
+}
+.dashboard-header {
+  padding: 4px 0 8px;
+}
+.dashboard-header h2 {
+  font-size: 26px;
+  letter-spacing: -0.035em;
+  font-weight: 700;
+}
+.dashboard-header p {
+  max-width: 640px;
+  line-height: 1.6;
+}
+.dashboard-distributions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+.dashboard-secondary {
+  padding: 12px 0;
+  border-top: 1px solid var(--app-border);
+  border-bottom: 1px solid var(--app-border);
+}
+.dashboard-activity {
+  min-width: 0;
+}
+@media (max-width: 768px) {
+  .dashboard-distributions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 600px) {
+  .dashboard-header h2 {
+    font-size: 23px;
+  }
+}

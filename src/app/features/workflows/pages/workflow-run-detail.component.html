@@ -1,0 +1,410 @@
+<section class="page">
+  <nav class="tabs" aria-label="Workflow navigation">
+    <a routerLink="/workflows/runs">Workflow runs</a
+    ><a routerLink="/workflows/definitions">Definitions</a
+    ><a routerLink="/workflows/extractions">Extraction runs</a>
+    @if (definition()?.workflow_type === 'invoice') {
+      <a routerLink="/workflows/invoices">Invoice register</a>
+    }
+  </nav>
+  <div class="actions">
+    <button type="button" (click)="load()" [disabled]="pending() || invoicePending() || loading()">
+      Refresh current permissions and state
+    </button>
+  </div>
+  @if (error()) {
+    <p class="error" role="alert">{{ error() }}</p>
+  }
+  @if (loading()) {
+    <div class="workflow-loading" role="status">
+      <span>Loading workflow run...</span>
+      <div aria-hidden="true"><i></i><i></i><i></i></div>
+    </div>
+  }
+  @if (run(); as r) {
+    @if (definition()?.workflow_type === 'invoice' && ['review_required', 'approval_required', 'exception'].includes(r.status)) {
+      <p class="workflow-review-stability" role="status">
+        <strong>Review mode:</strong> This page will not refresh automatically while you work.
+        Save or cancel corrections before selecting manual Refresh above. Workflow permissions and revisions are still enforced by the server.
+      </p>
+    }
+    <header>
+      <div>
+        <h1>{{ definition()?.name || 'Workflow run' }}</h1>
+        <p class="muted">
+          Run {{ r.uuid }} | Version {{ version()?.number || 'Unavailable' }} | Revision
+          {{ r.revision }}
+        </p>
+      </div>
+      <app-workflow-status [status]="r.status" />
+    </header>
+    <section class="card">
+      <h2>Overview</h2>
+      <div class="grid">
+        <p>
+          Current step: <strong>{{ stepName(r.current_step) }}</strong>
+        </p>
+        <p>Initiated by: {{ r.initiated_by ?? 'Unavailable' }}</p>
+        <p>Department: {{ r.department ?? 'Company wide' }}</p>
+        <p>Started: {{ r.started_at | date: 'medium' }}</p>
+        <p>Completed: {{ r.completed_at | date: 'medium' }}</p>
+      </div>
+      @if (r.error_message) {
+        <p class="error">{{ r.error_message }}</p>
+      }
+      <h3>Related documents ({{ r.documents.length }})</h3>
+      <div class="actions">
+        @for (uuid of r.documents; track uuid) {
+          <a class="button" [routerLink]="['/documents/detail', uuid]">Document {{ uuid }}</a>
+        }
+      </div>
+      <a [routerLink]="['/workflows/definitions', r.definition_uuid]"
+        >Inspect published workflow definition</a
+      >
+    </section>
+    @if (!contentError() && definition()?.workflow_type !== 'invoice') {
+      <app-source-proof-panel [contextUuid]="r.uuid" [epoch]="r.revision" />
+    }
+    @if (complianceAssessmentUuid(); as assessmentUuid) {
+      <article class="card">
+        <h2>Compliance workspace</h2>
+        <p>
+          Review requirement applicability, current evidence, control gaps and risk acceptance
+          before approval.
+        </p>
+        <a class="button" [routerLink]="['/workflows/compliance/assessments', assessmentUuid]"
+          >Open Compliance assessment</a
+        >
+      </article>
+    }
+    @if (financeAuditUuid(); as auditUuid) {
+      <article class="card">
+        <h2>Finance Audit workspace</h2>
+        <p>
+          Review exact calculations, source evidence, management responses and blocking findings
+          before completing this workflow.
+        </p>
+        <a class="button" [routerLink]="['/workflows/finance-audits', auditUuid]"
+          >Open Finance Audit workspace</a
+        >
+      </article>
+    }
+    @if (rfpProjectUuid(); as projectUuid) {
+      <article class="card">
+        <h2>RFP / Proposal workspace</h2>
+        <p>
+          Review solicitation requirements, company evidence, response versions and attachments
+          before completing this workflow review.
+        </p>
+        <a class="button" [routerLink]="['/workflows/rfp-projects', projectUuid]"
+          >Open RFP workspace</a
+        >
+      </article>
+    }
+    @if (definition()?.workflow_type === 'invoice' && !contentError()) {
+      <app-invoice-workspace
+        [run]="r"
+        [version]="version()"
+        [steps]="steps()"
+        [busy]="pending()"
+        (busyChange)="invoicePending.set($event)"
+        (refreshed)="invoiceRefreshed($event)"
+        (denied)="invoiceDenied($event)"
+      />
+    }
+    @if (!contentError() && definition()?.workflow_type === 'invoice') {
+      <app-source-proof-panel [contextUuid]="r.uuid" [epoch]="r.revision" />
+    }
+    @if (definition()?.workflow_type === 'legal_clause_intelligence' && !contentError()) {
+      <app-legal-analysis
+        [run]="r"
+        [version]="version()"
+        [steps]="steps()"
+        [busy]="pending()"
+        (busyChange)="invoicePending.set($event)"
+        (refreshed)="invoiceRefreshed($event)"
+        (denied)="invoiceDenied($event)"
+        (completionBlocked)="contractCompletionBlocked.set($event)"
+      />
+    }
+    @if (definition()?.workflow_type === 'contract_review' && !contentError()) {
+      <app-contract-workspace
+        [run]="r"
+        [version]="version()"
+        [steps]="steps()"
+        [busy]="pending()"
+        (busyChange)="invoicePending.set($event)"
+        (refreshed)="invoiceRefreshed($event)"
+        (denied)="invoiceDenied($event)"
+        (completionBlocked)="contractCompletionBlocked.set($event)"
+      />
+    }
+    @if (can('review') || can('approve') || can('reject') || can('request_changes')) {
+      <section class="card" id="workflow-review-actions">
+        <h2>
+          {{ r.status === 'approval_required' ? 'Approval required' : 'Human review required' }}
+        </h2>
+        <p>Review the available findings, evidence and related documents before deciding.</p>
+        <label
+          >Decision comment (optional)<textarea
+            [(ngModel)]="comment"
+            maxlength="4000"
+            [disabled]="pending() || invoicePending()"
+          ></textarea>
+        </label>
+        <div class="actions">
+          @if (can('review')) {
+            <button
+              [disabled]="
+                pending() ||
+                invoicePending() ||
+                (['contract_review', 'legal_clause_intelligence'].includes(
+                  definition()?.workflow_type || ''
+                ) &&
+                  contractCompletionBlocked())
+              "
+              (click)="command({ action: 'accept', comment: comment })"
+            >
+              Accept review
+            </button>
+          }
+          @if (can('approve')) {
+            <button
+              [disabled]="pending() || invoicePending()"
+              (click)="command({ action: 'approve', comment: comment })"
+            >
+              Approve
+            </button>
+          }
+          @if (can('reject')) {
+            <button
+              [disabled]="pending() || invoicePending()"
+              (click)="command({ action: 'reject', comment: comment })"
+            >
+              Reject
+            </button>
+          }
+          @if (can('request_changes')) {
+            <button
+              [disabled]="pending() || invoicePending()"
+              (click)="command({ action: 'request_changes', comment: comment })"
+            >
+              Request changes
+            </button>
+          }
+        </div>
+      </section>
+    }
+    @if (can('assign')) {
+      <section class="card">
+        <h2>Assign current work</h2>
+        <app-workflow-assignment
+          [memberships]="memberships()"
+          [disabled]="pending() || invoicePending()"
+          (changed)="assignment = $event"
+        /><button [disabled]="pending() || invoicePending() || !assignment" (click)="assign()">
+          Assign / reassign
+        </button>
+      </section>
+    }
+    <section class="card">
+      <h2>Step executions</h2>
+      @if (sectionsLoading()['steps']) {
+        <p role="status">Loading steps...</p>
+      }
+      @if (sectionErrors()['steps']) {
+        <p class="error" role="alert">{{ sectionErrors()['steps'] }}</p>
+      }
+      <div class="stack">
+        @for (s of steps(); track s.uuid) {
+          <article class="card" [class.current]="s.key === r.current_step">
+            <header>
+              <h3>
+                {{ stepName(s.key) }}
+                @if (s.key === r.current_step) {
+                  | Current step
+                }
+              </h3>
+              <app-workflow-status [status]="s.status" />
+            </header>
+            <p class="muted">
+              {{ label(s.step_type) }} | Attempt {{ s.attempt }} | {{ assignmentText(s) }}
+            </p>
+            <p>
+              Started: {{ s.started_at | date: 'medium' }} | Completed:
+              {{ s.completed_at | date: 'medium' }}
+            </p>
+            @if (s.error_message) {
+              <p class="error">{{ s.error_message }}</p>
+            }
+            @if (s.approval_uuid) {
+              <a [routerLink]="['/approvals', s.approval_uuid]">Open existing approval detail</a>
+            }
+          </article>
+        } @empty {
+          <p class="empty">No step executions available.</p>
+        }
+      </div>
+    </section>
+    @if (contentError()) {
+      <p class="error" role="alert">{{ contentError() }}</p>
+    } @else {
+      <section class="card" id="workflow-findings" [class.workflow-invoice-findings]="definition()?.workflow_type === 'invoice'">
+        <h2>Findings</h2>
+        @if (definition()?.workflow_type === 'invoice') {
+          <p class="muted">Validation findings from earlier processing steps are read-only. Correct their affected fields under Invoice review → Fields. Decisions are available only for findings on the active human-review step.</p>
+        }
+        @if (findingError()) {
+          <p class="error" role="alert">{{ findingError() }}</p>
+        }
+        @if (sectionsLoading()['findings']) {
+          <p role="status">Loading findings...</p>
+        }
+        @if (sectionErrors()['findings']) {
+          <p class="error" role="alert">{{ sectionErrors()['findings'] }}</p>
+        }
+        @for (f of findings(); track f.uuid) {
+          <app-workflow-finding
+            [finding]="f"
+            [invoiceContext]="definition()?.workflow_type === 'invoice'"
+            [canReview]="canReviewFinding(f)"
+            [reviewHint]="definition()?.workflow_type === 'invoice' && !canReviewFinding(f) ? 'Read-only validation finding. Review the source and correct affected fields; this action is not permitted at the current step.' : ''"
+            [pending]="pending() || invoicePending()"
+            (review)="reviewFinding(f, $event)"
+          />
+        } @empty {
+          <p class="empty">No findings available.</p>
+        }
+      </section>
+      <section class="card" id="workflow-exceptions">
+        <h2>Exceptions</h2>
+        @if (sectionsLoading()['exceptions']) {
+          <p role="status">Loading exceptions...</p>
+        }
+        @if (sectionErrors()['exceptions']) {
+          <p class="error" role="alert">{{ sectionErrors()['exceptions'] }}</p>
+        }
+        @for (ex of exceptions(); track ex.uuid) {
+          <article class="card exception">
+            <header>
+              <h3>{{ label(ex.category) }}</h3>
+              <app-workflow-status [status]="ex.status" />
+            </header>
+            <p>{{ ex.safe_message }}</p>
+            <p>Owner: {{ ex.owner ?? 'Unassigned' }}</p>
+            @if (ex.status === 'resolved') {
+              <p>Resolution: {{ ex.resolution }}</p>
+              <p>Resolved by {{ ex.resolved_by }} | {{ ex.resolved_at | date: 'medium' }}</p>
+            }
+            @if (ex.status === 'open' && can('resolve_exception')) {
+              <label
+                >Resolution<textarea
+                  [(ngModel)]="resolution"
+                  maxlength="4000"
+                  [disabled]="pending() || invoicePending()"
+                ></textarea></label
+              ><button
+                [disabled]="pending() || invoicePending() || !resolution.trim()"
+                (click)="resolve(ex)"
+              >
+                Resolve exception
+              </button>
+            }
+          </article>
+        } @empty {
+          <p class="empty">No exceptions available.</p>
+        }
+      </section>
+      <section class="card">
+        <h2>Comments</h2>
+        @if (sectionsLoading()['comments']) {
+          <p role="status">Loading comments...</p>
+        }
+        @if (sectionErrors()['comments']) {
+          <p class="error" role="alert">{{ sectionErrors()['comments'] }}</p>
+        }
+        @for (c of comments(); track c.uuid) {
+          <article class="card">
+            <p class="muted">
+              {{ c.author === null ? 'Unavailable author' : 'User ' + c.author }} |
+              {{ c.created_at | date: 'medium' }}
+            </p>
+            <p class="comment">{{ c.body }}</p>
+          </article>
+        } @empty {
+          <p class="empty">No comments available.</p>
+        }
+        @if (can('comment')) {
+          <label
+            >Add comment<textarea
+              [(ngModel)]="comment"
+              maxlength="4000"
+              [disabled]="pending() || invoicePending()"
+            ></textarea></label
+          ><button
+            [disabled]="pending() || invoicePending() || !comment.trim()"
+            (click)="command({ action: 'comment', comment: comment })"
+          >
+            Add comment
+          </button>
+        }
+      </section>
+      <section class="card">
+        <h2>Artifacts</h2>
+        @if (sectionsLoading()['artifacts']) {
+          <p role="status">Loading artifacts...</p>
+        }
+        @if (sectionErrors()['artifacts']) {
+          <p class="error" role="alert">{{ sectionErrors()['artifacts'] }}</p>
+        }
+        @for (a of artifacts(); track a.uuid) {
+          <article class="card">
+            <h3>{{ label(a.kind) }}</h3>
+            <p class="muted">
+              {{ a.created_at | date: 'medium' }} | {{ a.evidence.length }} evidence references
+            </p>
+            <div class="actions">
+              <button [disabled]="pending() || invoicePending()" (click)="artifact(a.uuid)">
+                Inspect artifact</button
+              ><button [disabled]="pending() || invoicePending()" (click)="artifact(a.uuid, true)">
+                Download authenticated JSON
+              </button>
+            </div>
+          </article>
+        } @empty {
+          <p class="empty">No artifacts available.</p>
+        }
+        @if (inspected(); as a) {
+          <article class="card">
+            <header>
+              <h3>Artifact data | {{ a.kind }}</h3>
+              <button (click)="inspected.set(null)">Close data</button>
+            </header>
+            <pre>{{ a.data | json }}</pre>
+            <details>
+              <summary>Evidence references</summary>
+              <pre>{{ a.evidence | json }}</pre>
+            </details>
+          </article>
+        }
+      </section>
+    }
+    @if (can('cancel')) {
+      <section class="card">
+        <h2>Cancel workflow</h2>
+        <label class="check"
+          ><input
+            type="checkbox"
+            [(ngModel)]="cancelConfirmed"
+            [disabled]="pending() || invoicePending()"
+          />Confirm cancellation of this run</label
+        ><button
+          [disabled]="pending() || invoicePending() || !cancelConfirmed"
+          (click)="command({ action: 'cancel' })"
+        >
+          Cancel workflow
+        </button>
+      </section>
+    }
+  }
+</section>

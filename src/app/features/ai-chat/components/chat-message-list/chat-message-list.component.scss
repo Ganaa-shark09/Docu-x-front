@@ -13,7 +13,7 @@
 
 .chat-empty-state h2 {
   margin: 0;
-  font-size: 34px;
+  font-size: clamp(24px, 3vw, 32px);
   font-weight: 500;
 }
 
@@ -33,7 +33,7 @@
 
 .chat-suggestions span {
   border: 1px solid var(--app-border);
-  border-radius: 999px;
+  border-radius: 10px;
   background: var(--app-surface);
   padding: 10px 15px;
   color: var(--app-text);
@@ -93,7 +93,7 @@
 }
 
 .message-row--user .message-time {
-  color: rgba(255, 255, 255, 0.72);
+  color: var(--app-text-muted);
   text-align: right;
 }
 
@@ -183,7 +183,7 @@
   height: 12px;
   border: 2px solid currentColor;
   border-top-color: transparent;
-  border-radius: 999px;
+  border-radius: 10px;
   animation: chat-attachment-spin 0.75s linear infinite;
 }
 
@@ -253,40 +253,31 @@
   }
 }
 
-
 /* === DOCUX_RESPONSIVE_MESSAGE_LIST_V1 === */
 
 .chat-message-list {
   box-sizing: border-box;
 }
 
-
 .message-row {
   box-sizing: border-box;
 }
-
 
 .message-shell {
   min-width: 0;
 }
 
-
 .message-content {
   overflow-wrap: anywhere;
 }
-
 
 .chat-attachment {
   box-sizing: border-box;
 }
 
-
 @media (max-width: 1024px) {
   .chat-message-list {
-    padding:
-      104px
-      24px
-      28px;
+    padding: 104px 24px 28px;
   }
 
   .message-row {
@@ -294,13 +285,9 @@
   }
 }
 
-
 @media (max-width: 760px) {
   .chat-message-list {
-    padding:
-      88px
-      16px
-      24px;
+    padding: 88px 16px 24px;
   }
 
   .message-row {
@@ -339,13 +326,9 @@
   }
 }
 
-
 @media (max-width: 480px) {
   .chat-message-list {
-    padding:
-      80px
-      12px
-      20px;
+    padding: 80px 12px 20px;
   }
 
   .message-shell {

@@ -1,7 +1,7 @@
 <section class="document-detail-page">
   <div class="document-detail-page__header">
     <div>
-      <a routerLink="/documents/internal" class="document-detail-page__back">
+      <a [routerLink]="['/documents', scope]" class="document-detail-page__back">
         ← Back to documents
       </a>
 
@@ -10,20 +10,30 @@
     </div>
 
     <div class="document-detail-page__actions">
-      <a
-        *ngIf="getDocumentFileUrl()"
-        [href]="getDocumentFileUrl()"
-        target="_blank"
-        rel="noreferrer"
+      <button
+        *ngIf="document?.file"
+        type="button"
         class="document-detail-page__button document-detail-page__button--ghost"
+        (click)="openFile()"
+        [disabled]="fileBusy"
       >
-        Open File
-      </a>
+        Preview file
+      </button>
+      <button
+        *ngIf="document?.file"
+        type="button"
+        class="document-detail-page__button document-detail-page__button--ghost"
+        (click)="openFile(true)"
+        [disabled]="fileBusy"
+      >
+        Download file
+      </button>
 
       <button
         type="button"
         class="document-detail-page__button"
         (click)="retryProcessing()"
+        *ngIf="canRetry"
         [disabled]="isRetrying || !document"
       >
         {{ isRetrying ? 'Retrying...' : 'Retry Processing' }}
@@ -33,6 +43,7 @@
         type="button"
         class="document-detail-page__button document-detail-page__button--danger"
         (click)="deleteDocument()"
+        *ngIf="canDelete"
         [disabled]="isDeleting || !document"
       >
         {{ isDeleting ? 'Deleting...' : 'Delete' }}
@@ -40,168 +51,238 @@
     </div>
   </div>
 
+  <section *ngIf="scope === 'internal' && !metadataOnly && document?.document_type === 'invoice'"
+           class="invoice-preflight" aria-labelledby="invoice-preflight-title">
+    <div class="invoice-preflight__header">
+      <div>
+        <span class="invoice-preflight__eyebrow">DOCUMENT INTELLIGENCE</span>
+        <h2 id="invoice-preflight-title">Invoice readiness</h2>
+        <p>Server-verified intake checks. Invoice values are not approved or inferred here.</p>
+      </div>
+      <span *ngIf="invoiceReadiness" class="invoice-preflight__status"
+            [class.invoice-preflight__status--ready]="invoiceReadiness.status === 'ready'"
+            [class.invoice-preflight__status--blocked]="invoiceReadiness.status === 'blocked' || invoiceReadiness.status === 'restricted'">
+        {{ invoiceReadiness.status === 'needs_review' ? 'Needs verification' : formatLabel(invoiceReadiness.status) }}
+      </span>
+    </div>
+    <p *ngIf="readinessLoading" role="status">Checking invoice readiness…</p>
+    <p *ngIf="!readinessLoading && !invoiceReadiness && !readinessError" class="invoice-preflight__message">
+      Readiness requires edit-level document permission. Source inspection is not available to every viewer.
+    </p>
+    <div *ngIf="readinessError" class="invoice-preflight__notice" role="alert">
+      {{ readinessError }}
+      <button type="button" (click)="loadInvoiceReadiness()">Retry check</button>
+    </div>
+    <ng-container *ngIf="invoiceReadiness as readiness">
+      <p class="invoice-preflight__message">{{ readiness.message }}</p>
+      <div class="invoice-preflight__grid">
+        <div class="invoice-preflight__metric">
+          <strong>Document processing</strong>
+          <span>{{ document?.status === 'ready' ? 'Ready' : 'In progress' }}</span>
+        </div>
+        <div class="invoice-preflight__metric">
+          <strong>Source labels</strong>
+          <span>{{ readiness.checks.length ? (readiness.checks.length - readiness.missing_signals.length) + ' / ' + readiness.checks.length + ' recognized' : 'Not yet assessed' }}</span>
+        </div>
+        <div class="invoice-preflight__metric">
+          <strong>Internal AI indexing</strong>
+          <span>{{ readiness.internal_ai_indexed ? 'Indexed · access policy still applies' : 'Not yet indexed' }}</span>
+        </div>
+      </div>
+      <div *ngIf="readiness.checks.length" class="invoice-preflight__signals" aria-label="Invoice label checks">
+        <span *ngFor="let item of readiness.checks" [class.invoice-preflight__signal--found]="item.present">
+          {{ item.present ? '✓' : '!' }} {{ invoiceSignalLabel(item.key) }}
+        </span>
+      </div>
+      <div class="invoice-preflight__next">
+        <p>Next: verify source evidence in the invoice workflow. Missing labels require review, not an invented value.</p>
+        <button type="button" class="document-detail-page__button document-detail-page__button--invoice"
+                [disabled]="!canPrepareInvoiceWorkflow" (click)="prepareInvoiceWorkflow()">
+          Prepare invoice workflow →
+        </button>
+      </div>
+    </ng-container>
+  </section>
+
+  <p *ngIf="governanceError" role="alert">{{ governanceError }}</p>
   <div *ngIf="errorMessage" class="document-detail-alert document-detail-alert--error">
     {{ errorMessage }}
   </div>
 
-  <div *ngIf="successMessage" class="document-detail-alert document-detail-alert--success">
-    {{ successMessage }}
-  </div>
 
-  <div *ngIf="isLoading" class="document-detail-empty">
-    Loading document details...
-  </div>
+  <div *ngIf="isLoading" class="document-detail-empty">Loading document details...</div>
 
+  <section *ngIf="previewSafeUrl" aria-label="Document preview">
+    <button type="button" (click)="closePreview()">Close preview</button
+    ><iframe
+      [src]="previewSafeUrl"
+      title="Authorized document preview"
+      sandbox=""
+      style="width: 100%; height: 65vh"
+    ></iframe>
+  </section>
   <ng-container *ngIf="document">
-    <div class="document-detail-stats">
-      <article class="document-stat-card">
-        <span>Status</span>
-        <app-document-status-badge [status]="document.status"></app-document-status-badge>
-      </article>
+    <app-document-governance
+      [document]="document"
+      [scope]="scope"
+      (administration)="policyAdministrator = $event"
+      (failure)="governanceError = $event"
+    ></app-document-governance>
+    <app-source-proof-panel *ngIf="scope === 'internal' && !metadataOnly && document" kind="document" [contextUuid]="document.uuid" />
+  <ng-container *ngIf="!metadataOnly">
+      <div class="document-detail-stats">
+        <article class="document-stat-card">
+          <span>Status</span>
+          <app-document-status-badge [status]="document.status"></app-document-status-badge>
+        </article>
 
-      <article class="document-stat-card">
-        <span>AI Ready</span>
-        <strong>{{ getStatusLabel(document.is_ai_ready) }}</strong>
-      </article>
+        <article class="document-stat-card">
+          <span>AI Ready</span>
+          <strong>{{ getStatusLabel(document.is_ai_ready) }}</strong>
+        </article>
 
-      <article class="document-stat-card">
-        <span>Indexed</span>
-        <strong>{{ getStatusLabel(document.is_indexed) }}</strong>
-      </article>
+        <article class="document-stat-card">
+          <span>Indexed</span>
+          <strong>{{ getStatusLabel(document.is_indexed) }}</strong>
+        </article>
 
-      <article class="document-stat-card">
-        <span>OCR Completed</span>
-        <strong>{{ getStatusLabel(document.is_ocr_completed) }}</strong>
-      </article>
-    </div>
+        <article class="document-stat-card">
+          <span>OCR Completed</span>
+          <strong>{{ getStatusLabel(document.is_ocr_completed) }}</strong>
+        </article>
+      </div>
 
-    <div class="document-detail-grid">
-      <section class="document-detail-card document-detail-card--wide">
-        <h2>Document Information</h2>
+      <div class="document-detail-grid">
+        <section class="document-detail-card document-detail-card--wide">
+          <h2>Document Information</h2>
 
-        <div class="document-info-grid">
-          <div>
-            <span>Document Type</span>
-            <strong>{{ formatLabel(document.document_type) }}</strong>
+          <div class="document-info-grid">
+            <div>
+              <span>Document Type</span>
+              <strong>{{ formatLabel(document.document_type) }}</strong>
+            </div>
+
+            <div>
+              <span>Sensitivity</span>
+              <strong>{{ formatLabel(document.sensitivity_label) }}</strong>
+            </div>
+
+            <div>
+              <span>Department</span>
+              <strong>{{ document.department_name || '-' }}</strong>
+            </div>
+
+            <div>
+              <span>Uploaded By</span>
+              <strong>{{ document.uploaded_by_email || '-' }}</strong>
+            </div>
+
+            <div>
+              <span>File Size</span>
+              <strong>{{ formatFileSize(document.file_size) }}</strong>
+            </div>
+
+            <div>
+              <span>MIME Type</span>
+              <strong>{{ document.mime_type || '-' }}</strong>
+            </div>
+
+            <div>
+              <span>Created</span>
+              <strong>{{ document.created_at | date: 'medium' }}</strong>
+            </div>
+
+            <div>
+              <span>Updated</span>
+              <strong>{{ document.updated_at | date: 'medium' }}</strong>
+            </div>
           </div>
 
-          <div>
-            <span>Sensitivity</span>
-            <strong>{{ formatLabel(document.sensitivity_label) }}</strong>
+          <div *ngIf="document.description" class="document-description">
+            <span>Description</span>
+            <p>{{ document.description }}</p>
           </div>
 
+          <div
+            *ngIf="document.processing_error"
+            class="document-detail-alert document-detail-alert--error"
+          >
+            {{ document.processing_error }}
+          </div>
+        </section>
+
+        <section class="document-detail-card">
+          <h2>Processing Flags</h2>
+
+          <div class="document-flags">
+            <div>
+              <span>Current Access</span>
+              <strong>{{ document.current_user_access || '-' }}</strong>
+            </div>
+
+            <div>
+              <span>Page Count</span>
+              <strong>{{ document.page_count || '-' }}</strong>
+            </div>
+
+            <div>
+              <span>Language</span>
+              <strong>{{ document.language || '-' }}</strong>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <section class="document-detail-card">
+        <div class="document-section-heading">
           <div>
-            <span>Department</span>
-            <strong>{{ document.department_name || '-' }}</strong>
+            <h2>Processing Pipeline</h2>
+            <p>{{ processingJobs.length }} jobs found</p>
           </div>
 
-          <div>
-            <span>Uploaded By</span>
-            <strong>{{ document.uploaded_by_email || '-' }}</strong>
-          </div>
-
-          <div>
-            <span>File Size</span>
-            <strong>{{ formatFileSize(document.file_size) }}</strong>
-          </div>
-
-          <div>
-            <span>MIME Type</span>
-            <strong>{{ document.mime_type || '-' }}</strong>
-          </div>
-
-          <div>
-            <span>Created</span>
-            <strong>{{ document.created_at | date: 'medium' }}</strong>
-          </div>
-
-          <div>
-            <span>Updated</span>
-            <strong>{{ document.updated_at | date: 'medium' }}</strong>
-          </div>
+          <button
+            type="button"
+            class="document-detail-page__button document-detail-page__button--ghost"
+            (click)="loadProcessingJobs()"
+          >
+            Refresh Jobs
+          </button>
         </div>
 
-        <div *ngIf="document.description" class="document-description">
-          <span>Description</span>
-          <p>{{ document.description }}</p>
-        </div>
-
-        <div
-          *ngIf="document.processing_error"
-          class="document-detail-alert document-detail-alert--error"
-        >
-          {{ document.processing_error }}
-        </div>
+        <app-document-processing-pipeline
+          [jobs]="processingJobs"
+          (refresh)="loadProcessingJobs()"
+        ></app-document-processing-pipeline>
       </section>
 
       <section class="document-detail-card">
-        <h2>Processing Flags</h2>
+        <h2>Processing Jobs</h2>
 
-        <div class="document-flags">
-          <div>
-            <span>Current Access</span>
-            <strong>{{ document.current_user_access || '-' }}</strong>
+        <div
+          *ngIf="!processingJobs.length"
+          class="document-detail-empty document-detail-empty--small"
+        >
+          No processing jobs found.
+        </div>
+
+        <div *ngIf="processingJobs.length" class="document-jobs-table">
+          <div class="document-jobs-table__row document-jobs-table__row--head">
+            <div>Job</div>
+            <div>Status</div>
+            <div>Started</div>
+            <div>Completed</div>
+            <div>Error</div>
           </div>
 
-          <div>
-            <span>Page Count</span>
-            <strong>{{ document.page_count || '-' }}</strong>
-          </div>
-
-          <div>
-            <span>Language</span>
-            <strong>{{ document.language || '-' }}</strong>
+          <div class="document-jobs-table__row" *ngFor="let job of processingJobs">
+            <div>{{ formatLabel(job.job_type) }}</div>
+            <div>{{ formatLabel(job.status) }}</div>
+            <div>{{ job.started_at ? (job.started_at | date: 'medium') : '-' }}</div>
+            <div>{{ job.completed_at ? (job.completed_at | date: 'medium') : '-' }}</div>
+            <div class="document-jobs-table__error">{{ job.error_message || '-' }}</div>
           </div>
         </div>
       </section>
-    </div>
-
-    <section class="document-detail-card">
-      <div class="document-section-heading">
-        <div>
-          <h2>Processing Pipeline</h2>
-          <p>{{ processingJobs.length }} jobs found</p>
-        </div>
-
-        <button
-          type="button"
-          class="document-detail-page__button document-detail-page__button--ghost"
-          (click)="loadProcessingJobs()"
-        >
-          Refresh Jobs
-        </button>
-      </div>
-
-      <app-document-processing-pipeline
-        [jobs]="processingJobs"
-        (refresh)="loadProcessingJobs()"
-      ></app-document-processing-pipeline>
-    </section>
-
-    <section class="document-detail-card">
-      <h2>Processing Jobs</h2>
-
-      <div *ngIf="!processingJobs.length" class="document-detail-empty document-detail-empty--small">
-        No processing jobs found.
-      </div>
-
-      <div *ngIf="processingJobs.length" class="document-jobs-table">
-        <div class="document-jobs-table__row document-jobs-table__row--head">
-          <div>Job</div>
-          <div>Status</div>
-          <div>Started</div>
-          <div>Completed</div>
-          <div>Error</div>
-        </div>
-
-        <div class="document-jobs-table__row" *ngFor="let job of processingJobs">
-          <div>{{ formatLabel(job.job_type) }}</div>
-          <div>{{ formatLabel(job.status) }}</div>
-          <div>{{ job.started_at ? (job.started_at | date: 'medium') : '-' }}</div>
-          <div>{{ job.completed_at ? (job.completed_at | date: 'medium') : '-' }}</div>
-          <div class="document-jobs-table__error">{{ job.error_message || '-' }}</div>
-        </div>
-      </div>
-    </section>
+    </ng-container>
   </ng-container>
 </section>

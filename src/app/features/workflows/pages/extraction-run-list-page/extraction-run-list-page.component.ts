@@ -11,14 +11,7 @@ import { ExtractionStatusBadgeComponent } from '../../components/extraction-stat
 @Component({
   selector: 'app-extraction-run-list-page',
   standalone: true,
-  imports: [
-    DatePipe,
-    ExtractionStatusBadgeComponent,
-    NgFor,
-    NgIf,
-    ReactiveFormsModule,
-    RouterLink,
-  ],
+  imports: [DatePipe, ExtractionStatusBadgeComponent, NgFor, NgIf, ReactiveFormsModule, RouterLink],
   templateUrl: './extraction-run-list-page.component.html',
   styleUrl: './extraction-run-list-page.component.scss',
 })
@@ -41,6 +34,7 @@ export class ExtractionRunListPageComponent implements OnInit {
   }
 
   loadRuns(): void {
+    if (this.isLoading) return;
     this.isLoading = true;
     this.errorMessage = '';
     this.cdr.markForCheck();
@@ -55,7 +49,6 @@ export class ExtractionRunListPageComponent implements OnInit {
       )
       .subscribe({
         next: (runs) => {
-          console.log('Extraction runs loaded:', runs);
           this.runs = runs;
           this.cdr.markForCheck();
         },
@@ -92,12 +85,7 @@ export class ExtractionRunListPageComponent implements OnInit {
   getTemplateName(run: ExtractionRun): string {
     const template = this.getTemplateObject(run);
 
-    return (
-      template?.name ||
-      run.template_name ||
-      run.template_type ||
-      'Extraction template'
-    );
+    return template?.name || run.template_name || run.template_type || 'Extraction template';
   }
 
   getConfidence(run: ExtractionRun): string {

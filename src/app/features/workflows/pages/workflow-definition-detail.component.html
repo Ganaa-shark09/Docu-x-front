@@ -1,0 +1,162 @@
+<section class="page">
+  <nav class="tabs" aria-label="Workflow navigation">
+    <a routerLink="/workflows/definitions">Definitions</a><a routerLink="/workflows/runs">Runs</a
+    ><a routerLink="/workflows/extractions">Extraction runs</a>
+  </nav>
+  @if (error()) {
+    <p class="error" role="alert">{{ error() }}</p>
+  }
+  @if (loading()) {
+    <div class="workflow-loading" role="status">
+      <span>Loading workflow...</span>
+      <div aria-hidden="true"><i></i><i></i><i></i></div>
+    </div>
+  }
+  @if (definition(); as d) {
+    <header>
+      <div>
+        <h1>{{ d.name }}</h1>
+        <p class="muted">
+          {{ d.workflow_type }} |
+          {{ d.department === null ? 'Company wide' : 'Department ' + d.department }}
+        </p>
+      </div>
+      <span class="badge">{{ d.is_active ? 'Active' : 'Inactive' }}</span>
+    </header>
+    <p>{{ d.description }}</p>
+    <div class="actions">
+      <button [disabled]="pending()" (click)="load()">Refresh</button>
+      @if (d.capabilities.administer) {
+        <button [disabled]="pending()" (click)="activate()">
+          {{ d.is_active ? 'Deactivate' : 'Activate' }}
+        </button>
+        @if (!singleDocument()) {
+          <button [disabled]="pending()" (click)="showPublisher = !showPublisher">
+            Publish new version
+          </button>
+        }
+      }
+    </div>
+    @if (showPublisher && d.capabilities.administer && !singleDocument()) {
+      <app-workflow-publisher
+        [definition]="d.uuid"
+        [memberships]="memberships()"
+        (published)="published($event)"
+        (accessDenied)="administrationDenied()"
+      />
+    }
+    <section class="card">
+      <h2>Published versions</h2>
+      <label
+        >Version<select
+          [(ngModel)]="versionUuid"
+          [disabled]="pending()"
+          (ngModelChange)="selected = []"
+        >
+          @for (v of versions(); track v.uuid) {
+            <option [value]="v.uuid">Version {{ v.number }}</option>
+          }
+        </select></label
+      >
+      <p class="muted">Published versions are immutable; changes require a new version.</p>
+      @if (version(); as v) {
+        <p>
+          Entry: {{ v.entry_step }} | Document types:
+          {{ v.allowed_document_types.join(', ') || 'Any internal document type' }}
+        </p>
+        <div class="stack">
+          @for (s of v.steps; track s.uuid) {
+            <article class="step">
+              <h3>
+                {{ s.name }}
+                <span class="badge">{{ label(s.step_type) }} | {{ nature(s.step_type) }}</span>
+              </h3>
+              <p class="muted">
+                {{ s.key }}
+                @if (s.step_type === 'terminal') {
+                  | Final state: {{ s.configuration['status'] || 'completed' }}
+                }
+              </p>
+              @for (t of v.transitions; track $index) {
+                @if (t.source === s.key) {
+                  <p>{{ label(t.outcome) }} | {{ t.target }}</p>
+                }
+              }
+            </article>
+          }
+        </div>
+      } @else {
+        <p class="empty">No published version. An administrator can publish the first version.</p>
+      }
+    </section>
+    @if (d.capabilities.start && version()) {
+      <section class="card">
+        <h2>
+          {{ singleDocument() ? 'Start document review workflow' : 'Start workflow' }} | Version
+          {{ version()?.number }}
+        </h2>
+        <p class="muted">
+          {{
+            singleDocument()
+              ? 'Select one ready invoice document.'
+              : 'Select 1-20 accessible internal documents.'
+          }}
+          The server checks current document and field permissions before starting.
+        </p>
+        @if (docsError()) {
+          <p class="error" role="alert">{{ docsError() }}</p>
+        }
+        @if (docsLoading()) {
+          <p role="status">Loading document choices...</p>
+        }
+        <fieldset [disabled]="pending() || docsLoading()">
+          <legend>Related documents ({{ selected.length }} selected)</legend>
+          @for (doc of documents(); track doc.uuid) {
+            <label class="check"
+              ><input
+                [type]="singleDocument() ? 'radio' : 'checkbox'"
+                name="invoice-source"
+                [checked]="selected.includes(doc.uuid)"
+                [disabled]="
+                  !allowed(doc) ||
+                  (!singleDocument() && !selected.includes(doc.uuid) && selected.length >= 20)
+                "
+                (change)="toggle(doc.uuid, checked($event))"
+              /><span
+                >{{ doc.title || doc.original_filename || doc.uuid }} | {{ doc.document_type }}
+                @if (!allowed(doc)) {
+                  | Not ready or type not allowed
+                }
+              </span></label
+            >
+          } @empty {
+            <p class="empty">No documents with edit access on this page.</p>
+          }
+          <nav class="pager" aria-label="Document choice pages">
+            <button
+              type="button"
+              [disabled]="!docsHasPrevious()"
+              (click)="loadDocuments(docPage - 1)"
+            >
+              Previous document page</button
+            ><span>Page {{ docPage }}</span
+            ><button type="button" [disabled]="!docsHasNext()" (click)="loadDocuments(docPage + 1)">
+              Next document page
+            </button>
+          </nav>
+        </fieldset>
+        <a routerLink="/documents/internal"
+          >Upload or process an invoice in Documents, then refresh this selection</a
+        >
+        <p>Selected document references: {{ selected.join(', ') || 'None' }}</p>
+        <button
+          class="primary"
+          [disabled]="pending() || docsLoading() || !selected.length"
+          (click)="start()"
+        >
+          {{ pending() ? 'Submitting...' : 'Start workflow' }}
+        </button>
+      </section>
+    }
+  }
+</section>

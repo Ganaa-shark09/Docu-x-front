@@ -26,8 +26,10 @@ export interface WorkflowTemplateRef {
 }
 
 export interface ExtractionResultField {
-  uuid: string;
-  field_name: string;
+  uuid?: string;
+  field_name?: string;
+  field_key?: string;
+  restricted?: boolean;
   label?: string;
   value?: unknown;
   extracted_value?: unknown;

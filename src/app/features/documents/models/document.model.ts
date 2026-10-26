@@ -1,3 +1,4 @@
+import { DocumentGovernance } from './governance.model';
 export interface DocumentListItem {
   uuid: string;
   title: string;
@@ -37,13 +38,7 @@ export interface DocumentListItem {
   updated_at: string;
 }
 
-export interface DocumentListRecord
-  extends Partial<
-    Omit<
-      DocumentListItem,
-      'uuid'
-    >
-  > {
+export interface DocumentListRecord extends Partial<Omit<DocumentListItem, 'uuid'>> {
   uuid: string;
   /*
    * Compatibility aliases accepted from current
@@ -61,8 +56,8 @@ export interface DocumentListRecord
   ai_ready?: boolean;
 }
 
-
 export interface DocumentDetail extends DocumentListItem {
+  governance?: DocumentGovernance;
   file?: string | null;
   file_url?: string | null;
   download_url?: string | null;
@@ -86,7 +81,7 @@ export interface DocumentProcessingJob {
 export interface DocumentVersion {
   uuid: string;
   version_number: number;
-  file?: string;
+  file?: string | null;
   file_size?: number;
   checksum?: string;
   created_at: string;
@@ -95,7 +90,7 @@ export interface DocumentVersion {
 
 export interface DocumentAccessPolicy {
   uuid: string;
-  user?: number;
+  user?: number | null;
   user_email?: string;
   role?: string;
   access_level: string;
@@ -122,7 +117,6 @@ export interface DocumentRetryResponse {
   task_id?: string;
   document_uuid?: string;
 }
-
 
 export interface DepartmentOption {
   uuid: string;

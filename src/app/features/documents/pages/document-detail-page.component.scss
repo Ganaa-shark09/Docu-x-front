@@ -92,7 +92,7 @@
 
 .document-detail-empty {
   border: 1px solid var(--app-border);
-  border-radius: 18px;
+  border-radius: var(--app-radius-lg);
   background: var(--app-surface);
   padding: 32px;
   color: var(--app-text-muted);
@@ -111,6 +111,7 @@
 
 .document-stat-card,
 .document-detail-card {
+  box-shadow: var(--app-shadow-raised);
   border: 1px solid var(--app-border);
   border-radius: 20px;
   background: var(--app-surface);
@@ -265,4 +266,129 @@
   .document-info-grid {
     grid-template-columns: 1fr;
   }
+}
+
+:host,
+.document-detail-page,
+.document-detail-page > * {
+  min-width: 0;
+  max-width: 100%;
+}
+.document-detail-page {
+  grid-template-columns: minmax(0, 1fr);
+}
+.document-detail-page__header {
+  flex-wrap: wrap;
+}
+.document-detail-page__header > div {
+  min-width: 0;
+  max-width: 100%;
+}
+.document-detail-page h1 {
+  font-size: 26px;
+  letter-spacing: -0.03em;
+  overflow-wrap: anywhere;
+}
+.document-detail-page p {
+  overflow-wrap: anywhere;
+}
+.document-jobs-table {
+  min-width: 0;
+  max-width: 100%;
+}
+.document-detail-card,
+.document-stat-card {
+  border-radius: var(--app-radius-lg);
+}
+.document-detail-page__button {
+  border-radius: 6px;
+  font-size: 13px;
+  min-height: 38px;
+}
+
+/* Internal document → invoice workflow handoff */
+.document-detail-page__button--invoice {
+  background: var(--app-primary);
+  color: var(--app-on-primary);
+}
+.document-detail-page__button:focus-visible {
+  outline: 3px solid var(--app-focus-ring, var(--app-primary));
+  outline-offset: 3px;
+}
+.document-invoice-handoff {
+  display: grid;
+  gap: 6px;
+  padding: 16px 18px;
+  border: 1px solid var(--app-border);
+  border-inline-start: 4px solid var(--app-primary);
+  border-radius: var(--app-radius-lg, 14px);
+  background: var(--app-surface);
+  color: var(--app-text);
+  line-height: 1.5;
+}
+.document-invoice-handoff strong { font-size: 14px; }
+.document-invoice-handoff span { color: var(--app-text-muted); font-size: 13px; }
+
+/* Source-aware invoice readiness: compact, actionable, theme-token based. */
+.invoice-preflight {
+  display: grid;
+  gap: 16px;
+  border: 1px solid var(--app-border-strong);
+  border-radius: var(--app-radius-lg, 16px);
+  background: var(--app-surface);
+  padding: clamp(16px, 2.5vw, 26px);
+}
+.invoice-preflight__header, .invoice-preflight__next {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.invoice-preflight__eyebrow {
+  color: var(--app-text-muted);
+  font-size: 11px;
+  letter-spacing: .11em;
+  font-weight: 750;
+}
+.invoice-preflight h2 { margin: 7px 0 0; font-size: 22px; }
+.invoice-preflight p { margin: 6px 0 0; line-height: 1.5; }
+.invoice-preflight__status {
+  border: 1px solid var(--app-border-strong);
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 13px;
+  font-weight: 650;
+}
+.invoice-preflight__status--ready { border-color: var(--app-success-border); color: var(--app-success-text); }
+.invoice-preflight__status--blocked { border-color: var(--app-danger-border); color: var(--app-danger-text); }
+.invoice-preflight__grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; }
+.invoice-preflight__metric {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  background: var(--app-surface-soft);
+  padding: 14px;
+  min-width: 0;
+}
+.invoice-preflight__metric strong { font-size: 12px; color: var(--app-text-muted); }
+.invoice-preflight__metric span { font-size: 14px; overflow-wrap: anywhere; }
+.invoice-preflight__signals { display: flex; flex-wrap: wrap; gap: 8px; }
+.invoice-preflight__signals span {
+  border: 1px solid var(--app-border);
+  background: var(--app-surface-soft);
+  border-radius: 8px;
+  padding: 8px 11px;
+  font-size: 12px;
+}
+.invoice-preflight__signal--found { color: var(--app-success-text); }
+.invoice-preflight__next { align-items: center; border-top: 1px solid var(--app-border); padding-top: 14px; }
+.invoice-preflight__next p { max-width: 660px; }
+.invoice-preflight__notice { color: var(--app-danger-text); }
+.invoice-preflight__notice button { margin-left: 12px; }
+@media(max-width: 760px) {
+  .invoice-preflight__grid { grid-template-columns: 1fr; }
+  .invoice-preflight__next .document-detail-page__button { width: 100%; }
 }

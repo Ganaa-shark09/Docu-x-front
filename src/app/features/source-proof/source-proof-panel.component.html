@@ -1,0 +1,233 @@
+<section class="proof-panel" aria-label="Source Proof">
+  <header>
+    <div>
+      <h2>Source Proof</h2>
+      <p>
+        Stored claims, evidence and source traceability. Supported evidence does not guarantee a
+        claim is true.
+      </p>
+    </div>
+    <button type="button" (click)="toggle()" [attr.aria-expanded]="opened()">
+      {{ opened() ? 'Hide proof' : 'Inspect proof' }}
+    </button>
+  </header>
+  @if (opened()) {
+    @if (loading()) {
+      <p role="status">Loading Source Proof...</p>
+    }
+    @if (error()) {
+      <p role="alert">{{ error() }}</p>
+      <button type="button" (click)="load()">Check again</button>
+    }
+    @if (context(); as data) {
+      @if (data.output_fields?.length) {
+        <section class="proof-detail">
+          <h3>Inspect a workflow output field</h3>
+          <p>
+            Build traceability from an existing output. This records a proof claim; it does not
+            verify the claim as true. Up to 100 fields from recent authorized outputs are available
+            here.
+          </p>
+          <label
+            >Output field
+            <select
+              #fieldSelect
+              (change)="outputIndex = +fieldSelect.value"
+              [disabled]="detailLoading()"
+            >
+              @for (field of data.output_fields; track $index) {
+                <option [value]="$index">
+                  {{ label(field.kind) }} / {{ field.path.join(' / ') }} /
+                  {{ field.source_uuid.slice(0, 8) }}
+                </option>
+              }
+            </select></label
+          ><button type="button" (click)="build()" [disabled]="detailLoading()">
+            Build Source Proof
+          </button>
+        </section>
+      }
+      <div class="proof-columns">
+        <section>
+          <h3>Claims</h3>
+          @for (claim of data.claims; track claim.uuid) {
+            <button type="button" class="proof-item" (click)="openClaim(claim.uuid)">
+              <strong>{{ field(claim.key) }}</strong
+              ><span>{{ value(claim.value) }}</span
+              ><small>Revision {{ claim.revision }} &middot; {{ label(claim.coverage) }}</small>
+            </button>
+          } @empty {
+            <p>No stored claims are available for this context.</p>
+          }
+        </section>
+        <section>
+          <h3>Evidence</h3>
+          @for (row of data.evidence; track row.uuid) {
+            <button type="button" class="proof-item" (click)="openEvidence(row.uuid)">
+              <strong>{{ label(row.validity) }}</strong
+              ><span>{{ location(row) }}</span
+              ><small>{{ reason(row.code) }}</small>
+            </button>
+          } @empty {
+            <p>
+              No stored evidence is available. Verification has not been recorded or accessible
+              evidence is unavailable.
+            </p>
+          }
+        </section>
+      </div>
+      <nav aria-label="Proof pages">
+        <button type="button" [disabled]="!data.previous" (click)="load(page - 1)">Previous</button
+        ><span>Page {{ page }}</span
+        ><button type="button" [disabled]="!data.next" (click)="load(page + 1)">Next</button>
+      </nav>
+    }
+    @if (detailLoading()) {
+      <p role="status">Loading claim traceability...</p>
+    }
+    @if (detailError()) {
+      <p role="alert">{{ detailError() }}</p>
+      @if (selectedClaim) {
+        <button type="button" (click)="openClaim(selectedClaim)">Retry claim</button>
+      } @else {
+        <button type="button" (click)="build()">Retry proof</button>
+      }
+    }
+    @if (graph(); as proof) {
+      <section class="proof-detail">
+        <h3>Claim traceability</h3>
+        <p>{{ label(proof.coverage) }}</p>
+        @for (node of currentNodes(); track node.uuid) {
+          <article>
+            <h4>{{ field(node.key) }} &middot; Revision {{ node.revision }}</h4>
+            <pre>{{ value(node.value) }}</pre>
+            <p>
+              Review: {{ label(node.review_state) }} &middot; {{ node.created_at | date: 'medium' }}
+            </p>
+            @if (node.reason) {
+              <p>{{ node.reason }}</p>
+            }
+            @for (support of supports(node); track $index) {
+              @if (support.row; as row) {
+                <button type="button" (click)="openEvidence(row.uuid)">
+                  {{ label(support.role) }} &middot; {{ label(row.validity) }} &middot;
+                  {{ location(row) }}
+                </button>
+              } @else {
+                <p>Linked evidence is unavailable.</p>
+              }
+            } @empty {
+              <p>No supporting evidence is recorded for this revision.</p>
+            }
+            @if (node.derivation; as derivation) {
+              <p>
+                Derivation: {{ label(derivation.operation) }} &middot;
+                {{ derivation.inputs.length }} source claim revisions
+              </p>
+            }
+          </article>
+        }
+      </section>
+    }
+    @if (citationLoading()) {
+      <p role="status">Checking source permissions and evidence...</p>
+    }
+    @if (citationError()) {
+      <p role="alert">{{ citationError() }}</p>
+      <button type="button" (click)="openEvidence(selectedEvidence)">Retry evidence</button>
+    }
+    @if (citation(); as row) {
+      <section class="proof-detail" aria-label="Evidence citation">
+        <h3>Evidence citation</h3>
+        <strong>{{ label(row.validity) }}</strong>
+        <p>{{ reason(row.code) }}</p>
+        <p>{{ location(row) }}</p>
+        @for (doc of sourceDocuments(row); track doc.uuid) {
+          <a [routerLink]="['/documents/detail', doc.uuid]"
+            >Open source: {{ doc.title || 'Document' }}</a
+          >
+        } @empty {
+          <p>No source document navigation is available.</p>
+        }
+        @if (row.excerpt !== null && row.validity === 'valid') {
+          <blockquote>{{ row.excerpt }}</blockquote>
+          <small>Authorized source excerpt (up to 8,000 characters).</small>
+        } @else {
+          <p>
+            {{
+              row.validity === 'valid'
+                ? 'This locator does not provide a text excerpt.'
+                : 'The excerpt is withheld because the evidence is not currently valid.'
+            }}
+          </p>
+        }
+        <dl>
+          <div>
+            <dt>Precision</dt>
+            <dd>{{ label(row.precision) }}</dd>
+          </div>
+          <div>
+            <dt>Method</dt>
+            <dd>{{ label(row.method) }}</dd>
+          </div>
+          <div>
+            <dt>Review</dt>
+            <dd>{{ label(row.review_state) }} ({{ row.review_revision }})</dd>
+          </div>
+          <div>
+            <dt>Captured</dt>
+            <dd>{{ row.captured_at | date: 'medium' }}</dd>
+          </div>
+          <div>
+            <dt>Effective from</dt>
+            <dd>{{ (row.valid_from | date: 'medium') || 'Not specified' }}</dd>
+          </div>
+          <div>
+            <dt>Expires</dt>
+            <dd>{{ (row.valid_until | date: 'medium') || 'Not specified' }}</dd>
+          </div>
+          <div>
+            <dt>Review due</dt>
+            <dd>{{ (row.review_due_at | date: 'medium') || 'Not specified' }}</dd>
+          </div>
+        </dl>
+        <button type="button" (click)="loadHistory()" [disabled]="historyLoading()">
+          Verification history
+        </button>
+        @if (historyLoading()) {
+          <p role="status">Loading verification history...</p>
+        }
+        @if (historyError()) {
+          <p role="alert">{{ historyError() }}</p>
+          <button type="button" (click)="loadHistory(historyPage)">Retry history</button>
+        }
+        @if (history(); as records) {
+          @for (record of records.results; track record.number) {
+            <p>
+              {{ label(record.status) }} &middot; {{ reason(record.code) }} &middot;
+              {{ record.created_at | date: 'medium' }}
+            </p>
+          } @empty {
+            <p>No verification events have been recorded.</p>
+          }
+          <nav aria-label="Verification history pages">
+            <button
+              type="button"
+              [disabled]="!records.previous"
+              (click)="loadHistory(historyPage - 1)"
+            >
+              Previous</button
+            ><span>Page {{ historyPage }}</span
+            ><button
+              type="button"
+              [disabled]="!records.next"
+              (click)="loadHistory(historyPage + 1)"
+            >
+              Next
+            </button>
+          </nav>
+        }
+      </section>
+    }
+  }
+</section>

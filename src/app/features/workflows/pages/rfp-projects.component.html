@@ -1,0 +1,1038 @@
+<section class="page">
+  <nav class="tabs" aria-label="Workflow navigation">
+    <a routerLink="/workflows/definitions">Definitions</a><a routerLink="/workflows/runs">Runs</a
+    ><a routerLink="/workflows/rfp-projects">RFP projects</a>
+  </nav>
+  <header>
+    <div>
+      <span class="eyebrow">SOLICITATION &amp; PROPOSAL OPERATIONS</span>
+      <h1>{{ project()?.title || 'RFP / Proposal workspace' }}</h1>
+      <p class="muted">Source-backed responses, human review and controlled disclosure.</p>
+    </div>
+    <button (click)="reload()" [disabled]="pending() || loading()">
+      Reload permissions &amp; data
+    </button>
+  </header>
+  @if (error()) {
+    <p class="error" role="alert">{{ error() }}</p>
+  }
+  @if (loading()) {
+    <p role="status">Loading authorized RFP data…</p>
+  }
+  @if (!project() && !loading()) {
+    @if (!projects().length) {
+      <article class="card">
+        <h2>No accessible RFP projects</h2>
+        <p class="muted">Projects appear here when they are available to your workspace.</p>
+      </article>
+    }
+    @if (projects().length) {
+      <div class="table-wrap">
+        <table>
+          <caption class="sr-only">
+            Authorized RFP projects
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Project</th>
+              <th scope="col">Status</th>
+              <th scope="col">Revision</th>
+              <th scope="col">Review</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (p of projects(); track p.uuid) {
+              <tr>
+                <td>
+                  <a [routerLink]="['/workflows/rfp-projects', p.uuid]">{{ p.title }}</a>
+                </td>
+                <td>
+                  <span class="badge">{{ label(p.status) }}</span>
+                </td>
+                <td>{{ p.revision }}</td>
+                <td>
+                  @if (p.run_uuid) {
+                    <a [routerLink]="['/workflows/runs', p.run_uuid]"
+                      >Workflow review &amp; approval</a
+                    >
+                  } @else {
+                    <span class="muted">Not submitted</span>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+    <div class="pager">
+      <button
+        (click)="page = page - 1; loadProjects()"
+        [disabled]="!previous || loading() || pending()"
+      >
+        Previous projects</button
+      ><span>Page {{ page }}</span
+      ><button
+        (click)="page = page + 1; loadProjects()"
+        [disabled]="!next || loading() || pending()"
+      >
+        Next projects
+      </button>
+    </div>
+    @if (manager()) {
+      <button (click)="showCreate = !showCreate; showCreate && loadDocs()" [disabled]="pending()">
+        {{ showCreate ? 'Close project form' : 'Create RFP project' }}
+      </button>
+      @if (showCreate) {
+        <form class="card" (ngSubmit)="create()">
+          <h2>New RFP project</h2>
+          <label
+            >Project title<input
+              name="title"
+              [(ngModel)]="title"
+              maxlength="200"
+              required
+              [disabled]="pending()" /></label
+          ><label
+            >Department<select name="department" [(ngModel)]="department" [disabled]="pending()">
+              @if (companyAdmin()) {
+                <option [ngValue]="null">Company wide</option>
+              }
+              @for (m of managedDepartments(); track m.department) {
+                <option [ngValue]="m.department">{{ m.department_name }}</option>
+              }
+            </select></label
+          >
+          <fieldset>
+            <legend>Solicitation documents</legend>
+            <p>
+              Choose exactly one principal RFP. Supporting roles are explicit; filenames do not
+              determine roles.
+            </p>
+            @for (s of packageDocs; track s.document_uuid) {
+              <p>
+                {{ s.document_uuid }} · {{ label(s.role) }}
+                <button
+                  type="button"
+                  (click)="removePackage(s.document_uuid)"
+                  [disabled]="pending()"
+                >
+                  Remove solicitation document
+                </button>
+              </p>
+            }
+          </fieldset>
+          <fieldset>
+            <legend>Internal knowledge sources</legend>
+            <p>
+              Company evidence used for drafting. These documents are never automatically submission
+              attachments.
+            </p>
+            @for (id of knowledge; track id) {
+              <p>
+                {{ id }}
+                <button type="button" (click)="removeKnowledge(id)" [disabled]="pending()">
+                  Remove knowledge source
+                </button>
+              </p>
+            }
+          </fieldset>
+          <label
+            >Solicitation role for next selection<select
+              name="picker-role"
+              [(ngModel)]="pickerRole"
+              [disabled]="pending()"
+            >
+              @for (role of roles; track role) {
+                <option [value]="role">{{ label(role) }}</option>
+              }
+            </select></label
+          >
+          <h3>Authorized internal document directory</h3>
+          @for (d of docs(); track d.uuid) {
+            <article class="evidence">
+              <strong>{{ d.title || d.original_filename || d.uuid }}</strong>
+              <p>
+                {{ d.sensitivity_label || 'Sensitivity unavailable' }} ·
+                {{ d.status || 'Status unavailable' }}
+              </p>
+              <div class="actions">
+                <button
+                  type="button"
+                  (click)="addPackage(d)"
+                  [disabled]="pending() || packageDocs.length >= 20 || knowledge.includes(d.uuid)"
+                >
+                  Add to solicitation package</button
+                ><button
+                  type="button"
+                  (click)="addKnowledge(d)"
+                  [disabled]="pending() || knowledge.length >= 20"
+                >
+                  Use as internal evidence
+                </button>
+              </div>
+            </article>
+          }
+          <div class="pager">
+            <button
+              type="button"
+              (click)="loadDocs(docPage - 1)"
+              [disabled]="!docPrevious || pending() || docLoading()"
+            >
+              Previous documents</button
+            ><span>Document page {{ docPage }}</span
+            ><button
+              type="button"
+              (click)="loadDocs(docPage + 1)"
+              [disabled]="!docNext || pending() || docLoading()"
+            >
+              Next documents
+            </button>
+          </div>
+          <fieldset>
+            <legend>Additional finalization requirements</legend>
+            <label class="check"
+              ><input
+                type="checkbox"
+                name="all"
+                [(ngModel)]="requireAll"
+                [disabled]="pending()"
+              />All responses required</label
+            ><label class="check"
+              ><input
+                type="checkbox"
+                name="owners"
+                [(ngModel)]="requireOwners"
+                [disabled]="pending()"
+              />Owners required</label
+            ><label class="check"
+              ><input
+                type="checkbox"
+                name="disclosure"
+                [(ngModel)]="requireDisclosure"
+                [disabled]="pending()"
+              />External disclosure approval required</label
+            >
+          </fieldset>
+          <button class="primary" [disabled]="pending() || !title.trim() || !packageDocs.length">
+            Create project
+          </button>
+        </form>
+      }
+    }
+  }
+  @if (project(); as p) {
+    <article class="card">
+      <div class="actions">
+        <span class="badge">{{ label(p.status) }}</span
+        ><span>Project revision {{ p.revision }}</span
+        ><span>{{
+          p.extraction_reviewed ? 'Extraction confirmed' : 'Extraction requires human review'
+        }}</span>
+        @if (run(); as r) {
+          <app-workflow-status [status]="r.status" /><a [routerLink]="['/workflows/runs', r.uuid]"
+            >Open workflow, findings, exceptions &amp; approval</a
+          >
+        }
+      </div>
+    </article>
+    <nav class="rfp-tabs" aria-label="RFP workspace sections">
+      @for (t of tabs; track t) {
+        <button
+          [attr.aria-pressed]="tab() === t"
+          (click)="setTab(t)"
+          [disabled]="pending() || loading()"
+        >
+          {{ t }}
+        </button>
+      }
+    </nav>
+    @if (tab() === 'Overview') {
+      <article class="card">
+        <h2>Solicitation package</h2>
+        @for (s of p.sources; track s.uuid) {
+          <section class="evidence">
+            <h3>
+              {{
+                s.role === 'rfp_main'
+                  ? 'Principal RFP'
+                  : s.role === 'rfp_addendum'
+                    ? 'Addendum'
+                    : 'Supporting document'
+              }}
+              · {{ label(s.role) }}
+            </h3>
+            <a [routerLink]="['/documents/detail', s.document_uuid]">{{ s.document_uuid }}</a>
+            <p class="muted">Pinned governance revision {{ s.governance_revision }}</p>
+            @if (sourceMetadata(s); as meta) {
+              <p>
+                {{ meta.classified ? 'Classified solicitation' : 'Classification requires review' }}
+                · {{ label(meta.classification_method) }}
+              </p>
+              <dl>
+                @for (entry of metadataEntries(s); track entry[0]) {
+                  <dt>{{ label(entry[0]) }}</dt>
+                  @for (v of entry[1]; track $index) {
+                    <dd>
+                      {{ v.value }}
+                      <details>
+                        <summary>Metadata source proof</summary>
+                        <app-rfp-evidence [evidence]="v.evidence" />
+                      </details>
+                    </dd>
+                  }
+                }
+              </dl>
+              @if (!meta.classified && !meta.sections.length) {
+                <p class="warning">
+                  Classification is uncertain. Resolve the existing workflow exception and inspect
+                  the principal source. No source proof is available for a classification
+                  correction; the UI cannot invent offsets or citations.
+                </p>
+              }
+              <h3>Deadlines</h3>
+              @if (!meta.deadlines.length) {
+                <p class="warning">No deadline extracted. The deadline remains unknown.</p>
+              }
+              @for (d of meta.deadlines; track $index; let index = $index) {
+                <article class="card">
+                  <strong>{{ label(d.kind) }}</strong>
+                  <p>Source value: {{ d.raw }}</p>
+                  <p>
+                    Normalized: {{ d.datetime || d.date || 'Unknown / ambiguous' }}
+                    @if (d.timezone) {
+                      <span> · {{ d.timezone }}</span>
+                    }
+                  </p>
+                  <span class="badge">{{
+                    deadlineCorrection(s, index)
+                      ? 'Corrected — source preserved'
+                      : d.review_required
+                        ? 'Ambiguous deadline — see correction history'
+                        : p.extraction_reviewed
+                          ? 'Extraction confirmed'
+                          : 'Requires human review'
+                  }}</span>
+                  @if (deadlineWarning(d); as warning) {
+                    <p class="warning">{{ warning }}</p>
+                  }
+                  @if (deadlineCorrection(s, index); as correction) {
+                    <p class="warning">
+                      Corrected value (version {{ correction.number }}):
+                      {{ correction.value | json }}. Original source value is retained above.
+                    </p>
+                  }
+                  <details>
+                    <summary>Deadline source proof</summary>
+                    <app-rfp-evidence [evidence]="d.evidence" />
+                  </details>
+                  @if (editable()) {
+                    <button (click)="correctDeadline(s, d, index)" [disabled]="pending()">
+                      Review deadline correction
+                    </button>
+                  }
+                </article>
+              }
+              <h3>Submission requirements</h3>
+              @for (req of meta.submission_requirements; track $index) {
+                <div class="card">
+                  <span class="badge">{{ req.mandatory ? 'Mandatory' : 'Optional' }}</span
+                  ><span class="badge">{{
+                    req.attachment ? 'Attachment requirement' : 'Submission constraint'
+                  }}</span>
+                  <p class="pre">{{ req.text }}</p>
+                  <details>
+                    <summary>Submission requirement evidence</summary>
+                    <app-rfp-evidence [evidence]="req.evidence" />
+                  </details>
+                </div>
+              }
+              @if (!meta.submission_requirements.length) {
+                <p>
+                  No submission constraints extracted. Review the solicitation for completeness.
+                </p>
+              }
+              @if (editable() && meta.sections.length) {
+                <div class="actions">
+                  @if (s.role === 'rfp_main' && !meta.classified) {
+                    <button (click)="classify(s, meta.sections[0].evidence)">
+                      Confirm classification using source heading
+                    </button>
+                  }
+                  @if (s.role === 'rfp_terms') {
+                    <button (click)="linkLegal(s, meta.sections[0].evidence)">
+                      Link existing legal clause analysis
+                    </button>
+                  }
+                </div>
+              }
+            } @else {
+              <p>
+                Extraction is not yet available. Start the workflow or inspect its processing state.
+              </p>
+            }
+          </section>
+        }
+      </article>
+      <article class="card">
+        <h2>Recorded correction history</h2>
+        <p>
+          Showing correction page {{ correctionPage }}. Original metadata above remains source data;
+          reviewed values are recorded here.
+        </p>
+        @for (c of corrections(); track c.uuid) {
+          <p>
+            {{ label(c.kind) }} · Source {{ c.source_uuid }} · Key {{ c.key }} · Version
+            {{ c.number }}
+          </p>
+          <pre class="pre">{{ c.value | json }}</pre>
+          @if (c.kind === 'legal_analysis') {
+            <app-rfp-legal-reference [value]="c.value" />
+          }
+        }
+        <div class="pager">
+          <button
+            (click)="correctionPage = correctionPage - 1; loadCorrections()"
+            [disabled]="!correctionPrevious || pending() || loading()"
+          >
+            Previous corrections</button
+          ><button
+            (click)="correctionPage = correctionPage + 1; loadCorrections()"
+            [disabled]="!correctionNext || pending() || loading()"
+          >
+            Next corrections
+          </button>
+        </div>
+      </article>
+      <article class="card">
+        <h2>Internal knowledge sources</h2>
+        <p>Authorized company evidence, separate from the solicitation and response attachments.</p>
+        @for (id of p.knowledge_document_uuids; track id) {
+          <p>
+            <a [routerLink]="['/documents/detail', id]">{{ id }}</a>
+          </p>
+        }
+        @if (!p.knowledge_document_uuids.length) {
+          <p class="warning">
+            No internal knowledge selected. Company capability cannot be confirmed from approved
+            sources.
+          </p>
+        }
+      </article>
+      @if (editable()) {
+        <button (click)="confirm()" [disabled]="pending() || p.extraction_reviewed">
+          Confirm extraction review
+        </button>
+      }
+    }
+    @if (tab() === 'Requirements' || tab() === 'Compliance matrix') {
+      <article class="card">
+        <header>
+          <div>
+            <h2>{{ tab() }}</h2>
+            <p class="muted">
+              {{ itemCount }} requirements/questions. Page {{ itemPage }}. Decisions and grounding
+              come from the server.
+            </p>
+          </div>
+          @if (editable()) {
+            <button (click)="draft()" [disabled]="pending() || loading()">
+              Generate next draft batch
+            </button>
+          }
+        </header>
+        <label
+          >Requirement type<select
+            [ngModel]="kind"
+            (ngModelChange)="kind = $event; filterKind()"
+            [disabled]="pending() || loading()"
+          >
+            <option value="">All requirements and questions</option>
+            <option value="question">Questions</option>
+            <option value="requirement">Requirements</option>
+          </select></label
+        >
+        <div class="table-scroll" tabindex="0" aria-label="RFP compliance matrix">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">RFP requirement</th>
+                <th scope="col">Response / grounding</th>
+                <th scope="col">Compliance decision</th>
+                <th scope="col">Owner</th>
+                <th scope="col">Evidence / gaps</th>
+                <th scope="col">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of items(); track item.key) {
+                <tr>
+                  <td>
+                    <strong>{{ item.structure.source_number || item.key }}</strong>
+                    <p>{{ item.section || 'No section extracted' }}</p>
+                    <span class="badge">{{ label(item.kind) }}</span
+                    ><span class="badge">{{ item.mandatory ? 'Mandatory' : 'Optional' }}</span
+                    ><span class="badge">{{
+                      item.response_required ? 'Response required' : 'Response optional'
+                    }}</span>
+                    <p class="pre">{{ item.text }}</p>
+                    @for (limit of item.structure.limits || []; track $index) {
+                      <p>{{ limit.value }} {{ limit.unit }}</p>
+                    }
+                  </td>
+                  <td>
+                    <p>{{ responseState(item) }}</p>
+                    @if (item.response?.origin === 'generated') {
+                      <span class="badge">Draft — human review required</span>
+                    }
+                    @if (item.response?.text) {
+                      <p class="pre">{{ item.response?.text }}</p>
+                    }
+                  </td>
+                  <td>{{ label(item.compliance) }}</td>
+                  <td>{{ owner(item.assignment) }}</td>
+                  <td>
+                    <details>
+                      <summary>Solicitation proof</summary>
+                      <app-rfp-evidence [evidence]="item.evidence" />
+                    </details>
+                    <p>{{ item.response?.evidence?.length || 0 }} authorized company citations</p>
+                    @if (!item.response?.text || item.compliance !== 'compliant') {
+                      <p class="warning">Review gap / unresolved decision</p>
+                    }
+                    @if (p.run_uuid) {
+                      <a [routerLink]="['/workflows/runs', p.run_uuid]"
+                        >Workflow findings &amp; exceptions</a
+                      >
+                    }
+                  </td>
+                  <td>
+                    <button (click)="selectItem(item)" [disabled]="pending()">
+                      {{ editable() ? 'Review response' : 'Inspect response' }}
+                    </button>
+                    @if (editable()) {
+                      <button (click)="correctRequirement(item)" [disabled]="pending()">
+                        Correct extraction
+                      </button>
+                    }
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="6">
+                    No extracted requirements on this page. Inspect processing and extraction
+                    review.
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <div class="pager">
+          <button
+            (click)="itemPage = itemPage - 1; loadItems()"
+            [disabled]="!itemPrevious || pending() || loading()"
+          >
+            Previous requirements</button
+          ><span>Page {{ itemPage }}</span
+          ><button
+            (click)="itemPage = itemPage + 1; loadItems()"
+            [disabled]="!itemNext || pending() || loading()"
+          >
+            Next requirements
+          </button>
+        </div>
+      </article>
+      @if (selected(); as item) {
+        <section class="split">
+          <article class="card">
+            <h2>Response workspace</h2>
+            <h3>RFP {{ item.kind }}</h3>
+            <p class="pre">{{ item.text }}</p>
+            <p>Stable identifier {{ item.key }} · Revision {{ item.revision }}</p>
+            <p class="warning">{{ responseState(item) }}</p>
+            @if (item.response?.grounding === 'insufficient_evidence' || !item.response) {
+              <p>
+                Insufficient authorized evidence. Subject-matter expert input required. Company
+                capability cannot be confirmed from approved sources.
+              </p>
+            }
+            <form (ngSubmit)="saveResponse()">
+              <label
+                >Response text<textarea
+                  name="response"
+                  [(ngModel)]="responseText"
+                  maxlength="12000"
+                  [disabled]="!editable() || pending()"
+                ></textarea></label
+              ><label
+                >Compliance decision<select
+                  name="compliance"
+                  [(ngModel)]="responseCompliance"
+                  [disabled]="!editable() || pending()"
+                >
+                  @for (state of complianceStates; track state) {
+                    <option [value]="state">{{ label(state) }}</option>
+                  }
+                </select></label
+              >
+              <p>Current owner: {{ owner(item.assignment) }}</p>
+              @if (editable()) {
+                <h3>Change owner</h3>
+                <app-workflow-assignment
+                  [memberships]="memberships()"
+                  [disabled]="pending()"
+                  (changed)="responseAssignment = $event"
+                /><label
+                  >Category<input
+                    name="category"
+                    [(ngModel)]="responseCategory"
+                    maxlength="80"
+                    pattern="[-a-zA-Z0-9_]+"
+                    [disabled]="pending()" /></label
+                ><label
+                  >Reason for revision<textarea
+                    name="reason"
+                    [(ngModel)]="responseReason"
+                    required
+                    maxlength="500"
+                    [disabled]="pending()"
+                  ></textarea></label
+                ><label class="check"
+                  ><input
+                    type="checkbox"
+                    name="shareable"
+                    [(ngModel)]="shareable"
+                    [disabled]="pending()"
+                  />Approve this response version for external disclosure</label
+                >
+                <p class="muted">
+                  This approves the response text only. Internal citations remain protected; final
+                  workflow approval is still required.
+                </p>
+                <button class="primary" [disabled]="pending() || !responseReason.trim()">
+                  Save reviewed response version
+                </button>
+              }
+            </form>
+            <button (click)="loadHistory()" [disabled]="pending()">Load response history</button>
+            @for (v of history(); track v.uuid) {
+              <article class="evidence">
+                <h3>Response version {{ v.number }}</h3>
+                <p>
+                  {{ v.origin || 'Unavailable' }} · {{ v.created_at | date: 'medium' }} · Actor
+                  {{ v.actor ?? 'Unavailable' }} · {{ label(v.grounding) }}
+                </p>
+                <p class="pre">
+                  {{ v.text || 'Protected or unsupported response content unavailable' }}
+                </p>
+                <p>
+                  {{
+                    v.externally_shareable
+                      ? 'Response approved for external disclosure'
+                      : 'Internal review only'
+                  }}
+                </p>
+                @for (e of v.evidence; track $index) {
+                  <app-rfp-evidence [evidence]="e" [internal]="true" />
+                }
+              </article>
+            }
+            @if (history().length) {
+              <div class="pager">
+                <button
+                  (click)="loadHistory(historyPage - 1)"
+                  [disabled]="!historyPrevious || pending()"
+                >
+                  Previous versions</button
+                ><span>History page {{ historyPage }}</span
+                ><button
+                  (click)="loadHistory(historyPage + 1)"
+                  [disabled]="!historyNext || pending()"
+                >
+                  Next versions
+                </button>
+              </div>
+            }
+          </article>
+          <aside class="card">
+            <h2>Company evidence / claim provenance</h2>
+            <p>Draft response text is not evidence of compliance.</p>
+            @for (e of item.response?.evidence || []; track $index; let index = $index) {
+              <app-rfp-evidence [evidence]="e" [internal]="true" />
+              @if (editable()) {
+                <label class="check"
+                  ><input
+                    type="checkbox"
+                    #proof
+                    [checked]="selectedProof.includes(index)"
+                    (change)="toggleProof(index, proof.checked)"
+                    [disabled]="pending()"
+                  />Retain citation in reviewed response</label
+                >
+              }
+            } @empty {
+              <p class="warning">
+                No authorized company citations. Unsupported claims cannot be marked verified.
+              </p>
+            }
+            <h3>Solicitation proof</h3>
+            <app-rfp-evidence [evidence]="item.evidence" />
+          </aside>
+        </section>
+      }
+    }
+    @if (tab() === 'Attachments') {
+      <article class="card">
+        <h2>Response attachment requirements</h2>
+        <p>
+          Linked internally does not mean approved for external submission. External export requires
+          public sensitivity and current export authorization.
+        </p>
+        @if (editable()) {
+          <button (click)="loadDocs()" [disabled]="docLoading() || pending()">
+            Load authorized attachment documents</button
+          ><label
+            >Attachment document<select [(ngModel)]="attachmentDoc" [disabled]="pending()">
+              <option value="">Select an authorized document</option>
+              @for (d of docs(); track d.uuid) {
+                <option [value]="d.uuid">
+                  {{ d.title || d.uuid }} · {{ d.sensitivity_label || 'Sensitivity unavailable' }}
+                </option>
+              }
+            </select></label
+          >
+          <div class="pager">
+            <button
+              (click)="loadDocs(docPage - 1)"
+              [disabled]="!docPrevious || pending() || docLoading()"
+            >
+              Previous documents</button
+            ><span>Page {{ docPage }}</span
+            ><button
+              (click)="loadDocs(docPage + 1)"
+              [disabled]="!docNext || pending() || docLoading()"
+            >
+              Next documents
+            </button>
+          </div>
+          <app-workflow-assignment
+            [memberships]="memberships()"
+            [disabled]="pending()"
+            (changed)="attachmentAssignment = $event"
+          />
+        }
+        @for (a of attachments(); track a.uuid) {
+          <article class="evidence">
+            <h3>{{ a.text }}</h3>
+            <span class="badge">{{ a.mandatory ? 'Mandatory' : 'Optional' }}</span>
+            <p>
+              {{
+                a.document_uuid ? 'Attached internally: ' + a.document_uuid : 'Missing attachment'
+              }}
+              · {{ a.reviewed ? 'Reviewed' : 'Review required' }}
+            </p>
+            <p>Owner: {{ owner(a.assignment) }} · Revision {{ a.revision }}</p>
+            @if (a.mandatory && (!a.document_uuid || !a.reviewed)) {
+              <p class="warning">
+                Mandatory attachment is unresolved. Server validation prevents finalization.
+              </p>
+            }
+            <details>
+              <summary>Attachment requirement evidence</summary>
+              <app-rfp-evidence [evidence]="a.evidence" />
+            </details>
+            @if (editable()) {
+              <button (click)="attach(a)" [disabled]="pending() || !attachmentDoc">
+                Link &amp; review selected attachment
+              </button>
+            }
+          </article>
+        } @empty {
+          <p>No attachment requirements on this page.</p>
+        }
+        <div class="pager">
+          <button
+            (click)="attachmentPage = attachmentPage - 1; loadAttachments()"
+            [disabled]="!attachmentPrevious || pending() || loading()"
+          >
+            Previous attachments</button
+          ><span>Page {{ attachmentPage }}</span
+          ><button
+            (click)="attachmentPage = attachmentPage + 1; loadAttachments()"
+            [disabled]="!attachmentNext || pending() || loading()"
+          >
+            Next attachments
+          </button>
+        </div>
+      </article>
+    }
+    @if (tab() === 'Corrections') {
+      <article class="card">
+        <h2>Immutable extraction corrections &amp; legal references</h2>
+        <p>
+          Raw source values are preserved. Correction versions show reviewed deadline values,
+          requirement classifications and linked legal analyses.
+        </p>
+        @for (c of corrections(); track c.uuid) {
+          <article class="evidence">
+            <h3>{{ label(c.kind) }} · Version {{ c.number }}</h3>
+            <p>
+              Source {{ c.source_uuid }} · Key {{ c.key }} · {{ c.created_at | date: 'medium' }}
+            </p>
+            <pre class="pre">{{ c.value | json }}</pre>
+            <p>{{ c.reason }}</p>
+            <app-rfp-evidence [evidence]="c.evidence" />
+            @if (c.kind === 'legal_analysis' && p.run_uuid) {
+              <app-rfp-legal-reference [value]="c.value" />
+            }
+          </article>
+        } @empty {
+          <p>No recorded corrections on this page.</p>
+        }
+        <div class="pager">
+          <button
+            (click)="correctionPage = correctionPage - 1; loadCorrections()"
+            [disabled]="!correctionPrevious || pending() || loading()"
+          >
+            Previous corrections</button
+          ><span>Page {{ correctionPage }}</span
+          ><button
+            (click)="correctionPage = correctionPage + 1; loadCorrections()"
+            [disabled]="!correctionNext || pending() || loading()"
+          >
+            Next corrections
+          </button>
+        </div>
+      </article>
+    }
+    @if (correctionTarget; as target) {
+      <form class="card" (ngSubmit)="saveCorrection()">
+        <h2>Review {{ label(target.kind) }} correction</h2>
+        <app-rfp-evidence [evidence]="target.evidence" />
+        @if (target.kind === 'deadline') {
+          <label
+            >Source-supported date<input
+              type="date"
+              name="date"
+              [(ngModel)]="correctionDate"
+              required
+              [disabled]="pending()"
+          /></label>
+          <p>Use the source meaning. Timezone is never inferred.</p>
+        }
+        @if (target.kind === 'classification') {
+          <p>Confirm that the principal source heading identifies an RFP solicitation.</p>
+        }
+        @if (target.kind === 'legal_analysis') {
+          <label
+            >Existing legal analysis UUID<input
+              name="analysis"
+              [(ngModel)]="analysisUuid"
+              required
+              [disabled]="pending()"
+          /></label>
+          <p>
+            The server verifies this analysis belongs to the same terms document and is authorized.
+          </p>
+        }
+        @if (target.kind === 'requirement') {
+          <label
+            >Section<input
+              name="section"
+              [(ngModel)]="correctedSection"
+              maxlength="200"
+              [disabled]="pending()" /></label
+          ><label
+            >Type<select name="kind" [(ngModel)]="correctedKind" [disabled]="pending()">
+              <option value="requirement">Requirement</option>
+              <option value="question">Question</option>
+            </select></label
+          ><label
+            >Category<input
+              name="correct-category"
+              [(ngModel)]="correctedCategory"
+              maxlength="80"
+              [disabled]="pending()" /></label
+          ><label class="check"
+            ><input
+              type="checkbox"
+              name="mandatory"
+              [(ngModel)]="correctedMandatory"
+              [disabled]="pending()"
+            />Mandatory</label
+          ><label class="check"
+            ><input
+              type="checkbox"
+              name="required"
+              [(ngModel)]="correctedResponse"
+              [disabled]="pending()"
+            />Response required</label
+          >
+          <p>Source text and stable source proof are preserved by the server.</p>
+        }
+        <label
+          >Reason<textarea
+            name="correction-reason"
+            [(ngModel)]="correctionReason"
+            required
+            maxlength="500"
+            [disabled]="pending()"
+          ></textarea>
+        </label>
+        <div class="actions">
+          <button [disabled]="pending() || !editable() || !correctionReason.trim()">
+            Save immutable correction</button
+          ><button type="button" (click)="correctionTarget = null" [disabled]="pending()">
+            Cancel correction
+          </button>
+        </div>
+      </form>
+    }
+    @if (tab() === 'Review / approval') {
+      <article class="card">
+        <h2>Review &amp; approval</h2>
+        <p>
+          Review mandatory responses, unsupported claims, partial compliance, missing evidence,
+          deadlines, legal references and required attachments before accepting the workflow review.
+        </p>
+        <p>
+          Extraction: {{ p.extraction_reviewed ? 'Confirmed' : 'Requires review' }}. Finalization
+          readiness is validated by the server. There is no client-side Finalize shortcut.
+        </p>
+        @if (p.run_uuid) {
+          <a class="button" [routerLink]="['/workflows/runs', p.run_uuid]"
+            >Open existing workflow review, findings, exceptions &amp; approvals</a
+          >
+        }
+        @if (
+          canStart() &&
+          (!run() || ['completed', 'failed', 'rejected', 'cancelled'].includes(run()!.status))
+        ) {
+          <form (ngSubmit)="start()">
+            <h3>
+              {{ p.run_uuid ? 'Start a new review/output version' : 'Start proposal workflow' }}
+            </h3>
+            <h4>Reviewer</h4>
+            <app-workflow-assignment
+              [memberships]="memberships()"
+              [disabled]="pending()"
+              (changed)="reviewer = $event"
+            />
+            <h4>Approver</h4>
+            <app-workflow-assignment
+              [memberships]="memberships()"
+              [disabled]="pending()"
+              (changed)="approver = $event"
+            /><button class="primary" [disabled]="pending() || !reviewer || !approver">
+              Start workflow
+            </button>
+          </form>
+        }
+      </article>
+    }
+    @if (tab() === 'Proposal output') {
+      <article class="card">
+        <h2>Immutable proposal outputs</h2>
+        <p>
+          Final assembly is performed by the approved workflow. Only structured JSON export is
+          available.
+        </p>
+        @for (o of outputs(); track o.uuid; let index = $index) {
+          <article class="evidence">
+            <h3>
+              Proposal version {{ o.number }}
+              <span class="badge">{{
+                outputPage === 1 && index === 0 ? 'Current' : 'Historical'
+              }}</span>
+            </h3>
+            <p>{{ o.created_at | date: 'medium' }} · Project revision {{ o.project_revision }}</p>
+            <div class="actions">
+              <button (click)="inspectOutput(o, true)" [disabled]="pending()">
+                Inspect customer-facing proposal</button
+              ><button (click)="inspectOutput(o, false)" [disabled]="pending()">
+                Inspect internal provenance</button
+              ><button (click)="inspectOutput(o, true, true)" [disabled]="pending()">
+                Download structured proposal export (external JSON)</button
+              ><button (click)="inspectOutput(o, false, true)" [disabled]="pending()">
+                Download internal JSON
+              </button>
+            </div>
+          </article>
+        } @empty {
+          <p>
+            No approved proposal outputs on this page. Complete workflow review and approval first.
+          </p>
+        }
+        <div class="pager">
+          <button
+            (click)="outputPage = outputPage - 1; loadOutputs()"
+            [disabled]="!outputPrevious || pending() || loading()"
+          >
+            Previous outputs</button
+          ><span>Page {{ outputPage }}</span
+          ><button
+            (click)="outputPage = outputPage + 1; loadOutputs()"
+            [disabled]="!outputNext || pending() || loading()"
+          >
+            Next outputs
+          </button>
+        </div>
+      </article>
+      @if (proposal(); as data) {
+        <article class="card">
+          <h2>{{ data.title }} · Approved output version {{ data.version }}</h2>
+          <span class="badge">{{
+            data.external
+              ? 'Customer-facing responses — internal proof excluded'
+              : 'Internal evidence / provenance — do not distribute externally'
+          }}</span>
+          <p>Approval {{ data.approval_uuid }} · Workflow {{ data.approval_run_uuid }}</p>
+          @for (section of data.sections; track $index) {
+            <section class="evidence">
+              <h3>{{ section.heading || 'Unsectioned responses' }}</h3>
+              @for (response of data.responses; track response.response_uuid) {
+                @if (
+                  response.response_uuid &&
+                  section.response_versions.includes(response.response_uuid)
+                ) {
+                  <h4>{{ response.requirement }}</h4>
+                  <p class="pre">{{ response.text }}</p>
+                  <p>
+                    {{ label(response.compliance) }} · Approved response version
+                    {{ response.response_version }}
+                  </p>
+                  @if (!data.external) {
+                    @for (e of response.evidence || []; track $index) {
+                      <app-rfp-evidence [evidence]="e" [internal]="true" />
+                    }
+                  }
+                }
+              }
+            </section>
+          }
+          <h3>Submission deadlines</h3>
+          @for (d of data.deadlines; track $index) {
+            <p>
+              {{ label(d.kind) }}: {{ d.date || d.datetime || 'Unknown' }} {{ d.timezone || '' }} ·
+              Source: {{ d.raw }}
+              @if (d.correction_uuid) {
+                <span class="badge">Corrected</span>
+              }
+            </p>
+          }
+          <h3>Approved attachment references</h3>
+          @for (id of data.attachments; track id) {
+            <p>{{ id }}</p>
+          }
+          @if (!data.external && data.metadata) {
+            <details>
+              <summary>Internal submission metadata</summary>
+              <pre class="pre">{{ data.metadata | json }}</pre>
+            </details>
+          }
+        </article>
+      }
+    }
+  }
+</section>

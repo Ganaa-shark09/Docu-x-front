@@ -23,45 +23,39 @@ export class DocumentRealtimeService {
   private reconnectHandle: number | null = null;
   private reconnectAttempt = 0;
 
-  private readonly desiredDocumentUuids =
-    new Set<string>();
+  private readonly desiredDocumentUuids = new Set<string>();
 
-  private readonly eventsSubject =
-    new Subject<DocumentProcessingEvent>();
+  private readonly deniedDocuments = new Set<string>();
+  private readonly revokedSubject = new Subject<string>();
+  readonly revoked$ = this.revokedSubject.asObservable();
 
-  readonly events$ =
-    this.eventsSubject.asObservable();
+  private readonly eventsSubject = new Subject<DocumentProcessingEvent>();
 
-  private readonly connectionStateSubject =
-    new BehaviorSubject<RealtimeConnectionState>(
-      'disconnected',
-    );
+  readonly events$ = this.eventsSubject.asObservable();
 
-  readonly connectionState$ =
-    this.connectionStateSubject.asObservable();
+  private readonly connectionStateSubject = new BehaviorSubject<RealtimeConnectionState>(
+    'disconnected',
+  );
+
+  readonly connectionState$ = this.connectionStateSubject.asObservable();
 
   get connectionState(): RealtimeConnectionState {
     return this.connectionStateSubject.value;
   }
 
   get isConnected(): boolean {
-    return (
-      this.connectionState === 'connected' &&
-      this.socket?.readyState === WebSocket.OPEN
-    );
+    return this.connectionState === 'connected' && this.socket?.readyState === WebSocket.OPEN;
   }
 
-  subscribeDocuments(
-    documentUuids: string[],
-  ): void {
-    const normalized =
-      this.normalizeUuids(documentUuids);
+  subscribeDocuments(documentUuids: string[]): void {
+    const normalized = this.normalizeUuids(documentUuids);
 
     if (!normalized.length) {
       return;
     }
 
     normalized.forEach((uuid) => {
+      if (this.deniedDocuments.has(uuid)) return;
       this.desiredDocumentUuids.add(uuid);
     });
 
@@ -73,12 +67,8 @@ export class DocumentRealtimeService {
     this.ensureConnected();
   }
 
-  subscribeDocument(
-    documentUuid: string,
-  ): void {
-    this.subscribeDocuments([
-      documentUuid,
-    ]);
+  subscribeDocument(documentUuid: string): void {
+    this.subscribeDocuments([documentUuid]);
   }
 
   ensureConnected(): void {
@@ -97,11 +87,7 @@ export class DocumentRealtimeService {
     this.manualDisconnect = false;
     this.connecting = true;
 
-    this.connectionStateSubject.next(
-      this.reconnectAttempt > 0
-        ? 'reconnecting'
-        : 'connecting',
-    );
+    this.connectionStateSubject.next(this.reconnectAttempt > 0 ? 'reconnecting' : 'connecting');
 
     this.getWebSocketTicket().subscribe({
       next: (ticketResponse) => {
@@ -109,17 +95,15 @@ export class DocumentRealtimeService {
       },
 
       error: (error) => {
-        console.error(
-          '[DocuX realtime] ticket request failed',
-          error,
-        );
+        console.error('[DocuX realtime] ticket request failed', error);
 
         this.connecting = false;
-        this.connectionStateSubject.next(
-          'disconnected',
-        );
+        this.connectionStateSubject.next('disconnected');
 
-        this.scheduleReconnect();
+        if (error?.status === 401 || error?.status === 403) {
+          for (const uuid of this.desiredDocumentUuids) this.deny(uuid);
+          this.manualDisconnect = true;
+        } else this.scheduleReconnect();
       },
     });
   }
@@ -135,34 +119,25 @@ export class DocumentRealtimeService {
     this.reconnectAttempt = 0;
 
     if (this.reconnectHandle !== null) {
-      window.clearTimeout(
-        this.reconnectHandle,
-      );
+      window.clearTimeout(this.reconnectHandle);
 
       this.reconnectHandle = null;
     }
 
     this.desiredDocumentUuids.clear();
+    this.deniedDocuments.clear();
 
     const socket = this.socket;
     this.socket = null;
 
     if (
       socket &&
-      (
-        socket.readyState === WebSocket.OPEN ||
-        socket.readyState === WebSocket.CONNECTING
-      )
+      (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)
     ) {
-      socket.close(
-        1000,
-        'Session ended',
-      );
+      socket.close(1000, 'Session ended');
     }
 
-    this.connectionStateSubject.next(
-      'disconnected',
-    );
+    this.connectionStateSubject.next('disconnected');
   }
 
   private getWebSocketTicket() {
@@ -172,31 +147,19 @@ export class DocumentRealtimeService {
     );
   }
 
-  private openSocket(
-    ticketResponse: WebSocketTicketResponse,
-  ): void {
-    const path =
-      ticketResponse.websocket_path ||
-      '/ws/document-events/';
+  private openSocket(ticketResponse: WebSocketTicketResponse): void {
+    const path = ticketResponse.websocket_path || '/ws/document-events/';
 
-    const ticket =
-      encodeURIComponent(
-        ticketResponse.ticket,
-      );
+    const ticket = encodeURIComponent(ticketResponse.ticket);
 
-    const url =
-      `${this.resolveWebSocketBaseUrl()}${path}?ticket=${ticket}`;
+    const url = `${this.resolveWebSocketBaseUrl()}${path}?ticket=${ticket}`;
 
     console.debug(
       '[DocuX realtime] opening socket',
-      url.replace(
-        /ticket=[^&]+/,
-        'ticket=<redacted>',
-      ),
+      url.replace(/ticket=[^&]+/, 'ticket=<redacted>'),
     );
 
-    const socket =
-      new WebSocket(url);
+    const socket = new WebSocket(url);
 
     this.socket = socket;
 
@@ -204,68 +167,46 @@ export class DocumentRealtimeService {
       this.ngZone.run(() => {
         this.connecting = false;
 
-        console.debug(
-          '[DocuX realtime] transport open',
-        );
+        console.debug('[DocuX realtime] transport open');
       });
     };
 
-    socket.onmessage = (
-      message: MessageEvent<string>,
-    ) => {
+    socket.onmessage = (message: MessageEvent<string>) => {
       this.ngZone.run(() => {
         let event: DocumentProcessingEvent;
 
         try {
-          event =
-            JSON.parse(message.data);
+          const parsed: unknown = JSON.parse(message.data);
+          if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return;
+          const record = parsed as Record<string, unknown>;
+          if (typeof record['event'] !== 'string') return;
+          event = parsed as DocumentProcessingEvent;
         } catch (error) {
-          console.error(
-            '[DocuX realtime] invalid message',
-            error,
-            message.data,
-          );
+          console.error('[DocuX realtime] invalid message', error);
 
           return;
         }
 
-        if (
-          event.event ===
-          'connection.ready'
-        ) {
-          this.connectionStateSubject.next(
-            'connected',
-          );
+        if (event.event === 'connection.ready') {
+          this.connectionStateSubject.next('connected');
 
           this.reconnectAttempt = 0;
 
-          console.debug(
-            '[DocuX realtime] connection.ready',
-          );
+          console.debug('[DocuX realtime] connection.ready');
 
           this.sendCurrentSubscription();
         }
 
-        if (
-          event.event ===
-          'subscription.updated'
-        ) {
-          console.debug(
-            '[DocuX realtime] subscription.updated',
-            {
-              subscribed:
-                event.subscribed_document_uuids,
-              rejected:
-                event.rejected_document_uuids,
-            },
-          );
+        if (event.event === 'subscription.updated') {
+          console.debug('[DocuX realtime] subscription.updated', {
+            subscribed: event.subscribed_document_uuids,
+            rejected: event.rejected_document_uuids,
+          });
         }
 
         if (
-          event.event ===
-            'document.processing.snapshot' ||
-          event.event ===
-            'document.processing.updated'
+          event.event === 'document.processing.snapshot' ||
+          event.event === 'document.processing.updated'
         ) {
           console.debug(
             '[DocuX realtime] document event',
@@ -275,26 +216,31 @@ export class DocumentRealtimeService {
           );
         }
 
-        this.eventsSubject.next(
-          event,
-        );
+        if (event.event === 'subscription.revoked' && typeof event.document_uuid === 'string')
+          this.deny(event.document_uuid);
+        if (event.event === 'subscription.updated')
+          for (const uuid of Array.isArray(event.rejected_document_uuids)
+            ? event.rejected_document_uuids
+            : [])
+            if (typeof uuid === 'string') this.deny(uuid);
+        if (
+          event.document_uuid &&
+          this.deniedDocuments.has(event.document_uuid) &&
+          event.event !== 'subscription.revoked'
+        )
+          return;
+
+        this.eventsSubject.next(event);
       });
     };
 
     socket.onerror = (error) => {
-      console.error(
-        '[DocuX realtime] socket error',
-        error,
-      );
+      console.error('[DocuX realtime] socket error', error);
     };
 
     socket.onclose = (event) => {
       this.ngZone.run(() => {
-        console.warn(
-          '[DocuX realtime] socket closed',
-          event.code,
-          event.reason,
-        );
+        console.warn('[DocuX realtime] socket closed', event.code, event.reason);
 
         if (this.socket === socket) {
           this.socket = null;
@@ -302,10 +248,12 @@ export class DocumentRealtimeService {
 
         this.connecting = false;
 
-        this.connectionStateSubject.next(
-          'disconnected',
-        );
+        this.connectionStateSubject.next('disconnected');
 
+        if (event.code === 4401 || event.code === 4403) {
+          for (const uuid of this.desiredDocumentUuids) this.deny(uuid);
+          this.manualDisconnect = true;
+        }
         if (!this.manualDisconnect) {
           this.scheduleReconnect();
         }
@@ -313,19 +261,19 @@ export class DocumentRealtimeService {
     };
   }
 
+  private deny(uuid: string): void {
+    this.desiredDocumentUuids.delete(uuid);
+    if (this.deniedDocuments.has(uuid)) return;
+    this.deniedDocuments.add(uuid);
+    this.revokedSubject.next(uuid);
+  }
+
   private sendCurrentSubscription(): void {
-    if (
-      !this.socket ||
-      this.socket.readyState !==
-        WebSocket.OPEN
-    ) {
+    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
       return;
     }
 
-    const documentUuids =
-      Array.from(
-        this.desiredDocumentUuids,
-      );
+    const documentUuids = Array.from(this.desiredDocumentUuids);
 
     if (!documentUuids.length) {
       return;
@@ -334,71 +282,40 @@ export class DocumentRealtimeService {
     this.socket.send(
       JSON.stringify({
         action: 'subscribe',
-        document_uuids:
-          documentUuids,
+        document_uuids: documentUuids,
       }),
     );
 
-    console.debug(
-      '[DocuX realtime] subscribe',
-      documentUuids,
-    );
+    console.debug('[DocuX realtime] subscribe', documentUuids);
   }
 
   private scheduleReconnect(): void {
-    if (
-      this.manualDisconnect ||
-      this.reconnectHandle !== null ||
-      !this.desiredDocumentUuids.size
-    ) {
+    if (this.manualDisconnect || this.reconnectHandle !== null || !this.desiredDocumentUuids.size) {
       return;
     }
 
-    const delays = [
-      1000,
-      2000,
-      5000,
-      10000,
-      30000,
-    ];
+    const delays = [1000, 2000, 5000, 10000, 30000];
 
-    const delay =
-      delays[
-        Math.min(
-          this.reconnectAttempt,
-          delays.length - 1,
-        )
-      ];
+    const delay = delays[Math.min(this.reconnectAttempt, delays.length - 1)];
 
     this.reconnectAttempt += 1;
 
-    this.connectionStateSubject.next(
-      'reconnecting',
-    );
+    this.connectionStateSubject.next('reconnecting');
 
-    this.reconnectHandle =
-      window.setTimeout(() => {
-        this.reconnectHandle = null;
+    this.reconnectHandle = window.setTimeout(() => {
+      this.reconnectHandle = null;
 
-        /*
-         * Reconnect always requests a NEW
-         * short-lived ticket.
-         */
-        this.ensureConnected();
-      }, delay);
+      /*
+       * Reconnect always requests a NEW
+       * short-lived ticket.
+       */
+      this.ensureConnected();
+    }, delay);
   }
 
-  private normalizeUuids(
-    documentUuids: string[],
-  ): string[] {
+  private normalizeUuids(documentUuids: string[]): string[] {
     return Array.from(
-      new Set(
-        documentUuids
-          .map((uuid) =>
-            String(uuid || '').trim(),
-          )
-          .filter(Boolean),
-      ),
+      new Set(documentUuids.map((uuid) => String(uuid || '').trim()).filter(Boolean)),
     );
   }
 
@@ -407,12 +324,7 @@ export class DocumentRealtimeService {
       return 'http://localhost:8000/api';
     }
 
-    if (
-      window.location.hostname ===
-        'localhost' ||
-      window.location.hostname ===
-        '127.0.0.1'
-    ) {
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
       return 'http://localhost:8000/api';
     }
 
@@ -424,17 +336,10 @@ export class DocumentRealtimeService {
       return 'ws://localhost:8000';
     }
 
-    if (
-      window.location.hostname ===
-        'localhost' ||
-      window.location.hostname ===
-        '127.0.0.1'
-    ) {
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
       return 'ws://localhost:8000';
     }
 
-    return window.location.origin
-      .replace(/^https:/, 'wss:')
-      .replace(/^http:/, 'ws:');
+    return window.location.origin.replace(/^https:/, 'wss:').replace(/^http:/, 'ws:');
   }
 }

@@ -1,0 +1,199 @@
+<section class="page invoice-batches">
+  <nav class="invoice-batches__crumb" aria-label="Invoice navigation">
+    <a routerLink="/workflows">Workflows</a><span aria-hidden="true">/</span>
+    <a routerLink="/workflows/invoices">Invoices</a><span aria-hidden="true">/</span>
+    <span>{{ selected() ? 'Batch progress' : 'Batch processing' }}</span>
+  </nav>
+
+  <header class="invoice-batches__header">
+    <div class="invoice-batches__heading">
+      <span class="eyebrow">FINANCE / ACCOUNTS PAYABLE</span>
+      <h1>{{ selected() ? selected()!.name : 'Process invoice batches' }}</h1>
+      <p>{{ selected() ? 'Monitor each independently processed invoice and open the items needing review.'
+        : 'Create an invoice processing batch with new uploads or authorized documents already in DOCU-X.' }}</p>
+    </div>
+    <div class="invoice-batches__header-actions">
+      <a class="invoice-batches__button" routerLink="/workflows/invoices">Invoice register</a>
+      <button class="invoice-batches__button" type="button" (click)="selected() ? loadDetail(selected()!.uuid) : load()"
+        [disabled]="loading() || pending()">Refresh</button>
+    </div>
+  </header>
+
+  @if (error()) { <div class="invoice-batches__error" role="alert">{{ error() }}</div> }
+  @if (loading()) { <p class="invoice-batches__loading" role="status">Loading invoice information…</p> }
+
+  @if (selected(); as batch) {
+    <section class="invoice-batches__progress-panel" aria-labelledby="invoice-batch-progress">
+      <div class="invoice-batches__progress-heading">
+        <div><span class="invoice-batches__overline">BATCH TRACKING</span>
+          <h2 id="invoice-batch-progress">Processing progress</h2>
+          <p>Created {{ batch.created_at | date:'medium' }} · {{ batch.progress.completed }} of {{ batch.progress.total }} outputs ready</p></div>
+        <span class="invoice-batches__progress-ratio">{{ batch.progress.completed }} / {{ batch.progress.total }}</span>
+      </div>
+      <div class="invoice-batches__progress-track" role="progressbar" aria-label="Completed invoice workflows"
+        [attr.aria-valuenow]="batch.progress.completed" aria-valuemin="0" [attr.aria-valuemax]="batch.progress.total || 1">
+        <span [style.width.%]="batch.progress.total ? (batch.progress.completed * 100 / batch.progress.total) : 0"></span>
+      </div>
+      <p class="invoice-batches__caption">Output ready means DOCU-X has finalized the workflow; it does not mean posted to accounting or paid.</p>
+      <div class="invoice-batches__metrics" aria-label="Batch counts">
+        <div><span>Total</span><strong>{{ batch.progress.total }}</strong></div>
+        <div><span>Processing</span><strong>{{ batch.progress.processing }}</strong></div>
+        <div><span>Needs review</span><strong>{{ batch.progress.review }}</strong></div>
+        <div><span>Output ready</span><strong>{{ batch.progress.completed }}</strong></div>
+        <div><span>Failed / rejected</span><strong>{{ batch.progress.failed }}</strong></div>
+      </div>
+    </section>
+    <section class="invoice-batches__result-panel" aria-labelledby="batch-invoices-title">
+      <div class="invoice-batches__section-title"><div><h2 id="batch-invoices-title">Invoices in this batch</h2>
+        <p>Open any started workflow to review its extracted values and source evidence.</p></div>
+        <a routerLink="/workflows/invoices">View invoice register →</a></div>
+      <div class="invoice-batches__table-wrap"><table><thead><tr>
+        <th scope="col">Source invoice</th><th scope="col">Current state</th><th scope="col">Next action</th>
+      </tr></thead><tbody>
+        @for (item of batch.items; track item.uuid) {
+          <tr><td><span class="invoice-batches__item-title">{{ item.document_title || item.document_uuid }}</span><small>Item {{ item.position }}</small></td>
+          <td><span class="invoice-batches__state" [attr.data-status]="item.status">{{ item.status.replaceAll('_', ' ') }}</span></td>
+          <td>@if (item.run_uuid) { <a [routerLink]="['/workflows/runs', item.run_uuid]">Open invoice review →</a> }
+            @else { <span class="invoice-batches__muted">{{ item.error_message || (item.status === 'queued' ? 'Waiting for document processing.' : 'Unable to start this invoice.') }}</span>
+              @if (item.status === 'failed') { <button type="button" class="invoice-batches__button" (click)="retryItem(item.uuid)" [disabled]="pending()">Retry start</button> } }
+          </td></tr>
+        } @empty { <tr><td colspan="3">No invoice items are available.</td></tr> }
+      </tbody></table></div>
+      @if (batch.progress.processing) { <p class="invoice-batches__caption" role="status">Progress refreshes every 10 seconds while this page is open.</p> }
+    </section>
+  } @else {
+    <div class="invoice-batches__grid">
+      <div class="invoice-batches__intake" role="group" aria-label="Create invoice batch">
+        <section class="invoice-batches__panel" aria-labelledby="invoice-start-title">
+          <div class="invoice-batches__step-head"><span class="invoice-batches__step-number" aria-hidden="true">01</span>
+            <div><h2 id="invoice-start-title">Name and workflow</h2>
+              <p>Choose the published process that defines extraction, review and approval.</p></div></div>
+          <div class="invoice-batches__fields">
+            <label>Batch name <input type="text" [(ngModel)]="name" maxlength="150" placeholder="October accounts payable" [disabled]="pending()" autocomplete="off"></label>
+            <label>Published invoice workflow
+              <select [(ngModel)]="definitionUuid" [disabled]="pending()">
+                @for (definition of definitions(); track definition.uuid) {
+                  <option [value]="definition.uuid">{{ definition.name }} · v{{ definition.latest_version?.number }}</option>
+                }
+              </select>
+            </label>
+          </div>
+          @if (!definitions().length) {
+            <div class="invoice-batches__setup-warning" role="status">
+              <strong>Invoice processing is not configured yet.</strong>
+              <p>Publish and activate an invoice workflow first. Its version controls extraction, evidence review,
+                assignments, approvals and server-side AI routing. No processing will start without one.</p>
+              <a routerLink="/workflows/definitions" [queryParams]="{type:'invoice'}">Configure invoice workflow →</a>
+            </div>
+          }
+        </section>
+
+        <section class="invoice-batches__panel" aria-labelledby="invoice-source-title">
+          <div class="invoice-batches__step-head"><span class="invoice-batches__step-number" aria-hidden="true">02</span>
+            <div><h2 id="invoice-source-title">Add invoice sources</h2>
+              <p>Upload new files, select documents already stored, or use both.</p></div></div>
+          @if (handoffLoading()) {
+            <p class="invoice-batches__handoff-note" role="status">Verifying internal document access and invoice readiness…</p>
+          }
+          @if (handoffError()) {
+            <div class="invoice-batches__error" role="alert">{{ handoffError() }}</div>
+          }
+          @if (handoffDocument(); as source) {
+            <div class="invoice-batches__handoff-card" role="status" aria-label="Preselected internal invoice">
+              <div>
+                <strong>{{ selectedDocuments().includes(source.uuid) ? 'Selected from Documents' : 'Available from Documents' }}</strong>
+                <span>{{ source.title || source.original_filename || 'Invoice document' }}</span>
+                <small>Internal · {{ source.sensitivity_label || 'Policy controlled' }} · {{ source.status }}</small>
+              </div>
+              <div class="invoice-batches__handoff-actions">
+                <button type="button" class="invoice-batches__button" (click)="toggleDocument(source.uuid)" [disabled]="pending()">
+                  {{ selectedDocuments().includes(source.uuid) ? 'Remove selection' : 'Select invoice' }}
+                </button>
+                <a [routerLink]="['/documents/detail', source.uuid]">Document details</a>
+              </div>
+            </div>
+          }
+          <p class="invoice-batches__classification-note">Only select actual invoice sources. The stored document type is metadata,
+            not proof of classification; verify incorrectly labeled contracts, screenshots or JSON files in Documents first.</p>
+          <div class="invoice-batches__upload-area">
+            <label class="invoice-batches__file-label" for="invoice-batch-files">Choose invoice files</label>
+            <input id="invoice-batch-files" type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.docx,.txt"
+              (change)="filesChanged($event)" [disabled]="pending()" aria-describedby="invoice-file-help">
+            <p id="invoice-file-help">PDF, images, DOCX or TXT · You can select more files without losing the queue.</p>
+          </div>
+          @if (pendingFiles().length) {
+            <div class="invoice-batches__queue" aria-label="Files waiting to upload">
+              <div class="invoice-batches__queue-heading"><strong>Waiting to upload</strong><span>{{ pendingFiles().length }} files</span></div>
+              <ul>@for (file of pendingFiles(); track file; let i = $index) {
+                <li><span class="invoice-batches__file-name" [title]="file.name">{{ file.name }}
+                    <small>{{ fileSize(file.size) }}</small></span>
+                  <button type="button" (click)="removePendingFile(i)" [disabled]="pending()"
+                    [attr.aria-label]="'Remove ' + file.name + ' from upload queue'">Remove</button></li>
+              }</ul>
+            </div>
+          }
+          @if (uploadedIds().length) {
+            <p class="invoice-batches__accepted" role="status"><strong>{{ uploadedIds().length }} upload(s) accepted.</strong>
+              These documents are preserved if another file fails. You can retry the remaining queue.</p>
+          }
+          <div class="invoice-batches__document-picker">
+            <div class="invoice-batches__queue-heading"><strong>Or choose stored invoice documents</strong>
+              <span>{{ selectedDocuments().length }} selected</span></div>
+            <label class="invoice-batches__filter-label">Filter accessible documents
+              <input type="search" [(ngModel)]="existingSearch" placeholder="Search document names" autocomplete="off" [disabled]="pending()"></label>
+            <div class="invoice-batches__select" role="group" aria-label="Available invoice documents">
+              @for (document of visibleDocuments(); track document.uuid) {
+                <label class="invoice-batches__check"><input type="checkbox" [checked]="selectedDocuments().includes(document.uuid)"
+                    (change)="toggleDocument(document.uuid)" [disabled]="pending() || !isSelectableStoredInvoice(document)">
+                  <span>{{ document.title || document.original_filename || document.uuid }}
+                    <small>{{ document.status || 'uploaded' }}</small></span></label>
+              } @empty { <p class="invoice-batches__muted">No accessible invoices match this filter.</p> }
+            </div>
+          </div>
+        </section>
+
+        <section class="invoice-batches__panel" aria-labelledby="invoice-settings-title">
+          <div class="invoice-batches__step-head"><span class="invoice-batches__step-number" aria-hidden="true">03</span>
+            <div><h2 id="invoice-settings-title">Governance and start</h2>
+              <p>Set the initial document scope. The workflow controls reviewers and approvals.</p></div></div>
+          <div class="invoice-batches__fields">
+            <label>Department <select [(ngModel)]="departmentUuid" [disabled]="pending()"><option value="">Company default</option>
+              @for (department of departments(); track department.uuid) { <option [value]="department.uuid">{{ department.name }}</option> }</select></label>
+            <label>Sensitivity <select [(ngModel)]="sensitivity" [disabled]="pending()"><option value="internal">Internal</option>
+              <option value="confidential">Confidential</option><option value="restricted">Restricted</option></select></label>
+          </div>
+          <p class="invoice-batches__caption">The uploader is the initial owner. Additional governance settings are managed through Documents.</p>
+          <div class="invoice-batches__submit-card">
+            <div><strong>{{ selectedCount() }} / 500 invoices selected</strong>
+              <p>One independently tracked workflow run will be started per selected invoice.</p></div>
+            @if (uploadStatus()) { <p class="invoice-batches__upload-status" role="status" aria-live="polite">{{ uploadStatus() }}</p> }
+            @if (uploadError()) { <p class="invoice-batches__error" role="alert">{{ uploadError() }}</p> }
+            <button type="button" class="invoice-batches__button invoice-batches__button--primary" (click)="submit()"
+              [disabled]="pending() || handoffLoading() || !definitions().length || selectedCount() === 0 || selectedCount() > 500">
+              {{ pending() ? 'Preparing workflows…' : 'Upload and start batch →' }}
+            </button>
+          </div>
+        </section>
+      </div>
+      <aside class="invoice-batches__panel invoice-batches__history" aria-labelledby="invoice-history-title">
+        <div class="invoice-batches__history-head"><h2 id="invoice-history-title">Previous batches</h2>
+          <p>Continue a recent processing batch or review its exceptions.</p></div>
+        <div class="invoice-batches__history-search">
+          <label>Search batches <input type="search" [(ngModel)]="search" (keyup.enter)="page = 1; load()"
+            placeholder="Search batch names" autocomplete="off"></label>
+          <button class="invoice-batches__button" type="button" (click)="page = 1; load()" [disabled]="loading()">Search</button>
+        </div>
+        @for (batch of batches()?.results ?? []; track batch.uuid) {
+          <a class="invoice-batches__batch" [routerLink]="['/workflows/invoice-batches', batch.uuid]">
+            <span class="invoice-batches__batch-name">{{ batch.name }}</span>
+            <small>{{ batch.created_at | date:'mediumDate' }}</small>
+            <span class="invoice-batches__batch-stats">{{ batch.progress.review }} to review · {{ batch.progress.completed }} ready · {{ batch.progress.processing }} processing</span>
+          </a>
+        } @empty { @if (!loading()) { <p class="invoice-batches__muted">No accessible batches found.</p> } }
+        <div class="invoice-batches__pager"><button class="invoice-batches__button" type="button" (click)="changePage(page - 1)" [disabled]="page <= 1 || loading()">Previous</button>
+          <span>Page {{ page }} · {{ batches()?.count ?? 0 }} batches</span>
+          <button class="invoice-batches__button" type="button" (click)="changePage(page + 1)" [disabled]="!batches()?.next || loading()">Next</button></div>
+      </aside>
+    </div>
+  }
+</section>

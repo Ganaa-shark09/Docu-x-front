@@ -1,6 +1,32 @@
-<section class="ai-chat-workspace">
-  <aside class="ai-chat-sidebar">
-    <div class="ai-chat-sidebar__header">
+<section appChatNavigation #navigation="chatNavigation" class="ai-chat-workspace">
+  <button
+    type="button"
+    class="chat-navigation-toggle"
+    aria-controls="chat-navigation"
+    [attr.aria-expanded]="navigation.open()"
+    [attr.aria-label]="navigation.open() ? 'Close chat navigation' : 'Open chat navigation'"
+    (click)="navigation.toggle()"
+  >
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.8"
+      aria-hidden="true"
+    >
+      <path d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+  </button>
+  <button
+    *ngIf="navigation.open()"
+    type="button"
+    class="chat-navigation-backdrop"
+    aria-label="Close chat navigation"
+    tabindex="-1"
+    (click)="navigation.close()"
+  ></button>
+  <aside class="ai-chat-sidebar chat-sidebar" id="chat-navigation">
+    <div class="ai-chat-sidebar__header chat-brand">
       <div class="ai-chat-sidebar__avatar">D</div>
 
       <div>
@@ -9,37 +35,59 @@
       </div>
     </div>
 
-    <button type="button" class="ai-chat-sidebar__new" (click)="startNewChat()">
-      + New Chat
+    <button
+      type="button"
+      class="chat-action"
+      aria-label="Exit AI Chat"
+      title="Exit AI Chat"
+      (click)="exitChat()"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.8"
+        aria-hidden="true"
+      >
+        <path d="M14 4H4v16h10M10 12h10m-4-4 4 4-4 4" /></svg
+      ><span class="chat-action-label">Exit AI Chat</span>
     </button>
 
     <app-conversation-list
       [conversations]="internalConversations"
       [activeConversationUuid]="activeInternalConversationUuid"
       [isLoading]="isLoadingConversations"
-      (selected)="selectConversation($event)"
+      (selected)="selectConversation($event); navigation.open() && navigation.close()"
     ></app-conversation-list>
 
-    <div class="ai-chat-sidebar__footer">
+    <div class="ai-chat-sidebar__footer chat-footer">
       <button
         type="button"
-        class="ai-chat-sidebar__exit"
-        (click)="exitChat()"
+        class="chat-action"
+        aria-label="New Chat"
+        title="New Chat"
+        (click)="startNewChat(); navigation.open() && navigation.close()"
       >
-        Exit AI Chat
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          aria-hidden="true"
+        >
+          <path d="M12 20H4V4h12M14 4l6 6-9 9H5v-6z" /></svg
+        ><span class="chat-action-label">New Chat</span>
       </button>
     </div>
   </aside>
 
-  <main class="ai-chat-main">
+  <main class="ai-chat-main" [class.hr-policy-mode]="hrMode">
     <nav
       class="ai-scope-tabs"
       [class.ai-scope-tabs--switching-right]="isSwitchingToExternal"
       aria-label="AI scope"
     >
-      <button type="button" class="ai-scope-tabs__item is-active">
-        Internal AI
-      </button>
+      <button type="button" class="ai-scope-tabs__item is-active">Internal AI</button>
 
       <button type="button" class="ai-scope-tabs__item" (click)="openExternalAi()">
         External AI
@@ -48,6 +96,7 @@
 
     <button
       type="button"
+      *ngIf="!hrMode"
       class="internal-doc-toggle"
       [class.internal-doc-toggle--active]="documentsPanelOpen"
       (click)="toggleDocumentsPanel()"
@@ -57,7 +106,7 @@
       <strong *ngIf="selectedDocuments.length">{{ selectedDocuments.length }}</strong>
     </button>
 
-    <section class="internal-doc-panel" *ngIf="documentsPanelOpen">
+    <section class="internal-doc-panel" *ngIf="documentsPanelOpen && !hrMode">
       <div class="internal-doc-panel__header">
         <div>
           <h2>Internal AI document scope</h2>
@@ -93,14 +142,21 @@
           class="internal-doc-scope__badge"
           [ngClass]="{
             'internal-doc-scope__badge--all': documentScope === 'all',
-            'internal-doc-scope__badge--selected': documentScope === 'selected'
+            'internal-doc-scope__badge--selected': documentScope === 'selected',
           }"
         >
-          {{ documentScope === 'all' ? 'All accessible documents' : selectedDocuments.length + ' selected' }}
+          {{
+            documentScope === 'all'
+              ? 'All accessible documents'
+              : selectedDocuments.length + ' selected'
+          }}
         </span>
 
         <span class="internal-doc-scope__hint">
-          Retrieval will use {{ documentScope === 'all' ? 'all documents you can access' : 'only selected documents' }}.
+          Retrieval will use
+          {{
+            documentScope === 'all' ? 'all documents you can access' : 'only selected documents'
+          }}.
         </span>
       </div>
 
@@ -113,7 +169,9 @@
         />
 
         <button type="button" (click)="searchDocuments()">Search</button>
-        <button type="button" class="internal-doc-search__ghost" (click)="resetDocumentSearch()">Reset</button>
+        <button type="button" class="internal-doc-search__ghost" (click)="resetDocumentSearch()">
+          Reset
+        </button>
       </div>
 
       <div class="internal-doc-selected" *ngIf="selectedDocuments.length">
@@ -176,13 +234,8 @@
               ⋯
             </button>
 
-            <div
-              class="internal-doc-row__menu"
-              *ngIf="activeDocumentMenuUuid === document.uuid"
-            >
-              <button type="button" (click)="openDocumentPreview(document)">
-                View
-              </button>
+            <div class="internal-doc-row__menu" *ngIf="activeDocumentMenuUuid === document.uuid">
+              <button type="button" (click)="openDocumentPreview(document)">View</button>
 
               <button
                 type="button"
@@ -233,9 +286,7 @@
       </div>
 
       <div class="internal-doc-preview__body">
-        <div class="internal-doc-preview__loading" *ngIf="isPreviewLoading">
-          Loading preview...
-        </div>
+        <div class="internal-doc-preview__loading" *ngIf="isPreviewLoading">Loading preview...</div>
 
         <div class="internal-doc-error" *ngIf="previewError">
           {{ previewError }}
@@ -259,8 +310,8 @@
         >
           <strong>Preview is not available for this file type.</strong>
           <p>
-            Browser inline preview is supported for PDF and images. Use Download for
-            Word, Excel, CSV, and other office files.
+            Browser inline preview is supported for PDF and images. Use Download for Word, Excel,
+            CSV, and other office files.
           </p>
 
           <button
@@ -274,27 +325,103 @@
       </div>
     </section>
 
-    <div class="ai-chat-error" *ngIf="errorMessage">
-      {{ errorMessage }}
-    </div>
-
-    <div class="ai-chat-loading" *ngIf="isLoadingConversation">
-      Loading internal conversation...
-    </div>
-
+    <section class="hr-policy-controls">
+      <div class="ai-chat-error" *ngIf="errorMessage" role="alert">{{ errorMessage }}</div>
+      <div class="ai-chat-loading" *ngIf="isLoadingConversation" role="status">
+        Loading internal conversation…
+      </div>
+      <label
+        >Internal AI mode
+        <select
+          [ngModel]="hrMode"
+          (ngModelChange)="setHRMode($event)"
+          [disabled]="isSending || isLoadingConversation"
+        >
+          <option [ngValue]="false">Documents</option>
+          <option [ngValue]="true">HR policy Q&amp;A</option>
+        </select>
+      </label>
+      @if (hrMode) {
+        <details>
+          <summary>
+            Policy applicability ·
+            {{
+              hrContext.as_of || hrContext.version_uuids?.length
+                ? 'Historical / specific version'
+                : 'Current'
+            }}
+          </summary>
+          <p>
+            Policy explanations only. Personal employee records, balances and entitlements are
+            unavailable.
+          </p>
+          @if (hrContext.version_uuids?.length) {
+            <p>
+              Specific historical version selected. This answer is not a current-policy
+              determination.
+            </p>
+            <button (click)="hrContext.version_uuids = undefined" [disabled]="isSending">
+              Use current-policy resolution
+            </button>
+          }
+          <div class="hr-policy-fields">
+            <label
+              >Department<select [(ngModel)]="hrContext.department" [disabled]="isSending">
+                <option [ngValue]="undefined">Authorized default scope</option>
+                @for (department of hrDepartments; track department.id) {
+                  <option [ngValue]="department.id">{{ department.name }}</option>
+                }
+              </select></label
+            >
+            <label
+              >As of date<input type="date" [(ngModel)]="hrContext.as_of" [disabled]="isSending"
+            /></label>
+            <label
+              >Policy category<select [(ngModel)]="hrContext.category" [disabled]="isSending">
+                <option [ngValue]="undefined">All</option>
+                @for (c of hrChoices('policy'); track c.uuid) {
+                  <option [value]="c.code">{{ c.name }}</option>
+                }
+              </select></label
+            >
+            <label
+              >Employee category<select
+                [(ngModel)]="hrContext.employee_category"
+                [disabled]="isSending"
+              >
+                <option [ngValue]="undefined">Unspecified</option>
+                @for (c of hrChoices('employee'); track c.uuid) {
+                  <option [value]="c.code">{{ c.name }}</option>
+                }
+              </select></label
+            >
+            <label
+              >Location<select [(ngModel)]="hrContext.location" [disabled]="isSending">
+                <option [ngValue]="undefined">Unspecified</option>
+                @for (c of hrChoices('location'); track c.uuid) {
+                  <option [value]="c.code">{{ c.name }}</option>
+                }
+              </select></label
+            >
+          </div>
+          @if (hrCategoryNext) {
+            <button (click)="loadHRCategories(hrCategoryPage + 1)" [disabled]="isSending">
+              Load more applicability choices
+            </button>
+          }
+        </details>
+      }
+    </section>
     <app-chat-message-list
+      [hrPolicyEnabled]="true"
       [messages]="internalMessages"
       [isSending]="isSending"
     ></app-chat-message-list>
 
-    <div class="internal-scope-bar">
+    <div class="internal-scope-bar" *ngIf="!hrMode">
       <span>Document scope:</span>
       <strong>{{ selectedDocumentCountLabel }}</strong>
-      <button
-        type="button"
-        *ngIf="selectedDocuments.length"
-        (click)="clearSelectedDocuments()"
-      >
+      <button type="button" *ngIf="selectedDocuments.length" (click)="clearSelectedDocuments()">
         Clear
       </button>
     </div>

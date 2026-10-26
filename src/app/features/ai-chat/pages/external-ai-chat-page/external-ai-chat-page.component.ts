@@ -1,3 +1,7 @@
+import { ChatSidebarDirective } from '../../components/chat-sidebar/chat-sidebar.directive';
+import { HttpErrorResponse } from '@angular/common/http';
+import { DocumentGovernanceService } from '../../../documents/services/document-governance.service';
+import { DocumentRealtimeService } from '../../../../core/realtime/document-realtime.service';
 import { NgClass, NgFor, NgIf } from '@angular/common';
 import {
   ChangeDetectorRef,
@@ -25,36 +29,16 @@ import {
   LocalChatMessage,
 } from '../../models/ai-chat.model';
 import { AiChatService } from '../../services/ai-chat.service';
-import {
-  ExternalDocumentReadinessService,
-} from '../../services/external-document-readiness.service';
-import {
-  ExternalAttachmentStateService,
-} from '../../services/external-attachment-state.service';
-import {
-  ExternalDocumentUploadService,
-} from '../../services/external-document-upload.service';
-import {
-  ExternalUploadOutcomePlannerService,
-} from '../../services/external-upload-outcome-planner.service';
-import {
-  ExternalDocumentScopeService,
-} from '../../services/external-document-scope.service';
-import {
-  ExternalConversationMessageMapperService,
-} from '../../services/external-conversation-message-mapper.service';
-import {
-  AiApiErrorMessageService,
-} from '../../services/ai-api-error-message.service';
-import {
-  ExternalAiChatResponsePlannerService,
-} from '../../services/external-ai-chat-response-planner.service';
-import {
-  ExternalDocumentProcessingCoordinatorService,
-} from '../../services/external-document-processing-coordinator.service';
-import {
-  DocumentProcessingEvent,
-} from '../../../../core/realtime/realtime.models';
+import { ExternalDocumentReadinessService } from '../../services/external-document-readiness.service';
+import { ExternalAttachmentStateService } from '../../services/external-attachment-state.service';
+import { ExternalDocumentUploadService } from '../../services/external-document-upload.service';
+import { ExternalUploadOutcomePlannerService } from '../../services/external-upload-outcome-planner.service';
+import { ExternalDocumentScopeService } from '../../services/external-document-scope.service';
+import { ExternalConversationMessageMapperService } from '../../services/external-conversation-message-mapper.service';
+import { AiApiErrorMessageService } from '../../services/ai-api-error-message.service';
+import { ExternalAiChatResponsePlannerService } from '../../services/external-ai-chat-response-planner.service';
+import { ExternalDocumentProcessingCoordinatorService } from '../../services/external-document-processing-coordinator.service';
+import { DocumentProcessingEvent } from '../../../../core/realtime/realtime.models';
 import { ChatMessageListComponent } from '../../components/chat-message-list/chat-message-list.component';
 import { ConversationListComponent } from '../../components/conversation-list/conversation-list.component';
 
@@ -70,6 +54,7 @@ interface PendingExternalFile {
   selector: 'app-external-ai-chat-page',
   standalone: true,
   imports: [
+    ChatSidebarDirective,
     ChatMessageListComponent,
     ConversationListComponent,
     FormsModule,
@@ -77,32 +62,28 @@ interface PendingExternalFile {
     NgFor,
     NgIf,
   ],
-  providers: [
-    ExternalDocumentProcessingCoordinatorService,
-  ],
+  providers: [ExternalDocumentProcessingCoordinatorService],
   templateUrl: './external-ai-chat-page.component.html',
-  styleUrl: './external-ai-chat-page.component.scss',
+  styleUrls: [
+    './external-ai-chat-page.component.scss',
+    '../../components/chat-sidebar/chat-sidebar.scss',
+  ],
 })
 export class ExternalAiChatPageComponent implements OnDestroy {
   private readonly aiChatService = inject(AiChatService);
-  private readonly externalDocumentReadinessService =
-    inject(ExternalDocumentReadinessService);
-  private readonly externalAttachmentStateService =
-    inject(ExternalAttachmentStateService);
-  private readonly externalDocumentUploadService =
-    inject(ExternalDocumentUploadService);
-  private readonly externalUploadOutcomePlanner =
-    inject(ExternalUploadOutcomePlannerService);
-  private readonly externalDocumentScopeService =
-    inject(ExternalDocumentScopeService);
-  private readonly externalConversationMessageMapper =
-    inject(ExternalConversationMessageMapperService);
-  private readonly aiApiErrorMessageService =
-    inject(AiApiErrorMessageService);
-  private readonly externalAiChatResponsePlanner =
-    inject(ExternalAiChatResponsePlannerService);
-  private readonly externalDocumentProcessingCoordinator =
-    inject(ExternalDocumentProcessingCoordinatorService);
+  private readonly externalDocumentReadinessService = inject(ExternalDocumentReadinessService);
+  private readonly externalAttachmentStateService = inject(ExternalAttachmentStateService);
+  private readonly externalDocumentUploadService = inject(ExternalDocumentUploadService);
+  private readonly externalUploadOutcomePlanner = inject(ExternalUploadOutcomePlannerService);
+  private readonly externalDocumentScopeService = inject(ExternalDocumentScopeService);
+  private readonly externalConversationMessageMapper = inject(
+    ExternalConversationMessageMapperService,
+  );
+  private readonly aiApiErrorMessageService = inject(AiApiErrorMessageService);
+  private readonly externalAiChatResponsePlanner = inject(ExternalAiChatResponsePlannerService);
+  private readonly externalDocumentProcessingCoordinator = inject(
+    ExternalDocumentProcessingCoordinatorService,
+  );
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly ngZone = inject(NgZone);
   private readonly route = inject(ActivatedRoute);
@@ -132,6 +113,10 @@ export class ExternalAiChatPageComponent implements OnDestroy {
   errorMessage = '';
 
   private conversationLoadRequestId = 0;
+  private readonly governance = inject(DocumentGovernanceService);
+  private readonly documentRealtime = inject(DocumentRealtimeService);
+  private governanceSubscription?: Subscription;
+  private revocationSubscription?: Subscription;
   private routeSubscription?: Subscription;
   private readonly allowedExtensions = [
     'pdf',
@@ -151,6 +136,12 @@ export class ExternalAiChatPageComponent implements OnDestroy {
   constructor() {
     document.body.classList.add('ai-chat-no-page-scroll');
 
+    this.governanceSubscription = this.governance.changes$.subscribe((uuid) =>
+      this.refreshProtectedContext(uuid),
+    );
+    this.revocationSubscription = this.documentRealtime.revoked$.subscribe((uuid) =>
+      this.refreshProtectedContext(uuid),
+    );
     this.bindDocumentRealtimeEvents();
 
     this.routeSubscription = this.route.paramMap.subscribe((params) => {
@@ -168,6 +159,8 @@ export class ExternalAiChatPageComponent implements OnDestroy {
     this.clearPendingRealtimeSend();
     document.body.classList.remove('ai-chat-no-page-scroll');
     this.routeSubscription?.unsubscribe();
+    this.governanceSubscription?.unsubscribe();
+    this.revocationSubscription?.unsubscribe();
     this.stopDocumentPolling();
   }
 
@@ -241,7 +234,6 @@ export class ExternalAiChatPageComponent implements OnDestroy {
       },
       error: (error: unknown) => {
         this.ngZone.run(() => {
-          console.error('External conversations load error:', error);
           this.externalConversations = [];
           this.isLoadingConversations = false;
           this.cdr.detectChanges();
@@ -250,6 +242,23 @@ export class ExternalAiChatPageComponent implements OnDestroy {
     });
   }
 
+  refreshProtectedContext(uuid: string): void {
+    if (uuid !== '*' && !this.externalAttachedDocuments.some((doc) => doc.uuid === uuid)) return;
+    this.clearPendingRealtimeSend();
+    this.stopDocumentPolling();
+    this.externalMessages = [];
+    this.isSending = false;
+    this.isUploading = false;
+    this.externalAttachedDocuments = this.externalAttachedDocuments.filter(
+      (doc) => doc.uuid !== uuid,
+    );
+    if (uuid === '*') this.selectedExternalDocumentUuids.clear();
+    else this.selectedExternalDocumentUuids.delete(uuid);
+    if (this.activeExternalConversationUuid)
+      this.selectExternalConversation(this.activeExternalConversationUuid, false);
+    else this.conversationLoadRequestId++;
+    this.cdr.markForCheck();
+  }
   selectExternalConversation(uuid: string, updateUrl = true): void {
     const requestId = ++this.conversationLoadRequestId;
 
@@ -258,6 +267,8 @@ export class ExternalAiChatPageComponent implements OnDestroy {
     }
 
     this.activeExternalConversationUuid = uuid;
+    this.externalMessages = [];
+    this.externalAttachedDocuments = [];
     this.isLoadingConversation = true;
     this.errorMessage = '';
     this.pendingFiles = [];
@@ -278,7 +289,10 @@ export class ExternalAiChatPageComponent implements OnDestroy {
           };
 
           this.externalMessages = (rawConversation.messages || [])
-            .filter((message: AiConversationMessage) => message.role === 'user' || message.role === 'assistant')
+            .filter(
+              (message: AiConversationMessage) =>
+                message.role === 'user' || message.role === 'assistant',
+            )
             .map((message: AiConversationMessage) => this.mapConversationMessage(message));
 
           this.isLoadingConversation = false;
@@ -293,10 +307,10 @@ export class ExternalAiChatPageComponent implements OnDestroy {
             return;
           }
 
-          console.error('External conversation load error:', error);
           this.externalMessages = [];
           this.isLoadingConversation = false;
-          this.errorMessage = 'Unable to load messages for this conversation. Attached files will still be loaded.';
+          this.errorMessage =
+            'Unable to load messages for this conversation. Attached files will still be loaded.';
           this.cdr.detectChanges();
           this.loadAttachedDocuments();
         });
@@ -401,8 +415,15 @@ export class ExternalAiChatPageComponent implements OnDestroy {
     this.isLoadingDocuments = true;
     this.cdr.markForCheck();
 
-    this.aiChatService.getExternalDocuments(this.activeExternalConversationUuid).subscribe({
+    const generation = this.conversationLoadRequestId;
+    const conversationUuid = this.activeExternalConversationUuid;
+    this.aiChatService.getExternalDocuments(conversationUuid).subscribe({
       next: (documents: ExternalDocument[]) => {
+        if (
+          generation !== this.conversationLoadRequestId ||
+          conversationUuid !== this.activeExternalConversationUuid
+        )
+          return;
         this.ngZone.run(() => {
           this.externalAttachedDocuments = documents;
           this.isLoadingDocuments = false;
@@ -416,10 +437,7 @@ export class ExternalAiChatPageComponent implements OnDestroy {
           this.stopDocumentPolling();
 
           this.subscribeRealtimeDocuments(
-            documents.map(
-              (document: ExternalDocument) =>
-                document.uuid,
-            ),
+            documents.map((document: ExternalDocument) => document.uuid),
           );
 
           this.cdr.detectChanges();
@@ -427,7 +445,6 @@ export class ExternalAiChatPageComponent implements OnDestroy {
       },
       error: (error: unknown) => {
         this.ngZone.run(() => {
-          console.error('Attached documents load error:', error);
           this.isLoadingDocuments = false;
           this.errorMessage = 'Unable to load attached files.';
           this.cdr.detectChanges();
@@ -459,7 +476,8 @@ export class ExternalAiChatPageComponent implements OnDestroy {
 
   toggleDocument(uuid: string): void {
     if (this.selectedExternalDocumentUuids.has(uuid)) {
-      this.selectedExternalDocumentUuids.delete(uuid);
+      if (uuid === '*') this.selectedExternalDocumentUuids.clear();
+      else this.selectedExternalDocumentUuids.delete(uuid);
     } else {
       this.selectedExternalDocumentUuids.add(uuid);
     }
@@ -506,10 +524,12 @@ export class ExternalAiChatPageComponent implements OnDestroy {
   isDocumentProcessing(document: ExternalDocument | LocalChatAttachment): boolean {
     const status = String(document.status || '').toLowerCase();
 
-    return !document.is_ai_ready &&
+    return (
+      !document.is_ai_ready &&
       status !== 'ready' &&
       !document.processing_error &&
-      status !== 'failed';
+      status !== 'failed'
+    );
   }
 
   get selectedDocumentCount(): number {
@@ -544,7 +564,9 @@ export class ExternalAiChatPageComponent implements OnDestroy {
     }
 
     const existingKeys = new Set(
-      this.pendingFiles.map((item: PendingExternalFile) => `${item.name}-${item.size}-${item.file.lastModified}`),
+      this.pendingFiles.map(
+        (item: PendingExternalFile) => `${item.name}-${item.size}-${item.file.lastModified}`,
+      ),
     );
 
     const newPendingFiles = validFiles
@@ -631,42 +653,29 @@ export class ExternalAiChatPageComponent implements OnDestroy {
 
     this.externalDocumentUploadService
       .upload({
-        files:
-          pendingFiles.map(
-            (pendingFile) =>
-              pendingFile.file,
-          ),
+        files: pendingFiles.map((pendingFile) => pendingFile.file),
 
-        conversationUuid:
-          this.activeExternalConversationUuid,
+        conversationUuid: this.activeExternalConversationUuid,
       })
       .subscribe({
-      next: (response: ExternalDocumentBulkUploadResponse) => {
-        this.ngZone.run(() => {
-          if (response.conversation_uuid) {
-            this.activeExternalConversationUuid = response.conversation_uuid;
-            this.router.navigate(
-              ['/ai/external', response.conversation_uuid],
-              { replaceUrl: true },
-            );
-          }
-          this.mergeAttachedDocuments(response.documents || []);
-          this.replaceMessageAttachments(
-            messageIndex,
-            response.documents || [],
-          );
+        next: (response: ExternalDocumentBulkUploadResponse) => {
+          this.ngZone.run(() => {
+            if (response.conversation_uuid) {
+              this.activeExternalConversationUuid = response.conversation_uuid;
+              this.router.navigate(['/ai/external', response.conversation_uuid], {
+                replaceUrl: true,
+              });
+            }
+            this.mergeAttachedDocuments(response.documents || []);
+            this.replaceMessageAttachments(messageIndex, response.documents || []);
 
-          /*
-           * Keep query + attachment as ONE user prompt.
-           * Replacing attachment objects must never erase
-           * the message text.
-           */
-          this.externalMessages =
-            this.externalMessages.map(
-              (
-                item: LocalChatMessage,
-                index: number,
-              ) =>
+            /*
+             * Keep query + attachment as ONE user prompt.
+             * Replacing attachment objects must never erase
+             * the message text.
+             */
+            this.externalMessages = this.externalMessages.map(
+              (item: LocalChatMessage, index: number) =>
                 index === messageIndex
                   ? {
                       ...item,
@@ -675,148 +684,103 @@ export class ExternalAiChatPageComponent implements OnDestroy {
                   : item,
             );
 
-          this.isUploading = false;
-          this.cdr.detectChanges();
-
-          this.loadExternalConversations();
-
-          const uploadedDocuments =
-            response.documents || [];
-
-          const outcome =
-            this.externalUploadOutcomePlanner
-              .plan({
-                requestedFileCount:
-                  pendingFiles.length,
-
-                selectedDocumentUuids:
-                  Array.from(
-                    this.selectedExternalDocumentUuids,
-                  ),
-
-                uploadedDocuments,
-              });
-
-          if (
-            outcome.kind ===
-            'error'
-          ) {
-            this.isUploading =
-              false;
-
-            this.isSending =
-              false;
-
-            this.errorMessage =
-              outcome.message;
-
+            this.isUploading = false;
             this.cdr.detectChanges();
-            return;
-          }
 
-          /*
-           * Subscribe immediately after upload.
-           * The backend supplies a current-state
-           * snapshot for these documents.
-           */
-          this.subscribeRealtimeDocuments(
-            outcome.uploadedDocumentUuids,
-          );
+            this.loadExternalConversations();
 
-          if (
-            outcome.kind ===
-            'wait'
-          ) {
+            const uploadedDocuments = response.documents || [];
+
+            const outcome = this.externalUploadOutcomePlanner.plan({
+              requestedFileCount: pendingFiles.length,
+
+              selectedDocumentUuids: Array.from(this.selectedExternalDocumentUuids),
+
+              uploadedDocuments,
+            });
+
+            if (outcome.kind === 'error') {
+              this.isUploading = false;
+
+              this.isSending = false;
+
+              this.errorMessage = outcome.message;
+
+              this.cdr.detectChanges();
+              return;
+            }
+
+            /*
+             * Subscribe immediately after upload.
+             * The backend supplies a current-state
+             * snapshot for these documents.
+             */
+            this.subscribeRealtimeDocuments(outcome.uploadedDocumentUuids);
+
+            if (outcome.kind === 'wait') {
+              if (message) {
+                this.queueRealtimeSend(
+                  message,
+                  outcome.queryDocumentUuids,
+                  outcome.pendingDocumentUuids,
+                  outcome.scopeMode,
+                );
+              } else {
+                this.isSending = false;
+
+                this.cdr.detectChanges();
+              }
+
+              return;
+            }
+
             if (message) {
-              this.queueRealtimeSend(
-                message,
-                outcome.queryDocumentUuids,
-                outcome.pendingDocumentUuids,
-                outcome.scopeMode,
-              );
+              this.sendExternalMessage(message, outcome.queryDocumentUuids, outcome.scopeMode);
             } else {
-              this.isSending =
-                false;
+              this.isSending = false;
 
               this.cdr.detectChanges();
             }
-
-            return;
-          }
-
-          if (message) {
-            this.sendExternalMessage(
-              message,
-              outcome.queryDocumentUuids,
-              outcome.scopeMode,
-            );
-          } else {
-            this.isSending =
-              false;
-
-            this.cdr.detectChanges();
-          }
-        });
-      },
-      error: (error: unknown) => {
-        this.ngZone.run(() => {
-          console.error('External bulk upload error:', error);
-          this.errorMessage =
-            this.aiApiErrorMessageService.getMessage(
+          });
+        },
+        error: (error: unknown) => {
+          this.ngZone.run(() => {
+            this.errorMessage = this.aiApiErrorMessageService.getMessage(
               error,
               'Unable to upload files.',
               true,
             );
 
-          this.markMessageAttachmentsFailed(messageIndex, this.errorMessage);
-          this.isUploading = false;
-          this.isSending = false;
-          this.cdr.detectChanges();
-        });
-      },
-    });
+            this.markMessageAttachmentsFailed(messageIndex, this.errorMessage);
+            this.isUploading = false;
+            this.isSending = false;
+            this.cdr.detectChanges();
+          });
+        },
+      });
   }
 
-  private normalizeExternalDocumentUuids(
-    documentUuids: string[],
-  ): string[] {
-    return this
-      .externalDocumentScopeService
-      .normalize(
-        documentUuids,
-      );
+  private normalizeExternalDocumentUuids(documentUuids: string[]): string[] {
+    return this.externalDocumentScopeService.normalize(documentUuids);
   }
-
 
   private getAllExternalConversationDocumentUuids(): string[] {
-    return this
-      .externalDocumentScopeService
-      .getConversationDocumentUuids(
-        this.externalAttachedDocuments,
-        this.externalMessages,
-      );
+    return this.externalDocumentScopeService.getConversationDocumentUuids(
+      this.externalAttachedDocuments,
+      this.externalMessages,
+    );
   }
 
+  private resolveExternalDocumentUuids(currentMessageDocumentUuids: string[] = []): string[] {
+    return this.externalDocumentScopeService.resolve({
+      selectedDocumentUuids: Array.from(this.selectedExternalDocumentUuids),
 
-  private resolveExternalDocumentUuids(
-    currentMessageDocumentUuids: string[] = [],
-  ): string[] {
-    return this
-      .externalDocumentScopeService
-      .resolve({
-        selectedDocumentUuids:
-          Array.from(
-            this.selectedExternalDocumentUuids,
-          ),
+      currentMessageDocumentUuids,
 
-        currentMessageDocumentUuids,
+      documents: this.externalAttachedDocuments,
 
-        documents:
-          this.externalAttachedDocuments,
-
-        messages:
-          this.externalMessages,
-      });
+      messages: this.externalMessages,
+    });
   }
 
   private sendExternalMessage(
@@ -838,16 +802,12 @@ export class ExternalAiChatPageComponent implements OnDestroy {
      */
     const effectiveDocumentUuids =
       explicitDocumentUuids !== undefined
-        ? this.normalizeExternalDocumentUuids(
-            explicitDocumentUuids,
-          )
+        ? this.normalizeExternalDocumentUuids(explicitDocumentUuids)
         : this.resolveExternalDocumentUuids();
 
     const documentScopeMode: 'selected' | 'conversation' =
       explicitScopeMode ??
-      (this.selectedExternalDocumentUuids.size > 0
-        ? 'selected'
-        : 'conversation');
+      (this.selectedExternalDocumentUuids.size > 0 ? 'selected' : 'conversation');
 
     const payload: ExternalAiChatRequest = {
       message,
@@ -863,233 +823,145 @@ export class ExternalAiChatPageComponent implements OnDestroy {
        * no selection  -> all conversation UUIDs
        * no documents  -> []
        */
-      document_uuids:
-        effectiveDocumentUuids,
+      document_uuids: effectiveDocumentUuids,
       document_scope_mode: documentScopeMode,
     };
 
     if (this.activeExternalConversationUuid) {
-      payload.conversation_uuid =
-        this.activeExternalConversationUuid;
+      payload.conversation_uuid = this.activeExternalConversationUuid;
     }
 
-    console.debug(
-      '[External AI] sending query scope',
-      {
-        conversation_uuid:
-          payload.conversation_uuid,
-        document_uuids:
-          payload.document_uuids,
-        document_scope_mode:
-          payload.document_scope_mode,
-        message:
-          payload.message,
-      },
-    );
+    const generation = this.conversationLoadRequestId;
+    this.aiChatService.sendExternalChatMessage(payload).subscribe({
+      next: (response: ExternalAiChatResponse) => {
+        if (generation !== this.conversationLoadRequestId) return;
+        this.ngZone.run(() => {
+          const outcome = this.externalAiChatResponsePlanner.plan(
+            response,
+            effectiveDocumentUuids,
+            new Date().toISOString(),
+          );
 
-    this.aiChatService
-      .sendExternalChatMessage(payload)
-      .subscribe({
-        next: (response: ExternalAiChatResponse) => {
-          this.ngZone.run(() => {
-            const outcome =
-              this.externalAiChatResponsePlanner
-                .plan(
-                  response,
-                  effectiveDocumentUuids,
-                  new Date()
-                    .toISOString(),
-                );
-
-            if (
-              outcome.kind ===
-              'error'
-            ) {
-              this.isSending =
-                false;
-
-              this.errorMessage =
-                outcome.message;
-
-              this.cdr.detectChanges();
-              return;
-            }
-
-            if (
-              outcome.kind ===
-              'wait'
-            ) {
-              /*
-               * Preserve the exact frozen request
-               * scope while document processing
-               * finishes. Never re-read sidebar
-               * selection here.
-               */
-              this.queueRealtimeSend(
-                message,
-                effectiveDocumentUuids,
-                outcome.waitUuids,
-                documentScopeMode,
-              );
-
-              return;
-            }
-
-            if (
-              outcome.conversationUuid
-            ) {
-              this.activeExternalConversationUuid =
-                outcome.conversationUuid;
-
-              this.router.navigate(
-                [
-                  '/ai/external',
-                  outcome.conversationUuid,
-                ],
-                {
-                  replaceUrl:
-                    true,
-                },
-              );
-            }
-
-            this.appendAssistantMessageWithFastTyping(
-              outcome.assistantMessage,
-            );
-
-            this.loadExternalConversations();
-
-            /*
-             * IMPORTANT:
-             * Do NOT call loadAttachedDocuments() here.
-             *
-             * Sending/receiving a chat answer does not require
-             * reloading the whole attachment list.
-             */
-          });
-        },
-
-        error: (error: unknown) => {
-          this.ngZone.run(() => {
-            console.error(
-              'External AI chat error:',
-              error,
-            );
-
-            this.errorMessage =
-              this.aiApiErrorMessageService.getMessage(
-                error,
-                'Unable to send external AI message.',
-              );
-
+          if (outcome.kind === 'error') {
             this.isSending = false;
-            this.cdr.detectChanges();
-          });
-        },
-      });
-  }
 
+            this.errorMessage = outcome.message;
+
+            this.cdr.detectChanges();
+            return;
+          }
+
+          if (outcome.kind === 'wait') {
+            /*
+             * Preserve the exact frozen request
+             * scope while document processing
+             * finishes. Never re-read sidebar
+             * selection here.
+             */
+            this.queueRealtimeSend(
+              message,
+              effectiveDocumentUuids,
+              outcome.waitUuids,
+              documentScopeMode,
+            );
+
+            return;
+          }
+
+          if (outcome.conversationUuid) {
+            this.activeExternalConversationUuid = outcome.conversationUuid;
+
+            this.router.navigate(['/ai/external', outcome.conversationUuid], {
+              replaceUrl: true,
+            });
+          }
+
+          this.appendAssistantMessageWithFastTyping(outcome.assistantMessage);
+
+          this.loadExternalConversations();
+
+          /*
+           * IMPORTANT:
+           * Do NOT call loadAttachedDocuments() here.
+           *
+           * Sending/receiving a chat answer does not require
+           * reloading the whole attachment list.
+           */
+        });
+      },
+
+      error: (error: unknown) => {
+        this.ngZone.run(() => {
+          if (error instanceof HttpErrorResponse && [401, 403, 404].includes(error.status))
+            this.refreshProtectedContext('*');
+          this.errorMessage = this.aiApiErrorMessageService.getMessage(
+            error,
+            'Unable to send external AI message.',
+          );
+
+          this.isSending = false;
+          this.cdr.detectChanges();
+        });
+      },
+    });
+  }
 
   private bindDocumentRealtimeEvents(): void {
-    this
-      .externalDocumentProcessingCoordinator
-      .bindRealtime({
-        getDocuments:
-          () =>
-            this.externalAttachedDocuments,
+    this.externalDocumentProcessingCoordinator.bindRealtime({
+      getDocuments: () => this.externalAttachedDocuments,
 
-        onEvent:
-          (event) => {
-            this.ngZone.run(
-              () => {
-                this.applyDocumentRealtimeEvent(
-                  event,
-                );
+      onEvent: (event) => {
+        this.ngZone.run(() => {
+          this.applyDocumentRealtimeEvent(event);
 
-                this.cdr.detectChanges();
-              },
-            );
-          },
+          this.cdr.detectChanges();
+        });
+      },
 
-        onStatuses:
-          (statusDocuments) => {
-            this.ngZone.run(
-              () => {
-                this
-                  .applyExternalDocumentProcessingStatuses(
-                    statusDocuments,
-                  );
+      onStatuses: (statusDocuments) => {
+        this.ngZone.run(() => {
+          this.applyExternalDocumentProcessingStatuses(statusDocuments);
 
-                this.cdr.detectChanges();
-              },
-            );
-          },
+          this.cdr.detectChanges();
+        });
+      },
 
-        onFailed:
-          (message) => {
-            this.ngZone.run(
-              () => {
-                this.isSending =
-                  false;
+      onFailed: (message) => {
+        this.ngZone.run(() => {
+          this.isSending = false;
 
-                this.isUploading =
-                  false;
+          this.isUploading = false;
 
-                this.errorMessage =
-                  message;
+          this.errorMessage = message;
 
-                this.cdr.detectChanges();
-              },
-            );
-          },
+          this.cdr.detectChanges();
+        });
+      },
 
-        onSend:
-          (pending) => {
-            this.ngZone.run(
-              () => {
-                this.sendExternalMessage(
-                  pending.message,
-                  pending.scopeUuids,
-                  pending.scopeMode,
-                );
-              },
-            );
-          },
-      });
+      onSend: (pending) => {
+        this.ngZone.run(() => {
+          this.sendExternalMessage(pending.message, pending.scopeUuids, pending.scopeMode);
+        });
+      },
+    });
   }
 
+  private subscribeRealtimeDocuments(documentUuids: string[]): void {
+    const normalized = this.normalizeExternalDocumentUuids(documentUuids);
 
-  private subscribeRealtimeDocuments(
-    documentUuids: string[],
-  ): void {
-    const normalized =
-      this.normalizeExternalDocumentUuids(
-        documentUuids,
-      );
-
-    this
-      .externalDocumentProcessingCoordinator
-      .subscribeDocuments(
-        normalized,
-      );
+    this.externalDocumentProcessingCoordinator.subscribeDocuments(normalized);
   }
 
-  private applyDocumentRealtimeEvent(
-    event: DocumentProcessingEvent,
-  ): void {
-    const state =
-      this.externalDocumentReadinessService
-        .applyRealtimeEvent(
-          this.externalAttachedDocuments,
-          this.externalMessages,
-          event,
-        );
+  private applyDocumentRealtimeEvent(event: DocumentProcessingEvent): void {
+    const state = this.externalDocumentReadinessService.applyRealtimeEvent(
+      this.externalAttachedDocuments,
+      this.externalMessages,
+      event,
+    );
 
-    this.externalAttachedDocuments =
-      state.documents;
+    this.externalAttachedDocuments = state.documents;
 
-    this.externalMessages =
-      state.messages;
+    this.externalMessages = state.messages;
   }
 
   private queueRealtimeSend(
@@ -1100,35 +972,21 @@ export class ExternalAiChatPageComponent implements OnDestroy {
   ): void {
     this.stopDocumentPolling();
 
-    this
-      .externalDocumentProcessingCoordinator
-      .queueRealtimeSend({
-        message,
+    this.externalDocumentProcessingCoordinator.queueRealtimeSend({
+      message,
 
-        scopeUuids:
-          this.normalizeExternalDocumentUuids(
-            scopeUuids,
-          ),
+      scopeUuids: this.normalizeExternalDocumentUuids(scopeUuids),
 
-        waitUuids:
-          this.normalizeExternalDocumentUuids(
-            waitUuids,
-          ),
+      waitUuids: this.normalizeExternalDocumentUuids(waitUuids),
 
-        scopeMode,
+      scopeMode,
 
-        conversationUuid:
-          this
-            .activeExternalConversationUuid ||
-          undefined,
-      });
+      conversationUuid: this.activeExternalConversationUuid || undefined,
+    });
   }
 
-
   private clearPendingRealtimeSend(): void {
-    this
-      .externalDocumentProcessingCoordinator
-      .clearPendingRealtimeSend();
+    this.externalDocumentProcessingCoordinator.clearPendingRealtimeSend();
   }
 
   private appendAssistantMessageWithFastTyping(message: LocalChatMessage): void {
@@ -1157,7 +1015,9 @@ export class ExternalAiChatPageComponent implements OnDestroy {
     const plan = this.getTypingPlan(fullContent.length);
     let cursor = 0;
 
+    const generation = this.conversationLoadRequestId;
     const tick = (): void => {
+      if (generation !== this.conversationLoadRequestId) return;
       cursor = Math.min(cursor + plan.chunkSize, fullContent.length);
 
       this.externalMessages = this.externalMessages.map((item: LocalChatMessage, index: number) => {
@@ -1198,67 +1058,38 @@ export class ExternalAiChatPageComponent implements OnDestroy {
     return { chunkSize: 180, delayMs: 3 };
   }
 
-
-  private replaceMessageAttachments(
-    messageIndex: number,
-    documents: ExternalDocument[],
-  ): void {
-    this.externalMessages =
-      this.externalAttachmentStateService
-        .replaceMessageAttachments(
-          this.externalMessages,
-          messageIndex,
-          documents,
-        );
+  private replaceMessageAttachments(messageIndex: number, documents: ExternalDocument[]): void {
+    this.externalMessages = this.externalAttachmentStateService.replaceMessageAttachments(
+      this.externalMessages,
+      messageIndex,
+      documents,
+    );
   }
 
-
-  private markMessageAttachmentsFailed(
-    messageIndex: number,
-    reason: string,
-  ): void {
-    this.externalMessages =
-      this.externalAttachmentStateService
-        .markMessageAttachmentsFailed(
-          this.externalMessages,
-          messageIndex,
-          reason,
-        );
+  private markMessageAttachmentsFailed(messageIndex: number, reason: string): void {
+    this.externalMessages = this.externalAttachmentStateService.markMessageAttachmentsFailed(
+      this.externalMessages,
+      messageIndex,
+      reason,
+    );
   }
 
-
-  private syncMessageAttachmentsFromDocuments(
-    documents: ExternalDocument[],
-  ): void {
-    this.externalMessages =
-      this.externalAttachmentStateService
-        .syncMessagesFromDocuments(
-          this.externalMessages,
-          documents,
-        );
+  private syncMessageAttachmentsFromDocuments(documents: ExternalDocument[]): void {
+    this.externalMessages = this.externalAttachmentStateService.syncMessagesFromDocuments(
+      this.externalMessages,
+      documents,
+    );
   }
 
-
-  private mapDocumentToAttachment(
-    document: ExternalDocument,
-  ): LocalChatAttachment {
-    return this
-      .externalAttachmentStateService
-      .mapDocumentToAttachment(
-        document,
-      );
+  private mapDocumentToAttachment(document: ExternalDocument): LocalChatAttachment {
+    return this.externalAttachmentStateService.mapDocumentToAttachment(document);
   }
 
-
-  private mergeAttachedDocuments(
-    documents: ExternalDocument[],
-  ): void {
-    this.externalAttachedDocuments =
-      this.externalAttachmentStateService
-        .mergeDocuments(
-          this.externalAttachedDocuments,
-          documents,
-        );
+  private mergeAttachedDocuments(documents: ExternalDocument[]): void {
+    this.externalAttachedDocuments = this.externalAttachmentStateService.mergeDocuments(
+      this.externalAttachedDocuments,
+      documents,
+    );
   }
 
   private startDocumentPolling(
@@ -1266,141 +1097,85 @@ export class ExternalAiChatPageComponent implements OnDestroy {
     onReady?: () => void,
     initialDelayMs?: number,
   ): void {
-    const targetDocumentUuids =
-      Array.from(
-        new Set(
-          (
-            documentUuids?.length
-              ? documentUuids
-              : this
-                  .getPendingExternalDocumentUuids(
-                    this
-                      .externalAttachedDocuments,
-                  )
-          ).filter(Boolean),
-        ),
-      );
+    const targetDocumentUuids = Array.from(
+      new Set(
+        (documentUuids?.length
+          ? documentUuids
+          : this.getPendingExternalDocumentUuids(this.externalAttachedDocuments)
+        ).filter(Boolean),
+      ),
+    );
 
     if (!targetDocumentUuids.length) {
       onReady?.();
       return;
     }
 
-    this
-      .externalDocumentProcessingCoordinator
-      .start({
-        documentUuids:
-          targetDocumentUuids,
+    this.externalDocumentProcessingCoordinator.start({
+      documentUuids: targetDocumentUuids,
 
-        conversationUuid:
-          this
-            .activeExternalConversationUuid ||
-          undefined,
+      conversationUuid: this.activeExternalConversationUuid || undefined,
 
-        initialDelayMs,
+      initialDelayMs,
 
-        onStatuses:
-          (statusDocuments) => {
-            this.ngZone.run(
-              () => {
-                this
-                  .applyExternalDocumentProcessingStatuses(
-                    statusDocuments,
-                  );
+      onStatuses: (statusDocuments) => {
+        this.ngZone.run(() => {
+          this.applyExternalDocumentProcessingStatuses(statusDocuments);
 
-                this.cdr.detectChanges();
-              },
-            );
-          },
+          this.cdr.detectChanges();
+        });
+      },
 
-        onFailed:
-          (message) => {
-            this.ngZone.run(
-              () => {
-                this.isSending =
-                  false;
+      onFailed: (message) => {
+        this.ngZone.run(() => {
+          this.isSending = false;
 
-                this.isUploading =
-                  false;
+          this.isUploading = false;
 
-                this.errorMessage =
-                  message;
+          this.errorMessage = message;
 
-                this.cdr.detectChanges();
-              },
-            );
-          },
+          this.cdr.detectChanges();
+        });
+      },
 
-        onReady:
-          () => {
-            this.ngZone.run(
-              () => {
-                this.cdr.detectChanges();
+      onReady: () => {
+        this.ngZone.run(() => {
+          this.cdr.detectChanges();
 
-                onReady?.();
-              },
-            );
-          },
-      });
+          onReady?.();
+        });
+      },
+    });
   }
-
 
   private stopDocumentPolling(): void {
-    this
-      .externalDocumentProcessingCoordinator
-      .stop();
+    this.externalDocumentProcessingCoordinator.stop();
   }
 
-  private getPendingExternalDocumentUuids(
-    documents: ExternalDocument[],
-  ): string[] {
-    return this
-      .externalDocumentReadinessService
-      .getPendingUuids(
-        documents,
-      );
+  private getPendingExternalDocumentUuids(documents: ExternalDocument[]): string[] {
+    return this.externalDocumentReadinessService.getPendingUuids(documents);
   }
 
-
-  private isExternalDocumentReady(
-    document: Partial<ExternalDocument>,
-  ): boolean {
-    return this
-      .externalDocumentReadinessService
-      .isReady(
-        document,
-      );
+  private isExternalDocumentReady(document: Partial<ExternalDocument>): boolean {
+    return this.externalDocumentReadinessService.isReady(document);
   }
 
-
-  private isExternalDocumentFailed(
-    document: Partial<ExternalDocument>,
-  ): boolean {
-    return this
-      .externalDocumentReadinessService
-      .isFailed(
-        document,
-      );
+  private isExternalDocumentFailed(document: Partial<ExternalDocument>): boolean {
+    return this.externalDocumentReadinessService.isFailed(document);
   }
-
 
   private applyExternalDocumentProcessingStatuses(
-    statusDocuments:
-      ExternalDocumentReadinessItem[],
+    statusDocuments: ExternalDocumentReadinessItem[],
   ): void {
-    const state =
-      this.externalDocumentReadinessService
-        .applyProcessingStatuses(
-          this.externalAttachedDocuments,
-          this.externalMessages,
-          statusDocuments,
-        );
+    const state = this.externalDocumentReadinessService.applyProcessingStatuses(
+      this.externalAttachedDocuments,
+      this.externalMessages,
+      statusDocuments,
+    );
 
-    this.externalAttachedDocuments =
-      state.documents;
+    this.externalAttachedDocuments = state.documents;
 
-    this.externalMessages =
-      state.messages;
+    this.externalMessages = state.messages;
   }
 
   private syncSelectedDocuments(): void {
@@ -1410,7 +1185,8 @@ export class ExternalAiChatPageComponent implements OnDestroy {
 
     Array.from(this.selectedExternalDocumentUuids).forEach((uuid: string) => {
       if (!availableUuids.has(uuid)) {
-        this.selectedExternalDocumentUuids.delete(uuid);
+        if (uuid === '*') this.selectedExternalDocumentUuids.clear();
+        else this.selectedExternalDocumentUuids.delete(uuid);
       }
     });
   }
@@ -1419,14 +1195,7 @@ export class ExternalAiChatPageComponent implements OnDestroy {
     window.setTimeout(() => this.messageList?.scrollToBottom(), 0);
   }
 
-  private mapConversationMessage(
-    message: AiConversationMessage,
-  ): LocalChatMessage {
-    return this
-      .externalConversationMessageMapper
-      .map(
-        message,
-      );
+  private mapConversationMessage(message: AiConversationMessage): LocalChatMessage {
+    return this.externalConversationMessageMapper.map(message);
   }
-
 }

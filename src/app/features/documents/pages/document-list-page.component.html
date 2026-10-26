@@ -12,6 +12,14 @@
     </div>
 
     <div class="document-page-actions">
+      <button
+        *ngIf="isInternalScope"
+        type="button"
+        class="document-upload-button"
+        (click)="openUploadModal()"
+      >
+        + Upload Internal Document
+      </button>
       <div class="document-scope-tabs">
         <button
           type="button"
@@ -29,15 +37,6 @@
           External Documents
         </button>
       </div>
-
-      <button
-        *ngIf="isInternalScope"
-        type="button"
-        class="document-upload-button"
-        (click)="openUploadModal()"
-      >
-        + Upload Internal Document
-      </button>
     </div>
   </div>
 
@@ -48,6 +47,19 @@
   <div *ngIf="isExternalScope" class="external-documents-note">
     External documents are uploaded from External AI chat and do not mix with Internal AI.
   </div>
+
+  <section *ngIf="isInternalScope" class="documents-lifecycle" aria-label="Document processing lifecycle">
+    <div class="documents-lifecycle__intro">
+      <strong>From document to verified knowledge</strong>
+      <span>Upload once, check readiness, then choose an authorized workflow or Internal AI.</span>
+    </div>
+    <div class="documents-lifecycle__steps">
+      <span><b>01</b> Secure upload</span>
+      <span><b>02</b> Extract &amp; classify</span>
+      <span><b>03</b> Verify invoice readiness</span>
+      <span><b>04</b> Review / Internal AI</span>
+    </div>
+  </section>
 
   <section *ngIf="isUploadOpen && isInternalScope" class="document-upload-panel">
     <app-document-upload-form
@@ -62,11 +74,7 @@
   <form class="document-filters" [formGroup]="filtersForm" (ngSubmit)="loadDocuments()">
     <label>
       Search
-      <input
-        type="search"
-        formControlName="search"
-        placeholder="Search title or filename"
-      />
+      <input type="search" formControlName="search" placeholder="Search title or filename" />
     </label>
 
     <label>
@@ -130,13 +138,9 @@
       <button type="button" (click)="loadDocuments()">Refresh</button>
     </div>
 
-    <div *ngIf="isLoading" class="document-empty">
-      Loading documents...
-    </div>
+    <div *ngIf="isLoading" class="document-empty">Loading documents...</div>
 
-    <div *ngIf="!isLoading && !documents.length" class="document-empty">
-      No documents found.
-    </div>
+    <div *ngIf="!isLoading && !documents.length" class="document-empty">No documents found.</div>
 
     <div *ngIf="!isLoading && documents.length" class="document-table">
       <div class="document-table__row document-table__row--head">

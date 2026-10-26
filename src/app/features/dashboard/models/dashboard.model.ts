@@ -16,6 +16,7 @@ export interface DocumentDashboardMetrics {
   by_status: Record<string, number>;
   by_type: Record<string, number>;
   by_sensitivity: Record<string, number>;
+  uploads_by_day?: Record<string, number>;
 }
 
 export interface ApprovalDashboardMetrics {

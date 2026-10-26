@@ -1,6 +1,6 @@
 .extraction-review {
   border: 1px solid var(--app-border);
-  border-radius: 18px;
+  border-radius: var(--app-radius-lg);
   background: var(--app-surface);
   padding: 20px;
 }

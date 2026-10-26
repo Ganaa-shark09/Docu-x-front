@@ -122,3 +122,10 @@
   color: var(--app-text-muted);
   font-size: 11px;
 }
+
+.conversation-list {
+  scrollbar-width: none;
+}
+.conversation-list::-webkit-scrollbar {
+  display: none;
+}

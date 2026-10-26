@@ -1,0 +1,136 @@
+<section class="governance">
+  <a routerLink="/documents/internal">Back to documents</a>
+  <h1>Organization governance policies</h1>
+  <p>
+    Policies apply only to your organization. Document access remains subject to server
+    authorization.
+  </p>
+  @if (error) {
+    <p role="alert">{{ error }}</p>
+  }
+  @if (success) {
+    <p role="status">{{ success }}</p>
+  }
+  @if (loading) {
+    <p>Loading policies?</p>
+  }
+  @if (allowed) {
+    <h2>Sensitivity policies</h2>
+    @for (policy of sensitivity; track policy.uuid) {
+      <article>
+        <strong>{{ policy.name }}</strong> ({{ policy.code }}) ? {{ policy.security_class }} ?
+        Minimum access: {{ policy.minimum_access }}
+        <p>
+          {{ policy.allow_ai ? 'AI allowed' : 'AI restricted' }} ?
+          {{ policy.allow_export ? 'Export allowed' : 'Export restricted' }} ?
+          {{
+            policy.allow_cloud
+              ? 'Cloud preference enabled; sensitivity and firewall apply'
+              : 'Private/local only'
+          }}
+          ?
+          {{ policy.is_active ? 'Active' : 'Inactive' }}
+        </p>
+        <button type="button" (click)="editSensitivity(policy)" [disabled]="busy">Edit</button
+        ><button type="button" (click)="remove(policy.uuid, 'sensitivity')" [disabled]="busy">
+          Delete policy
+        </button>
+      </article>
+    } @empty {
+      <p>No custom policies. Default classifications remain available.</p>
+    }
+    <form (ngSubmit)="saveSensitivity()" class="grid">
+      <label
+        >Policy name<input
+          name="sName"
+          [(ngModel)]="sensitivityDraft.name"
+          maxlength="150"
+          required /></label
+      ><label
+        >Policy code<input
+          name="sCode"
+          [(ngModel)]="sensitivityDraft.code"
+          pattern="[a-zA-Z0-9_-]+"
+          maxlength="50"
+          [readonly]="!!sensitivityId"
+          required /></label
+      ><label
+        >Security class<select name="sClass" [(ngModel)]="sensitivityDraft.security_class">
+          @for (c of classes; track c) {
+            <option [value]="c">{{ c }}</option>
+          }
+        </select></label
+      ><label
+        >Minimum access<select name="sAccess" [(ngModel)]="sensitivityDraft.minimum_access">
+          @for (level of levels; track level) {
+            <option [value]="level">{{ level }}</option>
+          }
+        </select></label
+      ><label
+        ><input type="checkbox" name="sAi" [(ngModel)]="sensitivityDraft.allow_ai" />Allow AI</label
+      ><label
+        ><input type="checkbox" name="sExport" [(ngModel)]="sensitivityDraft.allow_export" />Allow
+        export</label
+      ><label
+        ><input type="checkbox" name="sCloud" [(ngModel)]="sensitivityDraft.allow_cloud" />Allow
+        cloud (firewall still applies)</label
+      ><label
+        ><input
+          type="checkbox"
+          name="sActive"
+          [(ngModel)]="sensitivityDraft.is_active"
+        />Active</label
+      >
+      <div>
+        <button type="submit" [disabled]="busy">
+          {{ sensitivityId ? 'Save sensitivity policy' : 'Create sensitivity policy' }}</button
+        ><button type="button" (click)="editSensitivity()" [disabled]="busy">Reset</button>
+      </div>
+    </form>
+    <h2>Retention policies</h2>
+    <p>
+      Retention begins at the document's retention start. Expiry alone does not mean physical
+      deletion. A legal hold blocks disposition.
+    </p>
+    @for (policy of retention; track policy.uuid) {
+      <article>
+        <strong>{{ policy.name }}</strong> ? {{ policy.duration_days }} days ?
+        {{ policy.is_active ? 'Active' : 'Inactive'
+        }}<button type="button" (click)="editRetention(policy)" [disabled]="busy">Edit</button
+        ><button type="button" (click)="remove(policy.uuid, 'retention')" [disabled]="busy">
+          Delete policy
+        </button>
+      </article>
+    } @empty {
+      <p>No custom retention policies. Company default applies.</p>
+    }
+    <form (ngSubmit)="saveRetention()" class="grid">
+      <label
+        >Policy name<input
+          name="rName"
+          [(ngModel)]="retentionDraft.name"
+          maxlength="150"
+          required /></label
+      ><label
+        >Duration (days)<input
+          type="number"
+          name="rDuration"
+          [(ngModel)]="retentionDraft.duration_days"
+          min="1"
+          max="365000"
+          required /></label
+      ><label
+        ><input
+          type="checkbox"
+          name="rActive"
+          [(ngModel)]="retentionDraft.is_active"
+        />Active</label
+      >
+      <div>
+        <button type="submit" [disabled]="busy">
+          {{ retentionId ? 'Save retention policy' : 'Create retention policy' }}</button
+        ><button type="button" (click)="editRetention()" [disabled]="busy">Reset</button>
+      </div>
+    </form>
+  }
+</section>

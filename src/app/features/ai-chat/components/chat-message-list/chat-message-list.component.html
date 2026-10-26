@@ -15,7 +15,7 @@
     *ngFor="let message of messages; let i = index; trackBy: trackMessage"
     [ngClass]="{
       'message-row--user': message.role === 'user',
-      'message-row--assistant': message.role === 'assistant'
+      'message-row--assistant': message.role === 'assistant',
     }"
   >
     <article
@@ -23,16 +23,36 @@
       [ngClass]="{
         'message-shell--user': message.role === 'user',
         'message-shell--assistant': message.role === 'assistant',
-        'message-shell--attachment-only': !message.content && !!message.attachments?.length
+        'message-shell--attachment-only': !message.content && !!message.attachments?.length,
       }"
     >
       <ng-container *ngIf="message.role === 'assistant'; else userMessageTemplate">
         <app-assistant-response
-          *ngIf="message.content"
+          *ngIf="message.content && !(hrPolicyEnabled && message.policy)"
           [message]="message"
         ></app-assistant-response>
       </ng-container>
 
+      @if (hrPolicyEnabled && message.policy; as policy) {
+        <section aria-label="HR policy answer">
+          <p style="white-space: pre-wrap; overflow-wrap: anywhere">{{ message.content }}</p>
+          <p>
+            {{ policy.status }} ·
+            {{ policy.mode === 'historical' ? 'HISTORICAL POLICY' : 'CURRENT POLICY' }} · As of
+            {{ policy.as_of }}
+          </p>
+          @if (policy.reason) {
+            <p>{{ policy.reason }}</p>
+          }
+          @for (warning of policy.warnings; track $index) {
+            <p role="note">{{ warning }}</p>
+          }
+          <p>Grounding: {{ policy.grounding }}</p>
+          @for (proof of policy.evidence; track $index) {
+            <app-hr-evidence [evidence]="proof" />
+          }
+        </section>
+      }
       <ng-template #userMessageTemplate>
         <div class="message-content" *ngIf="message.content">
           {{ message.content }}
@@ -44,7 +64,9 @@
           <div class="chat-attachment__icon">📄</div>
 
           <div class="chat-attachment__body">
-            <strong>{{ attachment.title || attachment.original_filename || attachment.filename }}</strong>
+            <strong>{{
+              attachment.title || attachment.original_filename || attachment.filename
+            }}</strong>
 
             <small>
               <ng-container *ngIf="formatFileSize(attachment.file_size)">
@@ -52,7 +74,10 @@
               </ng-container>
 
               <span [ngClass]="getAttachmentStatusClass(attachment)">
-                <span class="chat-attachment__spinner" *ngIf="isAttachmentProcessing(attachment)"></span>
+                <span
+                  class="chat-attachment__spinner"
+                  *ngIf="isAttachmentProcessing(attachment)"
+                ></span>
                 {{ getAttachmentStatusLabel(attachment) }}
               </span>
             </small>

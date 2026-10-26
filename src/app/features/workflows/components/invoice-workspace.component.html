@@ -1,0 +1,556 @@
+<section class="card invoice-workspace" aria-label="Invoice review workspace">
+  <header class="invoice-workspace__header">
+    <div>
+      <p class="invoice-workspace__eyebrow">ACCOUNTS PAYABLE / SOURCE-VERIFIED REVIEW</p>
+      <h2>Invoice review</h2>
+      <p class="muted">Inspect the extracted invoice, reconcile exceptions, and confirm the source before a workflow decision.</p>
+    </div>
+    <div class="invoice-workspace__header-actions">
+      <a class="button" routerLink="/workflows/invoices">← Invoice register</a>
+      @if (invoice(); as inv) {
+        <span class="invoice-workspace__revision">Revision {{ inv.revision }}</span>
+      }
+    </div>
+  </header>
+  @if (loading()) {
+    <p role="status">Loading authorized invoice data…</p>
+  }
+  @if (error() && !editor()) {
+    <p class="error" role="alert">{{ error() }}</p>
+  }
+  @if (invoice(); as inv) {
+    <div class="invoice-workspace__overview" aria-label="Current invoice information">
+      <div class="invoice-workspace__identity">
+        <span class="invoice-workspace__overline">INVOICE</span>
+        <strong>{{ display('invoice_number') }}</strong>
+        <span class="invoice-workspace__vendor">{{ display('vendor_name') }}</span>
+        <span class="invoice-workspace__status" [attr.data-status]="run().status">{{ label(run().status) }} · Workflow state</span>
+      </div>
+      <div class="invoice-summary">
+        <dl>
+          <dt>Invoice date</dt>
+          <dd>{{ display('invoice_date') }}</dd>
+        </dl>
+        <dl>
+          <dt>Grand total</dt>
+          <dd class="invoice-summary__money">{{ display('grand_total') }}</dd>
+        </dl>
+        <dl>
+          <dt>Extraction confidence</dt>
+          <dd>{{ confidence(inv.effective_confidence) }} <small>· Estimate</small></dd>
+        </dl>
+        <dl>
+          <dt>Blocking validation issues</dt>
+          <dd class="invoice-summary__count" [class.invoice-summary__count--alert]="blockingIssueCount() > 0">{{ blockingIssueCount() }}</dd>
+        </dl>
+      </div>
+    </div>
+    <section class="invoice-workspace__review-path" aria-labelledby="invoice-review-path-heading">
+      <div class="invoice-workspace__section-heading">
+        <div>
+          <p class="invoice-workspace__eyebrow">REVIEW PATH</p>
+          <h3 id="invoice-review-path-heading">What to check next</h3>
+          <p class="muted">Use the source and server findings to make the decision. These links do not change invoice status.</p>
+        </div>
+      </div>
+      <div class="invoice-workspace__review-grid">
+        <button type="button" (click)="changeTab('fields')" [disabled]="pending() || !!editor()" class="invoice-workspace__review-link">
+          <span class="invoice-workspace__review-number">01</span>
+          <strong>Verify fields</strong>
+          <small>Check extracted values and corrections</small>
+          <span aria-hidden="true" class="invoice-workspace__review-arrow">↗</span>
+        </button>
+        <button type="button" (click)="changeTab('validation')" [disabled]="pending() || !!editor()" class="invoice-workspace__review-link">
+          <span class="invoice-workspace__review-number">02</span>
+          <strong>Financial checks</strong>
+          <small>{{ issues().length }} server-reported validation issue(s)</small>
+          <span aria-hidden="true" class="invoice-workspace__review-arrow">↗</span>
+        </button>
+        <button type="button" (click)="changeTab('matches')" [disabled]="pending() || !!editor()" class="invoice-workspace__review-link">
+          <span class="invoice-workspace__review-number">03</span>
+          <strong>Matches & duplicates</strong>
+          <small>{{ inv.duplicate_candidates.length }} visible duplicate candidate(s)</small>
+          <span aria-hidden="true" class="invoice-workspace__review-arrow">↗</span>
+        </button>
+        @if (['review_required', 'approval_required'].includes(run().status) && (run().capabilities.review || run().capabilities.approve || run().capabilities.reject || run().capabilities.request_changes)) {
+          <a class="invoice-workspace__review-link invoice-workspace__review-link--decision" href="#workflow-review-actions">
+            <span class="invoice-workspace__review-number">04</span>
+            <strong>Workflow decision</strong>
+            <small>Authorized review and approval controls appear below</small>
+            <span aria-hidden="true" class="invoice-workspace__review-arrow">↗</span>
+          </a>
+        } @else {
+          <button type="button" class="invoice-workspace__review-link invoice-workspace__review-link--decision"
+            [disabled]="pending() || !!editor()" (click)="changeTab('output')">
+            <span class="invoice-workspace__review-number">04</span>
+            <strong>Output & handoff</strong>
+            <small>Check the available finalized output and accounting state</small>
+            <span aria-hidden="true" class="invoice-workspace__review-arrow">↗</span>
+          </button>
+        }
+      </div>
+    </section>
+    @if (inv.classification.document_type) {
+      <p class="muted">
+        Classification: {{ label(inv.classification.document_type) }}
+        @if (inv.classification.uncertain) {
+          <span class="warning">Uncertain classification: inspect source before accepting</span>
+        }
+      </p>
+    }
+    @if (run().status === 'review_required' || run().status === 'exception') {
+      <div class="card warning invoice-workspace__attention" role="status">
+        <h3>Review attention</h3>
+        <p>
+          Inspect the reported issues and source evidence. Correct invalid or missing fields, then
+          use the workflow findings and review controls below.
+        </p>
+        @for (issue of issues(); track $index) {
+          <p>
+            {{ label(issue.code) }} · {{ issue.blocking ? 'Review required' : 'Warning' }} ·
+            {{ issue.fields.join(', ') || 'Invoice' }}
+          </p>
+        }
+        @if (lowConfidenceFields().length) {
+          <p class="warning">
+            Below the published extraction confidence threshold ({{
+              confidence(confidenceThreshold())
+            }}):
+            @for (key of lowConfidenceFields(); track key) {
+              <button
+                type="button"
+                [disabled]="pending() || !!editor()"
+                (click)="changeTab('fields')"
+              >
+                Inspect {{ label(key) }}
+              </button>
+            }
+          </p>
+        }
+        <a href="#workflow-findings">Open findings</a> ·
+        <a href="#workflow-exceptions">Open exceptions</a>
+      </div>
+    }
+    <nav class="invoice-tabs" role="tablist" aria-label="Invoice review sections">
+      @for (name of tabs; track name; let i = $index) {
+        <button
+          type="button"
+          role="tab"
+          [id]="'invoice-tab-' + name"
+          [attr.aria-selected]="tab() === name"
+          aria-controls="invoice-tab-panel"
+          [attr.tabindex]="tab() === name ? 0 : -1"
+          [disabled]="pending() || !!editor()"
+          (click)="changeTab(name)"
+          (keydown)="tabKey($event, i)"
+        >
+          {{ label(name) }}
+          @if (name === 'validation' && issues().length) {
+            <span class="invoice-tabs__count" [attr.aria-label]="issues().length + ' validation issues'">{{ issues().length }}</span>
+          }
+          @if (name === 'matches' && inv.duplicate_candidates.length) {
+            <span class="invoice-tabs__count" [attr.aria-label]="inv.duplicate_candidates.length + ' duplicate candidates'">{{ inv.duplicate_candidates.length }}</span>
+          }
+        </button>
+      }
+    </nav>
+    @if (editor(); as key) {
+      <form
+        class="card edit-panel invoice-workspace__editor"
+        (ngSubmit)="saveCorrection()"
+        aria-label="Correct invoice field"
+      >
+        <h3>Correct {{ label(key) }}</h3>
+        <p>Enter the value exactly as confirmed in the source document. A correction reason is mandatory and the original value remains in review history. Date values should use YYYY-MM-DD; totals must use a valid decimal and the invoice currency.</p>
+        <p class="muted">If a value has no source evidence, inspect the original document first. Corrections do not fabricate extraction confidence or provenance.</p>
+        @if (key === 'line_items') {
+          <p>
+            Update known cells deliberately. Missing cells remain unknown; the server validates the
+            complete line-item set.
+          </p>
+          <div class="table-wrap line-scroll" tabindex="0" aria-label="Edit invoice line items">
+            <table>
+              <caption>
+                Reviewed line-item values
+              </caption>
+              <thead>
+                <tr>
+                  @for (column of lineColumns; track column) {
+                    <th scope="col">{{ label(column) }}</th>
+                  }
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of lineDraft; track $index; let rowIndex = $index) {
+                  <tr>
+                    @for (column of lineColumns; track column) {
+                      <td>
+                        <label
+                          >{{ label(column) }} · Row {{ rowIndex + 1
+                          }}<input
+                            [name]="'line-' + rowIndex + '-' + column"
+                            [(ngModel)]="row[column]"
+                            [disabled]="pending()"
+                            maxlength="4000"
+                        /></label>
+                      </td>
+                    }
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          @if (!lineDraft.length) {
+            <label
+              >Line items JSON<textarea
+                id="invoice-correction-value"
+                name="lines-json"
+                [(ngModel)]="draft"
+                [disabled]="pending()"
+              ></textarea>
+            </label>
+            <p class="muted">
+              No rows exist. Use the structured line-item schema when supplying source-verified
+              rows.
+            </p>
+          }
+        } @else {
+          <label
+            >{{ label(key) }} value<textarea
+              id="invoice-correction-value"
+              name="corrected-value"
+              [(ngModel)]="draft"
+              [disabled]="pending()"
+              maxlength="4000"
+            ></textarea>
+          </label>
+        }
+        <label
+          >Reason for correction<textarea
+            name="correction-reason"
+            [(ngModel)]="reason"
+            required
+            maxlength="4000"
+            [disabled]="pending()"
+          ></textarea>
+        </label>
+        @if (!reason.trim()) {
+          <p class="muted">Enter why you changed this field before saving. This explanation will be retained in the invoice review history.</p>
+        }
+        @if (error()) {
+          <p class="error" role="alert">{{ error() }}</p>
+        }
+        <div class="actions">
+          <button type="submit" class="primary" [disabled]="pending() || busy() || !reason.trim()">
+            {{ pending() ? 'Saving correction…' : 'Save correction' }}</button
+          ><button type="button" [disabled]="pending()" (click)="cancelEdit()">
+            Cancel correction
+          </button>
+        </div>
+      </form>
+    }
+    <section id="invoice-tab-panel" class="invoice-workspace__panel" role="tabpanel" tabindex="0" [attr.aria-labelledby]="'invoice-tab-' + tab()">
+      @switch (tab()) {
+        @case ('summary') {
+          <div class="grid">
+            @for (group of groups; track group.name) {
+              <article class="card">
+                <h3>{{ group.name }}</h3>
+                <dl>
+                  @for (key of group.fields; track key) {
+                    <dt>{{ label(key) }}</dt>
+                    <dd>{{ display(key) }}</dd>
+                  }
+                </dl>
+              </article>
+            }
+          </div>
+          <p class="muted">
+            Unknown values are not inferred. Dates are the server-normalized values; amounts retain
+            server decimal precision.
+          </p>
+        }
+        @case ('fields') {
+          @if (historyError()) {
+            <p class="error" role="alert">{{ historyError() }}</p>
+            <button (click)="loadHistory()">Retry correction history</button>
+          }
+          <div class="grid">
+            @for (key of orderedFields(); track key) {
+              <app-invoice-field
+                [key]="key"
+                [field]="provenance(key)"
+                [history]="fieldHistory(key)"
+                [canCorrect]="canCorrect(key)"
+                [busy]="pending() || busy() || !!editor()"
+                (edit)="openEdit($event)"
+                (evidence)="showEvidence($event)"
+              />
+            }
+          </div>
+        }
+        @case ('line_items') {
+          <app-invoice-line-items
+            [rows]="data().line_items || []"
+            [provenance]="provenance('line_items')"
+            (evidence)="showProof($event)"
+          />
+          @if (canCorrect('line_items')) {
+            <button [disabled]="pending() || busy() || !!editor()" (click)="openEdit('line_items')">
+              Review and correct line items
+            </button>
+          }
+        }
+        @case ('evidence') {
+          <div class="invoice-workspace__section-heading">
+            <div>
+              <h3>Source evidence</h3>
+              <p class="muted">Source previews require authorization. Extracted text is evidence, not automatic verification.</p>
+            </div>
+            <div class="actions">
+              <a class="button" [routerLink]="['/documents/detail', inv.document_uuid]">Open source document</a>
+              <button type="button" [disabled]="previewBusy() || busy() || pending()" (click)="openPreview()">
+                {{ previewBusy() ? 'Loading authenticated preview…' : 'Preview invoice' }}
+              </button>
+            </div>
+          </div>
+          <div class="invoice-workspace__evidence-layout">
+            <div class="invoice-workspace__evidence-list">
+          @if (evidence().length) {
+            <h3>{{ evidenceTitle() }} · Source evidence</h3>
+            @for (proof of evidence(); track $index) {
+              <article class="card">
+                <p class="muted">
+                  Document {{ proof.document_uuid }}
+                  @if (proof.page !== undefined && proof.page !== null) {
+                    · Page {{ proof.page }}
+                  }
+                  @if (proof.chunk_uuid) {
+                    · Chunk {{ proof.chunk_uuid }}
+                  }
+                  @if (proof.start !== undefined && proof.end !== undefined) {
+                    · Text offsets {{ proof.start }}–{{ proof.end }}
+                  }
+                </p>
+                @if (proof.preview) {
+                  <blockquote class="evidence-preview">{{ proof.preview }}</blockquote>
+                }
+                @if (proof.page) {
+                  <button [disabled]="previewBusy() || busy()" (click)="openPreview(proof.page)">
+                    Preview source page {{ proof.page }}
+                  </button>
+                }
+              </article>
+            }
+          } @else {
+            <p class="empty">
+              Choose provided evidence from a field or line item. No source location is inferred.
+            </p>
+          }
+            </div>
+            <div class="invoice-workspace__source-viewer">
+              @if (preview(); as source) {
+                <div class="invoice-workspace__viewer-heading">
+                  <strong>Authenticated invoice preview</strong>
+                  <button type="button" (click)="closePreview()">Close preview</button>
+                </div>
+                <iframe
+                  class="invoice-preview"
+                  [src]="source"
+                  title="Authenticated source invoice preview"
+                  referrerpolicy="no-referrer"
+                ></iframe>
+              } @else {
+                <div class="invoice-workspace__preview-empty">
+                  <strong>Document preview</strong>
+                  <p>Open the authorized preview to compare the source against extracted values. The file is only loaded on request.</p>
+                </div>
+              }
+            </div>
+          </div>
+        }
+        @case ('validation') {
+          <article class="card">
+            <h3>Financial validation</h3>
+            <p
+              class="badge"
+              [class.danger]="financialState().startsWith('FAIL')"
+              [class.success]="financialState().startsWith('PASS')"
+              [class.warning]="financialState().startsWith('WARNING')"
+            >
+              {{ financialState() }}
+            </p>
+            <p class="muted">
+              Results come from backend validation. The browser does not calculate or adjust
+              authoritative totals.
+            </p>
+          </article>
+          <h3>Reported validation issues</h3>
+          @for (issue of issues(); track $index) {
+            <article class="issue" [class.warning]="issue.blocking">
+              <h4>{{ label(issue.code) }}</h4>
+              <p>
+                {{ issue.blocking ? 'Review required' : 'Nonblocking warning' }} ·
+                {{ label(issue.severity) }}
+              </p>
+              <p>Affected values: {{ issue.fields.join(', ') || 'Invoice' }}</p>
+              <a href="#workflow-findings">Review associated workflow findings</a>
+            </article>
+          } @empty {
+            <p class="empty">No validation issues have been reported for this invoice revision.</p>
+          }
+        }
+        @case ('matches') {
+          <article class="card">
+            <h3>Duplicate candidates</h3>
+            <p class="muted">A candidate requires review. Match strength is not proof of fraud.</p>
+            @for (candidate of inv.duplicate_candidates; track candidate.invoice_uuid) {
+              <div class="issue">
+                <h4>
+                  {{
+                    candidate.match_strength === 'exact'
+                      ? 'Exact duplicate candidate'
+                      : 'Probable duplicate candidate'
+                  }}
+                </h4>
+                <p>Status: {{ label(candidate.status) }}</p>
+                <p>Signals: {{ candidate.signals.join(', ') }}</p>
+                <p class="muted">Invoice reference {{ candidate.invoice_uuid }}</p>
+                <a [routerLink]="['/documents/detail', candidate.document_uuid]"
+                  >Inspect authorized candidate source</a
+                >
+              </div>
+            } @empty {
+              <p>No visible duplicate candidates were returned.</p>
+            }
+          </article>
+          <article class="card">
+            <h3>Vendor matching</h3>
+            @if (inv.matches.vendor; as vendor) {
+              <p class="badge">
+                {{ vendor.status === 'not_matched' ? 'Unmatched' : label(vendor.status) }}
+              </p>
+              @if (vendor.vendor_uuid) {
+                <p>Matched vendor reference: {{ vendor.vendor_uuid }}</p>
+              }
+              @if (vendor.match_type) {
+                <p>Method: {{ label(vendor.match_type) }}</p>
+              }
+              <p>
+                Confidence: {{ vendor.confidence === null ? 'Not provided' : vendor.confidence }}
+              </p>
+              @if (vendor.candidates.length) {
+                <details>
+                  <summary>Authorized vendor candidates ({{ vendor.candidates.length }})</summary>
+                  @for (id of vendor.candidates; track id) {
+                    <p>{{ id }}</p>
+                  }
+                </details>
+              }
+            } @else {
+              <p>Vendor matching has not produced a result.</p>
+            }
+          </article>
+          <article class="card">
+            <h3>Purchase-order matching</h3>
+            @if (inv.matches.purchase_order; as po) {
+              <p class="badge">{{ label(po.status) }}</p>
+              @if (po.status === 'integration_unavailable') {
+                <p>
+                  Purchase-order integration is currently unavailable. This differs from a completed
+                  search with no matching PO.
+                </p>
+              }
+              @if (po.reference) {
+                <p>Reference: {{ po.reference }}</p>
+              }
+              @for (check of po.checks; track check) {
+                <p class="warning">{{ label(check) }}</p>
+              }
+            } @else {
+              <p>Purchase-order matching has not produced a result.</p>
+            }
+          </article>
+        }
+        @case ('output') {
+          <article class="card" aria-label="Accounting handoff">
+            <h3>Accounting handoff</h3>
+            <p class="muted">DOCU-X completion, ERP posting and payment are separate states.</p>
+            @if (accountingError()) { <p class="error" role="alert">{{ accountingError() }}</p> }
+            @if (accounting(); as handoff) {
+              <p><strong>Status:</strong> {{ label(handoff.status) }}</p>
+              @if (handoff.status === 'not_connected') { <p>No accounting connector is configured. Authorized JSON export remains available.</p> }
+              @if (handoff.status === 'uncertain') { <p>Posting may have reached the provider. Reconcile before retrying; no new transaction is assumed.</p> }
+              @if (handoff.external_reference) { <p>External transaction reference: {{ handoff.external_reference }}</p> }
+              @if (handoff.failure_code) { <p>Reason: {{ label(handoff.failure_code) }}</p> }
+              @if (handoff.status === 'ready_to_post' && run().capabilities.administer) {
+                <button type="button" [disabled]="pending() || busy()" (click)="postAccounting()">Post latest output to accounting</button>
+              }
+              @if (handoff.status === 'uncertain' && run().capabilities.administer) {
+                <button type="button" [disabled]="pending() || busy()" (click)="reconcileAccounting()">Reconcile with accounting system</button>
+              }
+            } @else { <p class="muted">Checking accounting connection and posting state…</p> }
+            <button type="button" [disabled]="pending()" (click)="loadAccounting()">Refresh accounting status</button>
+          </article>
+          @if (selectedOutput(); as out) {
+            <div class="actions">
+              <label
+                >Output revision<select
+                  [ngModel]="outputRevision() ?? out.revision"
+                  (ngModelChange)="outputRevision.set($event)"
+                >
+                  @for (version of outputs().length ? outputs() : [out]; track version.uuid) {
+                    <option [ngValue]="version.revision">
+                      Revision {{ version.revision
+                      }}{{ version.uuid === outputs()[0]?.uuid ? ' · Latest' : '' }}
+                    </option>
+                  }
+                </select></label
+              >
+              @if (canExport()) {
+                <button [disabled]="pending() || busy()" (click)="export()">
+                  {{
+                    pending()
+                      ? 'Requesting authorized export…'
+                      : 'Download latest authorized invoice JSON'
+                  }}
+                </button>
+              }
+            </div>
+            <p class="output-facts">
+              Schema {{ out.schema_version }} · Revision {{ out.revision }} · Finalized
+              {{ out.created_at | date: 'medium' }}
+            </p>
+            <div class="grid">
+              @for (group of groups; track group.name) {
+                <article class="card">
+                  <h3>{{ group.name }}</h3>
+                  <dl>
+                    @for (key of group.fields; track key) {
+                      <dt>{{ label(key) }}</dt>
+                      <dd>{{ display(key, out.data.invoice) }}</dd>
+                    }
+                  </dl>
+                </article>
+              }
+            </div>
+            <app-invoice-line-items
+              [rows]="out.data.invoice.line_items || []"
+              [provenance]="out.data.field_provenance.line_items || null"
+              (evidence)="showProof($event, 'Output line item')"
+            />
+            <details>
+              <summary>Canonical output and source references</summary>
+              <pre>{{ out.data | json }}</pre>
+            </details>
+          } @else {
+            <p class="empty">
+              Canonical output is unavailable until validation, required review and approval have
+              succeeded.
+            </p>
+          }
+        }
+      }
+    </section>
+  }
+</section>

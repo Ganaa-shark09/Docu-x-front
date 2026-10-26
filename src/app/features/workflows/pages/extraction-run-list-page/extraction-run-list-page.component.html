@@ -1,13 +1,18 @@
 <section class="workflow-list-page">
+  <nav class="workflow-nav" aria-label="Workflow navigation">
+    <a routerLink="/workflows/definitions">Definitions</a>
+    <a routerLink="/workflows/runs">Runs</a>
+    <a routerLink="/workflows/extractions" aria-current="page">Extraction runs</a>
+  </nav>
   <div class="workflow-list-page__header">
     <div>
-      <h1>Workflows</h1>
-      <p>Monitor document extraction runs, review extracted fields, and submit results for approval.</p>
+      <h1>Extraction runs</h1>
+      <p>
+        Monitor document extraction runs, review extracted fields, and submit results for approval.
+      </p>
     </div>
 
-    <button type="button" (click)="loadRuns()">
-      Refresh
-    </button>
+    <button type="button" (click)="loadRuns()" [disabled]="isLoading">Refresh</button>
   </div>
 
   <form class="workflow-filters" [formGroup]="filtersForm" (ngSubmit)="loadRuns()">
@@ -35,8 +40,8 @@
     </label>
 
     <div class="workflow-filters__actions">
-      <button type="submit">Apply</button>
-      <button type="button" (click)="resetFilters()">Reset</button>
+      <button type="submit" [disabled]="isLoading">Apply</button>
+      <button type="button" (click)="resetFilters()" [disabled]="isLoading">Reset</button>
     </div>
   </form>
 
@@ -53,9 +58,7 @@
       </div>
     </div>
 
-    <div *ngIf="isLoading" class="workflow-empty">
-      Loading workflows...
-    </div>
+    <div *ngIf="isLoading" class="workflow-empty">Loading workflows...</div>
 
     <div *ngIf="!isLoading && !runs.length" class="workflow-empty">
       No extraction workflow runs found.
@@ -88,7 +91,7 @@
         <div>{{ run.created_at | date: 'mediumDate' }}</div>
 
         <div>
-          <a [routerLink]="[run.uuid]" class="workflow-open-link">
+          <a [routerLink]="['/workflows/extractions', run.uuid]" class="workflow-open-link">
             Open
           </a>
         </div>

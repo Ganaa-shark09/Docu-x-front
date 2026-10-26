@@ -1,5 +1,5 @@
 import { KeyValuePipe, NgFor, NgIf } from '@angular/common';
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output, OnChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import { ExtractionResultField } from '../../models/extraction-workflow.model';
@@ -11,7 +11,12 @@ import { ExtractionResultField } from '../../models/extraction-workflow.model';
   templateUrl: './extraction-field-review-list.component.html',
   styleUrl: './extraction-field-review-list.component.scss',
 })
-export class ExtractionFieldReviewListComponent {
+export class ExtractionFieldReviewListComponent implements OnChanges {
+  @Input() canCorrect = false;
+  ngOnChanges(): void {
+    this.corrections = {};
+    this.comments = {};
+  }
   @Input() fields: ExtractionResultField[] = [];
   @Input() rawData: Record<string, unknown> | null = null;
   @Input() isSavingFieldUuid: string | null = null;
@@ -30,24 +35,26 @@ export class ExtractionFieldReviewListComponent {
   }
 
   get hasRawData(): boolean {
-    return !!this.rawData && Object.keys(this.rawData).length > 0;
+    return (
+      !this.fields.some((field) => field.restricted) &&
+      !!this.rawData &&
+      Object.keys(this.rawData).length > 0
+    );
   }
 
   getFieldLabel(field: ExtractionResultField): string {
-    return field.label || this.formatLabel(field.field_name);
+    return field.label || this.formatLabel(field.field_key || field.field_name || 'field');
   }
 
   getFieldValue(field: ExtractionResultField): string {
-    const value =
-      field.corrected_value ??
-      field.value ??
-      field.extracted_value ??
-      '';
+    if (field.restricted) return field.value === '[REDACTED]' ? '[REDACTED]' : 'Restricted field';
+    const value = field.corrected_value ?? field.value ?? field.extracted_value ?? '';
 
     return this.formatValue(value);
   }
 
   getConfidence(field: ExtractionResultField): string {
+    if (field.restricted) return '';
     const raw = field.confidence ?? field.confidence_score;
 
     if (raw === null || raw === undefined || raw === '') {
@@ -68,9 +75,7 @@ export class ExtractionFieldReviewListComponent {
   }
 
   formatLabel(key: string): string {
-    return key
-      .replace(/_/g, ' ')
-      .replace(/\b\w/g, (char) => char.toUpperCase());
+    return key.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
   }
 
   formatValue(value: unknown): string {
@@ -110,6 +115,7 @@ export class ExtractionFieldReviewListComponent {
   }
 
   submitCorrection(field: ExtractionResultField): void {
+    if (!this.canCorrect || field.restricted || !field.uuid) return;
     const correctedValue = this.corrections[field.uuid];
 
     this.correctionSubmitted.emit({

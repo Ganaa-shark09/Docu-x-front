@@ -1,0 +1,34 @@
+:host {
+  overflow-wrap: anywhere;
+}
+label:has(input[type='checkbox']) {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+}
+input[type='checkbox'] {
+  width: auto;
+  flex: 0 0 auto;
+  margin-top: 0.2rem;
+}
+fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+button {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+select[multiple] {
+  min-height: 7rem;
+}
+@media (max-width: 600px) {
+  .card {
+    padding: 1rem;
+  }
+  .grid .card {
+    padding: 0.85rem;
+  }
+}

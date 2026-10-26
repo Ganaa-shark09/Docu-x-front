@@ -1,0 +1,413 @@
+<section class="contract-workspace" aria-label="Contract review workspace">
+  @if (error()) {
+    <p role="alert" class="error">{{ error() }}</p>
+  }
+  @if (loading()) {
+    <p role="status">Loading contract review...</p>
+  }
+  @if (contract(); as record) {
+    <header>
+      <div>
+        <h2>{{ value(data().contract_title) }}</h2>
+        <p>
+          Contract type: {{ label(data().contract_type || 'unknown') }}
+          @if (record.classification.uncertain) {
+            <span class="badge warning">Uncertain classification</span>
+          }
+        </p>
+      </div>
+      <span class="badge">{{ label(run().status) }}</span>
+    </header>
+    <p class="muted">
+      Extraction confidence: {{ confidence(record.effective_confidence) }} · Estimate, not
+      verification.
+    </p>
+    <p class="badge" [class.warning]="!record.coverage.complete">
+      {{
+        record.coverage.complete
+          ? 'Evidence complete'
+          : 'Evidence incomplete · finalization blocked'
+      }}
+    </p>
+    @if (run().status === 'review_required' || issues().length) {
+      <section class="card">
+        <h3>Review queue</h3>
+        <p>
+          {{ issues().length }} reported review items ·
+          {{ lowConfidenceFields().length }} low-confidence fields.
+        </p>
+        <div class="actions">
+          <a href="#workflow-findings">Review workflow findings</a
+          ><a href="#workflow-exceptions">Resolve workflow exceptions</a>
+        </div>
+      </section>
+    }
+    @if (legalEnabled()) {
+      <div [hidden]="tab() !== 'clause_intelligence'">
+        <app-legal-analysis
+          [run]="run()"
+          [version]="version()"
+          [steps]="steps()"
+          [busy]="busy() || pending()"
+          (busyChange)="busyChange.emit($event)"
+          (refreshed)="refreshed.emit($event)"
+          (denied)="invalidate($event)"
+          (completionBlocked)="legalGate($event)"
+        />
+      </div>
+    }
+    @if (tab() === 'clause_intelligence' && !legalEnabled()) {
+      <p class="notice">
+        Legal clause intelligence is not enabled for this contract's published policy. Create a
+        workflow with an authorized pinned playbook to analyze clauses.
+      </p>
+    }
+    <div class="contract-tabs" role="tablist" aria-label="Contract sections">
+      @for (t of tabs; track t; let i = $index) {
+        <button
+          role="tab"
+          [id]="'contract-tab-' + t"
+          [attr.aria-controls]="'contract-panel'"
+          [attr.aria-selected]="tab() === t"
+          [attr.tabindex]="tab() === t ? 0 : -1"
+          [disabled]="pending() || !!editor()"
+          (click)="changeTab(t)"
+          (keydown)="tabKey($event, i)"
+        >
+          {{ tabTitle[t] }}
+        </button>
+      }
+    </div>
+    <section role="tabpanel" id="contract-panel" [attr.aria-labelledby]="'contract-tab-' + tab()">
+      @if (['overview', 'dates_term', 'commercial_terms', 'termination'].includes(tab())) {
+        <div class="contract-summary">
+          @for (key of activeFields(); track key) {
+            <article class="card">
+              <h3>{{ label(key) }}</h3>
+              <p class="field-value">{{ display(key) }}</p>
+              @if (provenance(key); as f) {
+                <p class="muted">
+                  Confidence: {{ confidence(f.confidence) }} · {{ label(f.review_status) }}
+                </p>
+                <details>
+                  <summary>Raw extracted value</summary>
+                  <pre>{{ f.raw_value ?? 'Unknown' }}</pre>
+                </details>
+                <div class="actions">
+                  <button [disabled]="pending() || busy()" (click)="showEvidence(key)">
+                    Source evidence
+                  </button>
+                  @if (canCorrect(key)) {
+                    <button [disabled]="pending() || busy() || !!editor()" (click)="openEdit(key)">
+                      Correct value
+                    </button>
+                  }
+                </div>
+              }
+            </article>
+          }
+        </div>
+        @if (tab() === 'overview') {
+          <h3>Main parties</h3>
+          @for (party of rows('parties'); track $index) {
+            <p>{{ party['legal_name'] || 'Unknown' }} · {{ label(party['role'] || 'unknown') }}</p>
+          } @empty {
+            <p>Parties not detected</p>
+          }
+        }
+        @if (tab() === 'dates_term') {
+          <h3>Additional schedule dates</h3>
+          @for (row of rows('schedule_dates'); track $index) {
+            <article class="card">
+              @for (column of columns('schedule_dates'); track column) {
+                <p>{{ label(column) }}: {{ value(row[column]) }}</p>
+              }
+            </article>
+          } @empty {
+            <p>No additional dates provided.</p>
+          }
+        }
+      }
+      @if (['parties', 'obligations', 'clauses'].includes(tab())) {
+        <h3>Extracted {{ label(collectionKey()) }} facts</h3>
+        <app-contract-collection
+          [kind]="collectionKey()"
+          [rows]="rows(collectionKey())"
+          [columns]="columns(collectionKey())"
+          [provenance]="provenance(collectionKey())"
+          [busy]="busy() || pending()"
+          (evidence)="showProof($event, label(collectionKey()))"
+        />
+        @if (canCorrect(collectionKey())) {
+          <button
+            (click)="openEdit(collectionKey())"
+            [disabled]="pending() || busy() || !!editor()"
+          >
+            Review and correct {{ label(collectionKey()) }}
+          </button>
+        }
+        @if (tab() === 'parties') {
+          <h3>Key contacts</h3>
+          @for (row of rows('key_contacts'); track $index) {
+            <article class="card">
+              @for (column of columns('key_contacts'); track column) {
+                <p>{{ label(column) }}: {{ value(row[column]) }}</p>
+              }
+            </article>
+          } @empty {
+            <p>No contacts provided.</p>
+          }
+        }
+      }
+      @if (tab() === 'risks_findings') {
+        <h3>Policy findings and review interpretations</h3>
+        <p class="muted">
+          These are review items, separate from extracted document facts. A clause not detected is
+          not a legal validity decision. Contradictory terms remain unresolved until reviewed.
+        </p>
+        @for (issue of issues(); track $index) {
+          <article class="issue">
+            <h4>{{ label(issue.code) }}</h4>
+            <p>
+              {{ label(issue.category) }} · Severity: {{ label(issue.severity) }} ·
+              {{ issue.blocking ? 'Review required' : 'Nonblocking' }}
+            </p>
+            <p>Affected fields: {{ issue.fields.join(', ') || 'Contract' }}</p>
+            @for (field of issue.fields; track field) {
+              @if (knownField(field); as key) {
+                <button (click)="showEvidence(key)">Inspect {{ label(field) }} sources</button>
+              }
+            }
+            <a href="#workflow-findings">Review associated finding and all supplied sources</a>
+          </article>
+        } @empty {
+          <p>No policy findings reported.</p>
+        }
+      }
+      @if (tab() === 'fields') {
+        <h3>Extracted values and correction history</h3>
+        @if (historyError()) {
+          <p class="error">{{ historyError() }}</p>
+        }
+        @for (key of allFields; track key) {
+          <article class="card">
+            <h4>{{ label(key) }}</h4>
+            <pre>{{ display(key) }}</pre>
+            @if (provenance(key); as f) {
+              <p>Original: {{ f.raw_value ?? 'Unknown' }}</p>
+              <p>Reviewed value: {{ f.corrected_value ?? 'No correction' }}</p>
+              <button (click)="showEvidence(key)">Source evidence</button>
+              @if (canCorrect(key)) {
+                <button (click)="openEdit(key)" [disabled]="pending() || busy() || !!editor()">
+                  Correct {{ label(key) }}
+                </button>
+              }
+            }
+            @for (change of fieldHistory(key); track change.uuid) {
+              <details>
+                <summary>
+                  Revision {{ change.revision }} · User {{ change.actor ?? 'Unavailable' }} ·
+                  {{ change.created_at | date: 'medium' }}
+                </summary>
+                <p>Previous: {{ change.previous_value || 'Unknown' }}</p>
+                <p>Corrected: {{ change.corrected_value || 'Unknown' }}</p>
+                <p>Reason: {{ change.reason }}</p>
+                @if (change.source_metadata.evidence; as proof) {
+                  <button (click)="showProof(proof, 'Correction evidence')">
+                    Correction evidence
+                  </button>
+                }
+              </details>
+            }
+          </article>
+        }
+      }
+      @if (tab() === 'evidence') {
+        <div class="actions">
+          <a [routerLink]="['/documents/detail', record.document_uuid]"
+            >Open authorized source document</a
+          ><button [disabled]="previewBusy() || busy()" (click)="openPreview()">
+            {{ previewBusy() ? 'Loading preview...' : 'Preview contract' }}
+          </button>
+        </div>
+        <h3>{{ evidenceTitle() || 'Source evidence' }}</h3>
+        @for (proof of evidence(); track $index) {
+          <article class="card">
+            <p>
+              @if (proof.page != null) {
+                Page {{ proof.page }} ·
+              }
+              @if (proof.start != null) {
+                Text offsets {{ proof.start }}–{{ proof.end }}
+              }
+              @if (proof.chunk_uuid) {
+                · Chunk {{ proof.chunk_uuid }}
+              }
+              @if (proof.boundary) {
+                · Approximate chunk location
+              }
+            </p>
+            <blockquote class="evidence-preview">
+              {{ proof.preview || 'Excerpt unavailable' }}
+            </blockquote>
+            @if (proof.page && !proof.boundary) {
+              <button (click)="openPreview(proof.page)" [disabled]="previewBusy() || busy()">
+                Preview source page
+              </button>
+            }
+          </article>
+        } @empty {
+          <p class="empty">
+            Source evidence unavailable. Select supplied evidence from a fact; no location is
+            inferred.
+          </p>
+        }
+      }
+      @if (tab() === 'output') {
+        @if (selectedOutput(); as out) {
+          <label
+            >Output version<select
+              [ngModel]="outputRevision() ?? out.revision"
+              (ngModelChange)="outputRevision.set($event)"
+            >
+              @for (version of outputs().length ? outputs() : [out]; track version.uuid) {
+                <option [ngValue]="version.revision">
+                  Revision {{ version.revision }} ·
+                  {{
+                    version.uuid === (outputs()[0]?.uuid || record.final_output?.uuid)
+                      ? 'CURRENT'
+                      : 'HISTORICAL'
+                  }}
+                </option>
+              }
+            </select></label
+          >
+          <p>
+            Review: {{ label(out.data.review_status) }} · Approval:
+            {{ label(out.data.approval_status) }} ·
+            {{ out.data.coverage.complete ? 'Evidence complete' : 'Evidence incomplete' }}
+          </p>
+          <p>
+            Finalized {{ out.data.finalized_at | date: 'medium' }} · Schema {{ out.schema_version }}
+          </p>
+          <div class="contract-summary">
+            @for (key of allFields; track key) {
+              <article class="card">
+                <h4>{{ label(key) }}</h4>
+                @if (columns(key).length) {
+                  <app-contract-collection
+                    [kind]="key"
+                    [rows]="rows(key, out.data.contract)"
+                    [columns]="columns(key)"
+                    [readonly]="true"
+                  />
+                } @else {
+                  <pre>{{ display(key, out.data.contract) }}</pre>
+                }
+              </article>
+            }
+          </div>
+          <details>
+            <summary>Final risk findings</summary>
+            @for (risk of out.data.risks; track $index) {
+              <article class="issue">
+                <h4>{{ risk.title }}</h4>
+                <p>{{ risk.description }}</p>
+                <p>
+                  {{ label(risk.category) }} · Severity: {{ label(risk.severity) }} · Review:
+                  {{ label(risk.review_state) }}
+                </p>
+                @for (proof of risk.evidence; track $index) {
+                  <blockquote class="evidence-preview">
+                    {{ proof.preview || 'Excerpt unavailable' }}
+                  </blockquote>
+                }
+              </article>
+            } @empty {
+              <p>No risk findings in this output version.</p>
+            }
+          </details>
+          <details>
+            <summary>Final missing information and validation</summary>
+            @for (issue of out.data.validation; track $index) {
+              <article class="issue">
+                <h4>{{ label(issue.code) }}</h4>
+                <p>
+                  {{ label(issue.category) }} · {{ label(issue.severity) }} ·
+                  {{ issue.blocking ? 'Required review item' : 'Nonblocking' }}
+                </p>
+                <p>{{ issue.fields.join(', ') }}</p>
+              </article>
+            } @empty {
+              <p>No validation items in this output version.</p>
+            }
+          </details>
+          @if (canExport()) {
+            <button [disabled]="pending() || busy()" (click)="export()">
+              Download latest authorized contract JSON
+            </button>
+          }
+        } @else {
+          <p class="empty">
+            Final output is unavailable until required validation, review and approval succeed.
+          </p>
+        }
+      }
+    </section>
+    @if (editor(); as key) {
+      <section class="card edit-panel" role="region" aria-label="Contract correction">
+        <h3>Correct {{ label(key) }}</h3>
+        <p>
+          Use source-supported values. Structured collections accept JSON rows matching the
+          displayed columns.
+        </p>
+        <label
+          >Corrected value<textarea
+            id="contract-correction-value"
+            [(ngModel)]="draft"
+            [disabled]="pending()"
+          ></textarea></label
+        ><label
+          >Reason (required)<textarea
+            [(ngModel)]="reason"
+            maxlength="4000"
+            [disabled]="pending()"
+          ></textarea>
+        </label>
+        <details>
+          <summary>Source references</summary>
+          <p>
+            Existing evidence is retained. To replace it, supply actual source references with
+            document_uuid, preview and offsets, or chunk_uuid. The server validates them.
+          </p>
+          <label
+            >Evidence JSON<textarea
+              [(ngModel)]="evidenceDraft"
+              [disabled]="pending()"
+              placeholder="Leave empty to retain existing evidence"
+            ></textarea>
+          </label>
+        </details>
+        <div class="actions">
+          <button (click)="saveCorrection()" [disabled]="pending() || busy() || !reason.trim()">
+            {{ pending() ? 'Saving...' : 'Save correction' }}</button
+          ><button (click)="cancelEdit()" [disabled]="pending()">Cancel correction</button>
+        </div>
+      </section>
+    }
+    @if (preview(); as source) {
+      <section class="card">
+        <header>
+          <h3>Authenticated contract preview</h3>
+          <button (click)="closePreview()">Close preview</button>
+        </header>
+        <iframe
+          class="contract-preview"
+          [src]="source"
+          title="Authenticated source contract preview"
+          referrerpolicy="no-referrer"
+        ></iframe>
+      </section>
+    }
+  }
+</section>

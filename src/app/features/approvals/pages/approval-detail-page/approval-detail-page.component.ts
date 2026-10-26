@@ -1,11 +1,5 @@
 import { DatePipe, NgIf } from '@angular/common';
-import {
-  ChangeDetectorRef,
-  Component,
-  NgZone,
-  OnInit,
-  inject,
-} from '@angular/core';
+import { ChangeDetectorRef, Component, NgZone, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { ApprovalAction, ApprovalRequest } from '../../models/approval.model';
@@ -62,7 +56,6 @@ export class ApprovalDetailPageComponent implements OnInit {
     this.approvalService.getApproval(uuid).subscribe({
       next: (approval) => {
         this.ngZone.run(() => {
-          console.log('Approval detail loaded:', approval);
           this.approval = approval;
           this.isLoading = false;
           this.errorMessage = '';
@@ -71,7 +64,6 @@ export class ApprovalDetailPageComponent implements OnInit {
       },
       error: (error) => {
         this.ngZone.run(() => {
-          console.error('Approval detail error:', error);
           this.approval = null;
           this.isLoading = false;
           this.errorMessage = 'Unable to load approval detail.';
@@ -113,7 +105,6 @@ export class ApprovalDetailPageComponent implements OnInit {
       },
       error: (error) => {
         this.ngZone.run(() => {
-          console.error('Approval action error:', error);
           this.isSubmitting = false;
           this.errorMessage = 'Unable to submit approval action.';
           this.cdr.detectChanges();
@@ -149,11 +140,7 @@ export class ApprovalDetailPageComponent implements OnInit {
   }
 
   get reviewerLabel(): string {
-    return (
-      this.approval?.assigned_reviewer_name ||
-      this.approval?.assigned_to_email ||
-      '-'
-    );
+    return this.approval?.assigned_reviewer_name || this.approval?.assigned_to_email || '-';
   }
 
   get extractionData(): Record<string, unknown> | null {

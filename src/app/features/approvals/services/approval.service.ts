@@ -1,12 +1,9 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
+import { environment } from '../../../../environments/environment';
 import { Observable, map } from 'rxjs';
 
-import {
-  ApprovalActionPayload,
-  ApprovalFilters,
-  ApprovalRequest,
-} from '../models/approval.model';
+import { ApprovalActionPayload, ApprovalFilters, ApprovalRequest } from '../models/approval.model';
 
 type ApprovalListApiResponse =
   | ApprovalRequest[]
@@ -27,7 +24,7 @@ type ApprovalListApiResponse =
 export class ApprovalService {
   private readonly http = inject(HttpClient);
 
-  private readonly baseUrl = 'http://127.0.0.1:8000/api/approvals';
+  private readonly baseUrl = environment.apiBaseUrl + '/approvals';
 
   getApprovals(filters: ApprovalFilters = {}): Observable<ApprovalRequest[]> {
     let params = new HttpParams();
@@ -58,10 +55,7 @@ export class ApprovalService {
   }
 
   requestChanges(uuid: string, payload: ApprovalActionPayload): Observable<ApprovalRequest> {
-    return this.http.post<ApprovalRequest>(
-      `${this.baseUrl}/${uuid}/request-changes/`,
-      payload,
-    );
+    return this.http.post<ApprovalRequest>(`${this.baseUrl}/${uuid}/request-changes/`, payload);
   }
 
   private normalizeApprovalList(response: ApprovalListApiResponse): ApprovalRequest[] {

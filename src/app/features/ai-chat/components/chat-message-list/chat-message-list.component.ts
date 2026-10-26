@@ -1,12 +1,8 @@
 import { DatePipe, NgClass, NgFor, NgIf } from '@angular/common';
-import {
-  Component,
-  ElementRef,
-  Input,
-  ViewChild,
-} from '@angular/core';
+import { Component, ElementRef, Input, ViewChild } from '@angular/core';
 
 import { LocalChatAttachment, LocalChatMessage } from '../../models/ai-chat.model';
+import { HREvidenceComponent } from '../../../workflows/components/hr-evidence.component';
 import { AssistantResponseComponent } from '../assistant-response/assistant-response.component';
 import { FirewallMetadataComponent } from '../firewall-metadata/firewall-metadata.component';
 
@@ -14,6 +10,7 @@ import { FirewallMetadataComponent } from '../firewall-metadata/firewall-metadat
   selector: 'app-chat-message-list',
   standalone: true,
   imports: [
+    HREvidenceComponent,
     AssistantResponseComponent,
     DatePipe,
     FirewallMetadataComponent,
@@ -27,6 +24,7 @@ import { FirewallMetadataComponent } from '../firewall-metadata/firewall-metadat
 export class ChatMessageListComponent {
   @Input() messages: LocalChatMessage[] = [];
   @Input() isSending = false;
+  @Input() hrPolicyEnabled = false;
 
   @ViewChild('scrollContainer') private scrollContainer?: ElementRef<HTMLDivElement>;
 
@@ -35,13 +33,9 @@ export class ChatMessageListComponent {
       .map((attachment) => attachment.uuid || attachment.local_id || attachment.title)
       .join('|');
 
-    return [
-      message.role,
-      message.created_at,
-      message.content || '',
-      attachmentKey,
-      index,
-    ].join('::');
+    return [message.role, message.created_at, message.content || '', attachmentKey, index].join(
+      '::',
+    );
   };
 
   scrollToBottom(): void {
@@ -89,10 +83,12 @@ export class ChatMessageListComponent {
   isAttachmentProcessing(attachment: LocalChatAttachment): boolean {
     const status = String(attachment.status || '').toLowerCase();
 
-    return !attachment.is_ai_ready &&
+    return (
+      !attachment.is_ai_ready &&
       status !== 'ready' &&
       !attachment.processing_error &&
-      status !== 'failed';
+      status !== 'failed'
+    );
   }
 
   formatFileSize(size: number | undefined): string {

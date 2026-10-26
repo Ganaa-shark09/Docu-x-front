@@ -71,6 +71,18 @@ export class DocumentUploadFormComponent {
     this.upload.emit(formData);
   }
 
+  get invoiceFileNotice(): string {
+    if (!this.selectedFile || this.form.controls.document_type.value !== 'invoice') return '';
+    const ext = this.selectedFile.name.split('.').pop()?.toLowerCase() ?? '';
+    if (['json', 'csv', 'xlsx'].includes(ext)) {
+      return 'This looks like structured data, not a source invoice. Verify the file type before upload.';
+    }
+    if (!['pdf', 'png', 'jpg', 'jpeg', 'tif', 'tiff', 'docx', 'txt'].includes(ext)) {
+      return 'The server will validate the actual content and supported format before accepting it.';
+    }
+    return '';
+  }
+
   cancel(): void {
     this.cancelled.emit();
   }

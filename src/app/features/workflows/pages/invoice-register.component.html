@@ -1,0 +1,114 @@
+<section class="page invoice-register">
+  <nav class="invoice-register__crumb" aria-label="Invoice navigation">
+    <a routerLink="/workflows">Workflows</a><span aria-hidden="true">/</span><span>Invoices</span>
+  </nav>
+
+  <header class="invoice-register__hero">
+    <div>
+      <span class="eyebrow">FINANCE / ACCOUNTS PAYABLE</span>
+      <h1>Invoice register</h1>
+      <p>Track source invoices, review exceptions, and open authorized workflow decisions.</p>
+    </div>
+    <div class="invoice-register__hero-actions">
+      <button type="button" class="invoice-register__button" (click)="refresh()" [disabled]="loading()">Refresh</button>
+      <a class="invoice-register__button invoice-register__button--primary" routerLink="/workflows/invoice-batches">+ Process invoices</a>
+    </div>
+  </header>
+
+  <div class="invoice-register__metrics" aria-label="Invoice overview">
+    <article class="invoice-register__metric">
+      <span>Total invoices</span><strong>{{ summaryData()?.total ?? '—' }}</strong><small>Visible to your account</small>
+    </article>
+    <article class="invoice-register__metric">
+      <span>Needs attention</span><strong>{{ count('review_required', 'approval_required') ?? '—' }}</strong><small>Review or approval</small>
+    </article>
+    <article class="invoice-register__metric">
+      <span>In progress</span><strong>{{ count('draft', 'queued', 'processing') ?? '—' }}</strong><small>Awaiting processing</small>
+    </article>
+    <article class="invoice-register__metric">
+      <span>Completed</span><strong>{{ count('completed') ?? '—' }}</strong><small>Output ready, not payment status</small>
+    </article>
+    <article class="invoice-register__metric invoice-register__metric--alert">
+      <span>Exceptions</span><strong>{{ count('exception', 'failed', 'rejected') ?? '—' }}</strong><small>Requires investigation</small>
+    </article>
+  </div>
+  @if (summaryError()) {
+    <p role="status" class="invoice-register__hint">Summary counts are temporarily unavailable. You can still use the invoice register.</p>
+  }
+
+  <section class="invoice-register__panel" aria-labelledby="invoice-register-results">
+    <div class="invoice-register__panel-heading">
+      <div><h2 id="invoice-register-results">All invoices</h2>
+        <p>Only invoices and fields permitted by document governance appear here.</p>
+      </div>
+      <a routerLink="/workflows/invoice-batches">View batches <span aria-hidden="true">↗</span></a>
+    </div>
+    <form class="invoice-register__filters" (submit)="$event.preventDefault(); search()" role="search">
+      <label class="invoice-register__search">
+        <span>Search invoices</span>
+        <input type="search" name="invoiceSearch" [(ngModel)]="searchDraft" maxlength="100"
+          placeholder="Invoice number, vendor or document" autocomplete="off" [disabled]="loading()">
+      </label>
+      <label class="invoice-register__status">
+        <span>Workflow status</span>
+        <select name="invoiceStatus" [ngModel]="selectedStatus()" (ngModelChange)="changeStatus($event)" [disabled]="loading()">
+          <option value="">All statuses</option>
+          @for (status of statusOptions; track status) {
+            <option [value]="status">{{ status.replaceAll('_', ' ') }}</option>
+          }
+        </select>
+      </label>
+      <button class="invoice-register__button invoice-register__button--primary" type="submit" [disabled]="loading()">Search</button>
+    </form>
+
+    @if (error()) {
+      <div class="invoice-register__error" role="alert"><strong>Invoice register unavailable</strong><p>{{ error() }}</p>
+        <button type="button" (click)="refresh()">Try again</button></div>
+    } @else if (loading()) {
+      <p class="invoice-register__placeholder" role="status">Loading authorized invoices…</p>
+    } @else if (!pageData()?.results?.length) {
+      <div class="invoice-register__empty">
+        <strong>No invoices found</strong>
+        <p>Try another search or status. Newly uploaded documents appear after an invoice workflow starts.</p>
+        <a routerLink="/workflows/invoice-batches">Start an invoice batch</a>
+      </div>
+    } @else {
+      <div class="invoice-register__table-scroll">
+        <table>
+          <thead><tr>
+            <th scope="col">Invoice / source</th><th scope="col">Vendor</th><th scope="col">Invoice date</th>
+            <th scope="col">Amount</th><th scope="col">Workflow status</th><th scope="col">Review</th><th scope="col"><span class="sr-only">Open</span></th>
+          </tr></thead>
+          <tbody>
+            @for (invoice of pageData()!.results; track invoice.uuid) {
+              <tr>
+                <td class="invoice-register__identity">
+                  <strong>{{ invoice.invoice_number || 'Awaiting number' }}</strong>
+                  <small [title]="invoice.document_title">{{ invoice.document_title || 'Source document' }}</small>
+                </td>
+                <td>{{ invoice.vendor_name || 'Not extracted' }}</td>
+                <td>{{ invoice.invoice_date || '—' }}</td>
+                <td class="invoice-register__amount">{{ money(invoice.grand_total, invoice.currency) }}</td>
+                <td><span class="invoice-register__badge" [attr.data-status]="invoice.status">{{ invoice.status.replaceAll('_', ' ') }}</span></td>
+                <td>
+                  @if (invoice.open_issues > 0) { <span class="invoice-register__issues">{{ invoice.open_issues }} blocking</span> }
+                  @else if (invoice.has_final_output) { <span class="invoice-register__complete">Output ready</span> }
+                  @else { <span class="invoice-register__quiet">—</span> }
+                </td>
+                <td><a class="invoice-register__open" [routerLink]="['/workflows/runs', invoice.workflow_uuid]" [attr.aria-label]="'Open workflow for invoice ' + (invoice.invoice_number || invoice.document_title)">Open <span aria-hidden="true">→</span></a></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+    <footer class="invoice-register__footer">
+      <span>{{ pageData()?.count ?? 0 }} accessible invoices · Page {{ currentPage() }}</span>
+      <div class="invoice-register__pagination">
+        <button type="button" (click)="changePage(currentPage() - 1)" [disabled]="loading() || !pageData()?.previous">Previous</button>
+        <button type="button" (click)="changePage(currentPage() + 1)" [disabled]="loading() || !pageData()?.next">Next</button>
+      </div>
+    </footer>
+  </section>
+  <p class="invoice-register__disclaimer">Workflow completion means DOCU-X has produced a reviewed output; it does not confirm payment or ERP posting.</p>
+</section>

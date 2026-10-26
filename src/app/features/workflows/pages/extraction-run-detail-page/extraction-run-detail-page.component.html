@@ -1,19 +1,14 @@
 <section class="workflow-detail-page">
-  <a routerLink="/workflows" class="workflow-detail-page__back">
-    ← Back to workflows
+  <a routerLink="/workflows/extractions" class="workflow-detail-page__back">
+    ← Back to extraction runs
   </a>
 
-  <div *ngIf="isLoading" class="workflow-loading">
-    Loading extraction workflow...
-  </div>
+  <div *ngIf="isLoading" class="workflow-loading">Loading extraction workflow...</div>
 
   <div *ngIf="errorMessage" class="workflow-error">
     {{ errorMessage }}
   </div>
 
-  <div *ngIf="successMessage" class="workflow-success">
-    {{ successMessage }}
-  </div>
 
   <ng-container *ngIf="!isLoading && run">
     <header class="workflow-detail-header">
@@ -68,17 +63,21 @@
     </section>
 
     <section class="workflow-actions">
-      <button type="button" [disabled]="isRerunning" (click)="rerun()">
+      <button type="button" [disabled]="isRerunning || !canCorrect" (click)="rerun()">
         {{ isRerunning ? 'Rerunning...' : 'Rerun Extraction' }}
       </button>
 
-      <button type="button" [disabled]="isExporting" (click)="exportJson()">
+      <button
+        type="button"
+        [disabled]="isExporting || exportDenied || run.status !== 'approved'"
+        (click)="exportJson()"
+      >
         {{ isExporting ? 'Exporting...' : 'Export JSON' }}
       </button>
 
       <button
         type="button"
-        [disabled]="isSubmittingApproval"
+        [disabled]="isSubmittingApproval || !canCorrect"
         (click)="submitForApproval()"
       >
         {{ isSubmittingApproval ? 'Submitting...' : 'Submit for Approval' }}
@@ -91,6 +90,7 @@
 
     <app-extraction-field-review-list
       [fields]="fields"
+      [canCorrect]="canCorrect"
       [rawData]="rawData"
       [isSavingFieldUuid]="isSavingFieldUuid"
       (correctionSubmitted)="saveCorrection($event)"

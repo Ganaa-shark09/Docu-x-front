@@ -1,0 +1,126 @@
+.governance {
+  box-shadow: var(--app-shadow-raised);
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: 16px;
+  padding: 24px;
+  margin: 20px 0;
+  color: var(--app-text);
+}
+header {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+}
+h2 {
+  margin: 0;
+}
+p,
+dt {
+  color: var(--app-text-muted);
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 18px;
+  margin: 20px 0;
+}
+dd {
+  margin: 6px 0;
+  overflow-wrap: anywhere;
+}
+label {
+  display: flex;
+  gap: 8px;
+  flex-direction: column;
+}
+input,
+select,
+button {
+  font: inherit;
+  padding: 9px;
+  border: 1px solid var(--app-border-strong);
+  border-radius: 8px;
+}
+button {
+  cursor: pointer;
+  margin: 4px;
+  background: var(--app-surface-soft);
+  color: var(--app-text);
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+input[type='checkbox'] {
+  width: 20px;
+  height: 20px;
+}
+details {
+  border-top: 1px solid var(--app-border);
+  padding: 16px 0;
+}
+summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+article {
+  padding: 12px 0;
+}
+[role='alert'] {
+  color: var(--app-danger-text);
+}
+:focus-visible {
+  outline: 3px solid var(--app-focus);
+  outline-offset: 2px;
+}
+
+a {
+  color: var(--app-text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+input,
+select {
+  background: var(--app-surface);
+  color: var(--app-text);
+}
+button:not(:disabled):hover {
+  background: var(--app-hover);
+}
+input[type='checkbox'] {
+  accent-color: var(--app-text);
+}
+[role='status'] {
+  color: var(--app-success-text);
+}
+
+:host {
+  display: block;
+  min-width: 0;
+}
+.governance {
+  min-width: 0;
+  padding: 20px;
+  border-radius: var(--app-radius-lg);
+  box-shadow: none;
+}
+.grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+}
+.grid > div {
+  min-width: 0;
+}
+header > div {
+  min-width: 0;
+}
+input,
+select {
+  max-width: 100%;
+}
+h2 {
+  font-size: 18px;
+  letter-spacing: -0.02em;
+}

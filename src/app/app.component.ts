@@ -1,10 +1,11 @@
 import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { ToastOutletComponent } from './core/notifications/toast-outlet.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet],
+  imports: [RouterOutlet, ToastOutletComponent],
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss'],
 })

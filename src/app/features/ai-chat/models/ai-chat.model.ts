@@ -1,6 +1,10 @@
+import { HRAnswerPolicy, HRContext } from '../../workflows/models/hr-policy.model';
 export type AiChatScope = 'internal' | 'external';
 
 export interface AiChatRequest {
+  domain?: 'hr_policy';
+  policy_context?: HRContext;
+  idempotency_key?: string;
   document_scope?: 'all' | 'selected';
   document_uuids?: string[];
   message: string;
@@ -66,7 +70,14 @@ export interface AiUsage {
 }
 
 export interface ExternalContext {
-  intent?: 'calculator' | 'document_question' | 'hybrid' | 'web_question' | 'general_web' | 'general' | string;
+  intent?:
+    | 'calculator'
+    | 'document_question'
+    | 'hybrid'
+    | 'web_question'
+    | 'general_web'
+    | 'general'
+    | string;
   external_chunk_count?: number;
   web_result_count?: number;
   processing_documents?: AiSource[];
@@ -107,7 +118,6 @@ export interface AiFirewallContextItem {
   message?: string;
   status?: string;
 }
-
 
 export interface AiFirewallMetadata {
   policy_action?: AiFirewallPolicyAction;
@@ -150,6 +160,7 @@ export interface AiFirewallMetadata {
 }
 
 export interface AiChatResponse {
+  policy?: HRAnswerPolicy;
   conversation_uuid: string;
   message_uuid?: string;
   answer: string;
@@ -185,6 +196,11 @@ export interface AiConversationMessage {
   external_context?: ExternalContext;
 
   metadata?: {
+    domain?: 'hr_policy';
+    hr_policy?: HRAnswerPolicy;
+    policy_context?: HRContext;
+    protected_context_omitted?: boolean;
+    document_dependencies?: Record<string, number | null>;
     firewall_enforcement?: AiFirewallMetadata | null;
     external_context?: ExternalContext;
     document_context?: AiDocumentContext;
@@ -216,6 +232,7 @@ export interface LocalChatAttachment {
 }
 
 export interface LocalChatMessage {
+  policy?: HRAnswerPolicy;
   document_context?: AiDocumentContext;
   role: 'user' | 'assistant';
   content: string;
@@ -282,18 +299,14 @@ export interface ExternalDocumentReadinessResponse {
   has_failed: boolean;
 }
 
-export interface ExternalAttachmentsProcessingResponse
-  extends ExternalDocumentReadinessResponse {
+export interface ExternalAttachmentsProcessingResponse extends ExternalDocumentReadinessResponse {
   status: 'attachments_processing';
   detail: string;
   retry_after_ms: number;
   pending_document_uuids?: string[];
 }
 
-export type ExternalAiChatResponse =
-  | AiChatResponse
-  | ExternalAttachmentsProcessingResponse;
-
+export type ExternalAiChatResponse = AiChatResponse | ExternalAttachmentsProcessingResponse;
 
 export interface InternalAiDocument {
   uuid: string;

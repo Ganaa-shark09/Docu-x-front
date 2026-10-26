@@ -3,8 +3,9 @@
 }
 
 .upload-form-card {
+  box-shadow: var(--app-shadow-raised);
   border: 1px solid var(--app-border);
-  border-radius: 18px;
+  border-radius: var(--app-radius-lg);
   background: var(--app-surface);
   padding: 18px;
 }
@@ -59,7 +60,6 @@
   background: var(--app-bg);
   padding: 11px 12px;
   color: var(--app-text);
-  outline: 0;
 }
 
 .upload-form input:focus,
@@ -122,3 +122,13 @@
     grid-template-columns: 1fr;
   }
 }
+
+.upload-form__eyebrow { color: var(--app-text-muted); font-size: 11px; font-weight: 750; letter-spacing: .1em; }
+.upload-form__steps { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; margin-bottom: 18px; }
+.upload-form__steps span { border: 1px solid var(--app-border); background: var(--app-surface-soft); border-radius: 10px; padding: 10px; font-size: 12px; }
+.upload-form__steps b { margin-right: 5px; color: var(--app-primary); }
+.upload-form__invoice-guide { padding: 16px; border: 1px solid var(--app-border-strong); border-radius: 12px; background: var(--app-surface-soft); font-size: 13px; line-height: 1.5; }
+.upload-form__invoice-guide p { margin: 8px 0 0; color: var(--app-text-muted); }
+.upload-form__invoice-guide .upload-form__warning { color: var(--app-danger-text); font-weight: 650; }
+.upload-form__policy-note { margin: 0; font-size: 12px; line-height: 1.5; color: var(--app-text-muted); }
+@media(max-width:760px) { .upload-form__steps { grid-template-columns: 1fr; } .upload-form__actions { flex-wrap: wrap; } }

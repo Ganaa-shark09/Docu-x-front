@@ -1,0 +1,171 @@
+<form class="card" (ngSubmit)="publish()">
+  <h2>Publish a new workflow version</h2>
+  <p class="muted">
+    Published versions are immutable. This creates a separate version; existing runs keep their
+    original version.
+  </p>
+  <p class="muted">
+    Integration steps require a server adapter catalog before they can be added here.
+  </p>
+  @if (error()) {
+    <p class="error" role="alert">{{ error() }}</p>
+  }
+  <fieldset [disabled]="pending()">
+    <legend>Version configuration</legend>
+    <div class="grid">
+      <label
+        >Entry step<select name="entry" [(ngModel)]="entry" required>
+          @for (s of steps; track $index) {
+            <option [value]="s.key">{{ s.key }}</option>
+          }
+        </select></label
+      ><label
+        >Allowed document types (comma separated)<input
+          name="allowed"
+          [(ngModel)]="allowed"
+          placeholder="Leave empty for any type" /></label
+      ><label
+        >Maximum attempts<input
+          name="attempts"
+          [(ngModel)]="attempts"
+          type="number"
+          min="1"
+          max="4"
+          required
+      /></label>
+    </div>
+    @for (s of steps; track $index; let i = $index) {
+      <section class="card">
+        <header>
+          <h3>Step {{ i + 1 }}</h3>
+          <button type="button" (click)="steps.splice(i, 1); reviewed = false">Remove step</button>
+        </header>
+        <div class="grid">
+          <label
+            >Key<input
+              [name]="'key' + i"
+              [(ngModel)]="s.key"
+              pattern="[-a-zA-Z0-9_]+"
+              maxlength="80"
+              required /></label
+          ><label
+            >Name<input [name]="'name' + i" [(ngModel)]="s.name" maxlength="150" required /></label
+          ><label
+            >Type<select
+              [name]="'type' + i"
+              [(ngModel)]="s.type"
+              (ngModelChange)="s.targets = {}; reviewed = false"
+            >
+              @for (t of types; track t) {
+                <option [value]="t">{{ t }}</option>
+              }
+            </select></label
+          >
+        </div>
+        @if (s.type === 'ai') {
+          <label
+            >AI instruction<textarea
+              [name]="'instruction' + i"
+              [(ngModel)]="s.instruction"
+              maxlength="4000"
+              required
+            ></textarea>
+          </label>
+        }
+        @if (s.type === 'extraction') {
+          <label
+            >Company extraction template<select
+              [name]="'template' + i"
+              [(ngModel)]="s.template"
+              required
+            >
+              <option value="">Choose template</option>
+              @for (t of templates(); track t.uuid) {
+                <option [value]="t.uuid">{{ t.name }}</option>
+              }
+            </select></label
+          >
+        }
+        @if (s.type === 'human_review' || s.type === 'approval' || s.type === 'assignment') {
+          <app-workflow-assignment
+            [memberships]="memberships()"
+            [disabled]="pending()"
+            (changed)="s.assignment = $event; reviewed = false"
+          />
+        }
+        @if (s.type === 'rule' || s.type === 'validation') {
+          <div class="grid">
+            <label
+              >Artifact source step<select [name]="'source' + i" [(ngModel)]="s.source" required>
+                <option value="">Choose prior artifact step</option>
+                @for (t of steps; track $index) {
+                  @if (t.type === 'ai' || t.type === 'extraction') {
+                    <option [value]="t.key">{{ t.key }}</option>
+                  }
+                }
+              </select></label
+            ><label
+              >Data path<input
+                [name]="'path' + i"
+                [(ngModel)]="s.path"
+                pattern="[a-zA-Z0-9_]+(\.[a-zA-Z0-9_]+)*"
+                required /></label
+            ><label
+              >Operator<select [name]="'operator' + i" [(ngModel)]="s.operator">
+                @for (op of ['exists', 'eq', 'ne', 'gte', 'lte']; track op) {
+                  <option [value]="op">{{ op }}</option>
+                }
+              </select></label
+            >
+          </div>
+          @if (s.operator !== 'exists') {
+            <label
+              >Comparison value (JSON)<input [name]="'value' + i" [(ngModel)]="s.value" required
+            /></label>
+          }
+        }
+        @if (s.type === 'terminal') {
+          <label
+            >Terminal outcome<select [name]="'terminal' + i" [(ngModel)]="s.terminal">
+              @for (t of ['completed', 'approved', 'rejected']; track t) {
+                <option [value]="t">{{ t }}</option>
+              }
+            </select></label
+          >
+        }
+        @if (s.type === 'human_review' || s.type === 'approval' || s.type === 'extraction') {
+          <label class="check"
+            ><input type="checkbox" [name]="'exception' + i" [(ngModel)]="s.exception" />Include
+            exception transition</label
+          >
+        }
+        <div class="grid">
+          @for (outcome of outcomes(s); track outcome) {
+            <label
+              >{{ outcome }} ?<select
+                [name]="'target' + i + outcome"
+                [(ngModel)]="s.targets[outcome]"
+                required
+              >
+                <option value="">Choose destination</option>
+                @for (t of steps; track $index) {
+                  @if (t !== s) {
+                    <option [value]="t.key">{{ t.name || t.key }}</option>
+                  }
+                }
+              </select></label
+            >
+          }
+        </div>
+      </section>
+    }
+    <button type="button" (click)="add()" [disabled]="steps.length >= 50">Add step</button
+    ><label class="check"
+      ><input type="checkbox" name="reviewed" [(ngModel)]="reviewed" required />I have reviewed this
+      graph and understand publication creates an immutable version.</label
+    >
+  </fieldset>
+  <button class="primary" type="submit" [disabled]="pending() || !reviewed">
+    {{ pending() ? 'Publishing...' : 'Publish new version' }}
+  </button>
+</form>

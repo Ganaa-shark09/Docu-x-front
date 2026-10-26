@@ -1,0 +1,329 @@
+<section class="workspace">
+  <nav class="tabs" aria-label="Legal navigation">
+    <a routerLink="/workflows/definitions">Workflows</a
+    ><a routerLink="/workflows/legal/playbooks">Playbooks</a
+    ><a routerLink="/workflows/legal/clause-types">Clause taxonomy</a>
+  </nav>
+  <header class="heading">
+    <div>
+      <h1>
+        {{ uuid ? 'Clause playbook' : mode === 'taxonomy' ? 'Clause taxonomy' : 'Legal playbooks' }}
+      </h1>
+      <p class="muted">
+        Organization policy, versioned requirements and source grounded legal review.
+      </p>
+    </div>
+    <button type="button" (click)="reload()" [disabled]="pending() || loading()">Reload</button>
+  </header>
+  @if (error()) {
+    <p class="error" role="alert">{{ error() }}</p>
+  }
+  @if (loading()) {
+    <p role="status">Loading authorized configuration…</p>
+  }
+  @if (mode === 'taxonomy' && !uuid) {
+    @if (admin()) {
+      <button type="button" (click)="newType()" [disabled]="pending()">
+        Add company clause type
+      </button>
+    }
+    @if (typeEditor; as t) {
+      <form class="card" (ngSubmit)="saveType()">
+        <fieldset [disabled]="pending()">
+          <legend>{{ typeUuid ? 'Edit company clause type' : 'New company clause type' }}</legend>
+          <div class="grid">
+            <label
+              >Stable code<input
+                name="typeCode"
+                [(ngModel)]="t.code"
+                [readOnly]="!!typeUuid"
+                required
+                maxlength="80" /></label
+            ><label
+              >Name<input name="typeName" [(ngModel)]="t.name" required maxlength="150"
+            /></label>
+            <label>Category<input name="typeCategory" [(ngModel)]="t.category" required /></label
+            ><label>Aliases (comma separated)<input name="aliases" [(ngModel)]="aliases" /></label
+            ><label
+              >Document types (comma separated)<input
+                name="typeDocuments"
+                [(ngModel)]="typeDocuments"
+                required
+            /></label>
+            <label
+              >Description<textarea
+                name="typeDescription"
+                [(ngModel)]="t.description"
+                maxlength="2000"
+              ></textarea></label
+            ><label class="check"
+              ><input type="checkbox" name="activeType" [(ngModel)]="t.is_active" />Active</label
+            >
+          </div>
+          <h3>Typed clause facts</h3>
+          @for (f of facts; track $index; let i = $index) {
+            <div class="predicate-row">
+              <label>Fact code<input [name]="'fact' + i" [(ngModel)]="f.key" required /></label
+              ><label
+                >Type<select [name]="'kind' + i" [(ngModel)]="f.type">
+                  @for (k of kinds; track k) {
+                    <option [value]="k">{{ k }}</option>
+                  }
+                </select></label
+              >
+              @if (f.type === 'enum') {
+                <label>Allowed values<input [name]="'values' + i" [(ngModel)]="f.values" /></label>
+              }
+              <button type="button" (click)="facts.splice(i, 1)">Remove fact</button>
+            </div>
+          }
+          <div class="actions">
+            <button
+              type="button"
+              (click)="facts.push({ key: '', type: 'text', values: '' })"
+              [disabled]="facts.length >= 32"
+            >
+              Add fact</button
+            ><button type="submit">Save company type</button
+            ><button type="button" (click)="typeEditor = null; facts = []">Cancel</button>
+          </div>
+        </fieldset>
+      </form>
+    }
+    <div class="legal-grid">
+      @for (t of types(); track t.uuid) {
+        <article class="card">
+          <div class="rule-heading">
+            <h2>{{ t.name }}</h2>
+            <span class="badge">{{
+              t.scope === 'system' ? 'Protected system type' : 'Company extension'
+            }}</span>
+          </div>
+          <p>{{ t.description }}</p>
+          <p class="muted">
+            {{ t.category }} · {{ t.code }} · {{ t.is_active ? 'Active' : 'Inactive' }}
+          </p>
+          <p>Aliases: {{ t.aliases.join(', ') || 'None' }}</p>
+          <p>Applicable documents: {{ t.document_types.join(', ') }}</p>
+          <dl class="facts-grid">
+            @for (f of t.fact_schema | keyvalue; track f.key) {
+              <div>
+                <dt>{{ f.key }}</dt>
+                <dd>{{ f.value.type }} {{ f.value.values?.join(', ') }}</dd>
+              </div>
+            }
+          </dl>
+          @if (admin() && t.scope === 'company') {
+            <button type="button" (click)="newType(t)" [disabled]="pending()">
+              Edit company type
+            </button>
+          }
+        </article>
+      } @empty {
+        @if (!loading()) {
+          <p class="notice">No accessible clause types found.</p>
+        }
+      }
+    </div>
+  }
+  @if (!uuid && mode === 'playbooks') {
+    @if (canCreate()) {
+      <form class="card" (ngSubmit)="createBook()">
+        <fieldset [disabled]="pending()">
+          <legend>Create draft playbook</legend>
+          <div class="grid">
+            <label>Name<input name="name" [(ngModel)]="name" required maxlength="150" /></label
+            ><label
+              >Description<textarea
+                name="description"
+                [(ngModel)]="description"
+                maxlength="2000"
+              ></textarea></label
+            ><label
+              >Department scope<select name="department" [(ngModel)]="department">
+                <option [ngValue]="null" [disabled]="!admin()">Company wide</option>
+                @for (m of memberships(); track m.uuid) {
+                  @if (m.department) {
+                    <option [ngValue]="m.department">{{ m.department_name }}</option>
+                  }
+                }
+              </select></label
+            >
+          </div>
+          <button type="submit">Create draft</button>
+        </fieldset>
+      </form>
+    }
+    <div class="legal-grid">
+      @for (b of books(); track b.uuid) {
+        <article class="card">
+          <h2>
+            <a [routerLink]="['/workflows/legal/playbooks', b.uuid]">{{ b.name }}</a>
+          </h2>
+          <p>{{ b.description }}</p>
+          <p>Department: {{ b.department_id || 'Company wide' }} · Revision {{ b.revision }}</p>
+          <p>
+            {{ b.is_active ? 'Active' : 'Inactive' }} ·
+            {{ b.active_version_uuid ? 'Published version pinned' : 'Not yet published' }}
+          </p>
+        </article>
+      } @empty {
+        @if (!loading()) {
+          <p class="notice">
+            No accessible playbooks. Authorized administrators can create a draft.
+          </p>
+        }
+      }
+    </div>
+  }
+  @if (!uuid) {
+    <nav class="pagination" aria-label="Configuration pages">
+      <button type="button" (click)="move(-1)" [disabled]="!previous || pending() || loading()">
+        Previous</button
+      ><span>Page {{ page }}</span
+      ><button type="button" (click)="move(1)" [disabled]="!next || pending() || loading()">
+        Next
+      </button>
+    </nav>
+  }
+  @if (book(); as b) {
+    <section class="card">
+      <div class="rule-heading">
+        <h2>{{ b.name }}</h2>
+        <span class="badge"
+          >{{ b.is_active ? 'Active' : 'Inactive' }} · Revision {{ b.revision }}</span
+        >
+      </div>
+      <p>
+        Department: {{ b.department_id || 'Company wide' }} · Active version reference:
+        {{ b.active_version_uuid || 'None' }}
+      </p>
+      @if (selected(); as v) {
+        <p class="notice">
+          Immutable published version {{ v.number }} ·
+          {{ v.uuid === b.active_version_uuid ? 'Current active version' : 'Historical version' }} ·
+          Published {{ v.created_at }}
+        </p>
+        <p>
+          Applicable documents: {{ v.document_types.join(', ') }} · Effective
+          {{ v.effective_from }} to {{ v.effective_until || 'No end' }}
+        </p>
+        <button type="button" (click)="draft()" [disabled]="pending()">Return to draft</button>
+      } @else {
+        <p class="notice">
+          Editable draft. Save before publishing; existing runs retain their original pinned
+          version.
+        </p>
+        <fieldset [disabled]="pending() || !manage()">
+          <div class="grid">
+            <label>Name<input name="bookName" [(ngModel)]="name" maxlength="150" /></label
+            ><label
+              >Description<textarea
+                name="bookDescription"
+                [(ngModel)]="description"
+              ></textarea></label
+            ><label>Document types<input name="documents" [(ngModel)]="documentTypes" /></label
+            ><label
+              >Effective start<input type="date" name="from" [(ngModel)]="effectiveFrom" /></label
+            ><label
+              >Effective end<input type="date" name="until" [(ngModel)]="effectiveUntil"
+            /></label>
+          </div>
+        </fieldset>
+      }
+      @if (taxonomyNext) {
+        <p class="warning">Load the remaining taxonomy before editing or saving rules.</p>
+        <button type="button" (click)="loadMoreTypes()" [disabled]="loading() || pending()">
+          Load more clause types
+        </button>
+      }
+      <app-legal-rule-editor
+        [rules]="rules"
+        [taxonomy]="editorTaxonomy()"
+        [disabled]="pending() || !manage() || !!selected() || !taxonomyReady"
+        (changed)="rules = $event; publishConfirmed = false"
+      />
+      @if (manage() && !selected()) {
+        <div class="actions">
+          <button
+            type="button"
+            (click)="save()"
+            [disabled]="pending() || !taxonomyReady || !validRules(rules, types())"
+          >
+            Save draft
+          </button>
+        </div>
+        <label class="check"
+          ><input type="checkbox" [(ngModel)]="publishConfirmed" [disabled]="pending()" />I reviewed
+          the saved draft and want to publish an immutable version</label
+        ><button
+          type="button"
+          (click)="publish()"
+          [disabled]="pending() || !publishConfirmed || draftDirty()"
+        >
+          Publish saved draft
+        </button>
+      }
+      @if (manage()) {
+        <label class="check"
+          ><input type="checkbox" [(ngModel)]="activationConfirmed" [disabled]="pending()" />Confirm
+          changing activation for future analysis</label
+        >
+        <div class="actions">
+          <button
+            type="button"
+            (click)="activate(!b.is_active)"
+            [disabled]="
+              pending() || !activationConfirmed || (!b.is_active && !b.active_version_uuid)
+            "
+          >
+            {{ b.is_active ? 'Deactivate' : 'Activate current version' }}
+          </button>
+          @if (selected(); as v) {
+            <button
+              type="button"
+              (click)="activate(true, v.uuid)"
+              [disabled]="pending() || !activationConfirmed"
+            >
+              Activate version {{ v.number }}
+            </button>
+          }
+        </div>
+      }
+    </section>
+    <section class="card">
+      <h2>Published version history</h2>
+      <p class="muted">
+        Publication freezes rules and taxonomy. Inspect older versions without editing them.
+      </p>
+      @for (v of history(); track v.uuid) {
+        <div class="rule-heading">
+          <span
+            >Version {{ v.number }} · {{ v.created_at }} ·
+            {{ v.uuid === b.active_version_uuid ? 'Active' : 'Historical' }}</span
+          ><button type="button" (click)="inspect(v)" [disabled]="pending()">
+            Inspect version {{ v.number }}
+          </button>
+        </div>
+      } @empty {
+        <p>No published versions.</p>
+      }
+      <nav class="pagination">
+        <button
+          type="button"
+          (click)="versions(-1)"
+          [disabled]="!versionPrevious || pending() || loading()"
+        >
+          Previous</button
+        ><span>Page {{ versionPage }}</span
+        ><button
+          type="button"
+          (click)="versions(1)"
+          [disabled]="!versionNext || pending() || loading()"
+        >
+          Next
+        </button>
+      </nav>
+    </section>
+  }
+</section>

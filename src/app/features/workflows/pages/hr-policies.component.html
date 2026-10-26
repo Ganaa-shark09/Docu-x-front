@@ -1,0 +1,444 @@
+<section class="page">
+  <header>
+    <div>
+      <h1>HR policies</h1>
+      <p class="muted">Published policy evidence, applicability and controlled review.</p>
+    </div>
+    <div class="actions">
+      <a routerLink="/ai/internal" [queryParams]="{ domain: 'hr_policy' }">Ask HR policy AI</a
+      ><button (click)="reload()" [disabled]="pending() || loading()">Refresh access</button>
+    </div>
+  </header>
+  @if (error()) {
+    <p class="error" role="alert">{{ error() }}</p>
+  }
+  @if (loading()) {
+    <p role="status">Loading readable policy versions…</p>
+  }
+  <section class="card">
+    <h2>Readable published versions</h2>
+    @if (!loading() && !versions().length) {
+      <p class="empty">No readable published policy versions are available.</p>
+    }
+    <div class="grid">
+      @for (version of versions(); track version.uuid) {
+        <article class="card">
+          <h3>{{ version.title }}</h3>
+          <p>
+            Version {{ version.number }} ·
+            {{ version.effective_status === 'effective' ? 'CURRENT' : 'HISTORICAL / SCHEDULED' }} ·
+            {{ label(version.effective_status) }}
+          </p>
+          <p>
+            Department: {{ version.department ?? 'Company-wide' }} · Employees:
+            {{ version.scope.employee_categories.join(', ') || 'All' }} · Locations:
+            {{ version.scope.locations.join(', ') || 'All' }}
+          </p>
+          <p>{{ version.effective_from }} — {{ version.effective_until || 'No end date' }}</p>
+          <p>Category: {{ version.category }}</p>
+          <button (click)="selectVersion(version.uuid)" [disabled]="pending()">
+            View version and evidence
+          </button>
+        </article>
+      }
+    </div>
+    <div class="pager">
+      <button (click)="move(-1)" [disabled]="!previous || loading() || pending()">Previous</button
+      ><span>Page {{ page }}</span
+      ><button (click)="move(1)" [disabled]="!next || loading() || pending()">Next</button>
+    </div>
+  </section>
+  <section class="card">
+    <h2>Resolve applicable policies</h2>
+    <p>
+      Applicability and precedence are evaluated by the server. Historical dates do not change
+      current publication.
+    </p>
+    <div class="grid">
+      <label
+        >Department<select [(ngModel)]="context.department">
+          <option [ngValue]="undefined">Authorized default scope</option>
+          @for (m of scopeDepartments(); track m.uuid) {
+            <option [ngValue]="m.department">{{ m.department_name }}</option>
+          }
+        </select></label
+      >
+      <label>As of date (blank for current)<input type="date" [(ngModel)]="context.as_of" /></label>
+      <label
+        >Policy category<select [(ngModel)]="context.category">
+          <option [ngValue]="undefined">All categories</option>
+          @for (c of choices('policy'); track c.uuid) {
+            <option [value]="c.code">{{ c.name }}</option>
+          }
+        </select></label
+      >
+      <label
+        >Employee category<select [(ngModel)]="context.employee_category">
+          <option [ngValue]="undefined">Unspecified</option>
+          @for (c of choices('employee'); track c.uuid) {
+            <option [value]="c.code">{{ c.name }}</option>
+          }
+        </select></label
+      >
+      <label
+        >Location<select [(ngModel)]="context.location">
+          <option [ngValue]="undefined">Unspecified</option>
+          @for (c of choices('location'); track c.uuid) {
+            <option [value]="c.code">{{ c.name }}</option>
+          }
+        </select></label
+      >
+    </div>
+    <button
+      (click)="resolve()"
+      [disabled]="pending() || resolving() || categoryNext || categoryLoading()"
+    >
+      Resolve applicability
+    </button>
+    @if (resolution(); as result) {
+      <h3>{{ label(result.status) }} · {{ label(result.mode) }}</h3>
+      <p>As of {{ result.as_of }}</p>
+      @if (result.reason) {
+        <p>{{ label(result.reason) }}</p>
+      }
+      @for (v of result.versions; track v.uuid) {
+        <button (click)="selectVersion(v.uuid)">
+          {{ v.title }} · Version {{ v.number }} · {{ label(v.effective_status) }}
+        </button>
+      }
+    }
+  </section>
+  @if (selected(); as version) {
+    <section class="card">
+      <h2>{{ version.title }} · Version {{ version.number }}</h2>
+      <p>
+        {{ label(version.status) }} ·
+        {{ version.effective_status === 'effective' ? 'CURRENT' : 'HISTORICAL / SCHEDULED' }} ·
+        {{ label(version.effective_status) }} · Revision {{ version.revision }}
+      </p>
+      <p>
+        Department: {{ version.department ?? 'Company-wide' }} · Supersedes:
+        {{ version.supersedes || 'None' }}
+      </p>
+      <p>Effective {{ version.effective_from }} — {{ version.effective_until || 'No end date' }}</p>
+      <p>
+        Employee categories: {{ version.scope.employee_categories.join(', ') || 'All' }} ·
+        Locations: {{ version.scope.locations.join(', ') || 'All' }}
+      </p>
+      <p>
+        Priority {{ version.priority }} · Source coverage
+        {{ version.coverage.complete ? 'Complete' : 'Incomplete' }}
+      </p>
+      @for (section of version.sections || []; track section.uuid) {
+        <article class="card">
+          <h3>{{ section.heading }}</h3>
+          <app-hr-evidence [evidence]="section.evidence" [versionUuid]="version.uuid" />
+          <p>
+            Page {{ section.evidence.page ?? 'Unavailable' }} · Offsets
+            {{ section.evidence.start }}–{{ section.evidence.end }} · {{ section.evidence.method }}
+          </p>
+        </article>
+      }
+      <div class="actions">
+        <a [routerLink]="['/documents/detail', version.document_uuid]">Open source document</a
+        ><a routerLink="/ai/internal" [queryParams]="{ domain: 'hr_policy', version: version.uuid }"
+          >Ask about this specific version (historical)</a
+        ><button (click)="export()" [disabled]="pending()">Request authenticated export</button
+        ><a [routerLink]="['/workflows/hr-policies', version.policy_uuid]"
+          >Policy version history</a
+        >
+      </div>
+      <label
+        >Compare with another readable version<select [(ngModel)]="compareUuid">
+          <option value="">Choose version</option>
+          @for (other of comparisonChoices(); track other.uuid) {
+            @if (other.uuid !== version.uuid) {
+              <option [value]="other.uuid">{{ other.title }} · Version {{ other.number }}</option>
+            }
+          }
+        </select></label
+      ><button (click)="compare()" [disabled]="!compareUuid || pending() || comparing()">
+        Compare versions
+      </button>
+      @if (comparison(); as result) {
+        <section>
+          <h3>Server comparison</h3>
+          <p>{{ result.interpretation }}</p>
+          <p>
+            Before: {{ result.effective_dates.before.join(' — ') }} · After:
+            {{ result.effective_dates.after.join(' — ') }}
+          </p>
+          @for (change of result.changes; track change.position) {
+            <article class="card">
+              <h4>{{ label(change.kind) }}</h4>
+              <div class="grid">
+                <div>
+                  <h5>Before</h5>
+                  @if (change.before; as before) {
+                    <app-hr-evidence
+                      [evidence]="before.evidence"
+                      [versionUuid]="result.left_version_uuid"
+                    />
+                  } @else {
+                    <p>No previous section</p>
+                  }
+                </div>
+                <div>
+                  <h5>After</h5>
+                  @if (change.after; as after) {
+                    <app-hr-evidence
+                      [evidence]="after.evidence"
+                      [versionUuid]="result.right_version_uuid"
+                    />
+                  } @else {
+                    <p>No new section</p>
+                  }
+                </div>
+              </div>
+            </article>
+          }
+        </section>
+      }
+      @if (canManageDepartment(version.department) && version.status === 'published') {
+        <label
+          ><input type="checkbox" [(ngModel)]="confirmed" />I confirm retirement. This does not
+          activate an older version.</label
+        ><button class="danger" (click)="retire()" [disabled]="pending() || !confirmed">
+          Retire version
+        </button>
+      }
+    </section>
+  }
+  @if (manager()) {
+    <section class="card">
+      <h2>Administrative drafts</h2>
+      <p>Draft access is separate from readable published policies.</p>
+      @for (item of policies(); track item.uuid) {
+        <button (click)="selectPolicy(item)" [disabled]="pending()">
+          {{ item.title }} · Revision {{ item.revision }}
+        </button>
+      }
+      <div class="pager">
+        <button
+          [disabled]="!draftPrevious || pending() || draftLoading()"
+          (click)="draftPage = draftPage - 1; loadDrafts()"
+        >
+          Previous drafts</button
+        ><button
+          [disabled]="!draftNext || pending() || draftLoading()"
+          (click)="draftPage = draftPage + 1; loadDrafts()"
+        >
+          Next drafts
+        </button>
+      </div>
+      <button (click)="newDraft()" [disabled]="pending()">New policy draft</button>
+      <fieldset [disabled]="pending() || (!!policy() && !canEditDraft())">
+        <div class="grid">
+          <label
+            >Title<input
+              [(ngModel)]="title"
+              [disabled]="!!policy() || pending()"
+              maxlength="200" /></label
+          ><label
+            >Code<input [(ngModel)]="code" [disabled]="!!policy() || pending()" maxlength="80"
+          /></label>
+          <label
+            >Category<select [(ngModel)]="category" [disabled]="!!policy() || pending()">
+              <option value="">Choose category</option>
+              @for (c of choices('policy'); track c.uuid) {
+                <option [value]="c.uuid">{{ c.name }}</option>
+              }
+            </select></label
+          >
+          <label
+            >Department<select [(ngModel)]="department" [disabled]="!!policy() || pending()">
+              @if (admin()) {
+                <option [ngValue]="null">Company-wide</option>
+              }
+              @for (m of availableDepartments(); track m.uuid) {
+                <option [ngValue]="m.department">{{ m.department_name }}</option>
+              }
+            </select></label
+          >
+          <label
+            >Source document<select [(ngModel)]="draft.document_uuid" [disabled]="pending()">
+              @if (draft.document_uuid && !sourceChoicePresent()) {
+                <option [value]="draft.document_uuid">Current source (not on this page)</option>
+              }
+              <option [ngValue]="null">Choose an accessible internal document</option>
+              @for (source of sources(); track source.uuid) {
+                <option [value]="source.uuid">
+                  {{ source.title || source.original_filename }} · {{ source.status }}
+                </option>
+              }
+            </select></label
+          >
+          <div class="actions">
+            <button
+              (click)="loadSources(sourcePage - 1)"
+              [disabled]="!sourcePrevious || pending() || sourceLoading()"
+            >
+              Previous sources</button
+            ><button
+              (click)="loadSources(sourcePage + 1)"
+              [disabled]="!sourceNext || pending() || sourceLoading()"
+            >
+              Next sources
+            </button>
+          </div>
+          <label
+            >Effective from<input
+              type="date"
+              [(ngModel)]="draft.effective_from"
+              [disabled]="pending()" /></label
+          ><label
+            >Effective until<input
+              type="date"
+              [(ngModel)]="draft.effective_until"
+              [disabled]="pending()"
+          /></label>
+          <label
+            >Priority<input
+              type="number"
+              min="-100"
+              max="100"
+              step="1"
+              [(ngModel)]="draft.priority"
+              [disabled]="pending()"
+          /></label>
+          <label
+            >Employee categories<select
+              multiple
+              [(ngModel)]="draft.employee_categories"
+              [disabled]="pending()"
+            >
+              @for (c of choices('employee'); track c.uuid) {
+                <option [value]="c.code">{{ c.name }}</option>
+              }
+            </select></label
+          >
+          <label
+            >Locations<select multiple [(ngModel)]="draft.locations" [disabled]="pending()">
+              @for (c of choices('location'); track c.uuid) {
+                <option [value]="c.code">{{ c.name }}</option>
+              }
+            </select></label
+          >
+          <label
+            >Supersedes published version<select
+              [(ngModel)]="draft.supersedes"
+              [disabled]="pending()"
+            >
+              <option [ngValue]="null">None</option>
+              @for (v of supersessionChoices(); track v.uuid) {
+                <option [value]="v.uuid">{{ v.title }} · Version {{ v.number }}</option>
+              }
+            </select></label
+          >
+        </div>
+      </fieldset>
+      <button
+        (click)="save()"
+        [disabled]="pending() || categoryNext || categoryLoading() || !canEditDraft()"
+      >
+        Save draft
+      </button>
+      @if (policy(); as item) {
+        <button (click)="index()" [disabled]="pending()">Index source</button>
+        @if (item.review_run_uuid) {
+          <a [routerLink]="['/workflows/runs', item.review_run_uuid]"
+            >Open review and approval workflow</a
+          >
+        }
+        @if (reviewRun(); as run) {
+          <p>
+            Review state: {{ label(run.status) }} · Step: {{ run.current_step || 'Unavailable' }} ·
+            Revision {{ run.revision }}
+          </p>
+        }
+        <h3>Submit for review</h3>
+        <p>
+          Approval in the existing workflow publishes a version. Review all source, scope and date
+          settings before submitting.
+        </p>
+        <h4>Reviewer</h4>
+        <app-workflow-assignment
+          [memberships]="memberships()"
+          [disabled]="pending()"
+          (changed)="reviewer = $event"
+        />
+        <h4>Approver</h4>
+        <app-workflow-assignment
+          [memberships]="memberships()"
+          [disabled]="pending()"
+          (changed)="approver = $event"
+        />
+        <label
+          ><input type="checkbox" [(ngModel)]="confirmed" [disabled]="pending()" />I confirm
+          submission for review and eventual publication through approval.</label
+        ><button
+          (click)="submit()"
+          [disabled]="pending() || !canSubmitDraft() || !confirmed || !reviewer || !approver"
+        >
+          Submit for review
+        </button>
+      }
+    </section>
+  }
+  <section class="card">
+    <h2>Policy taxonomy</h2>
+    @for (c of categories(); track c.uuid) {
+      <p>
+        {{ c.name }} · {{ label(c.kind) }} · {{ c.scope }} ·
+        {{ c.is_active ? 'Active' : 'Inactive' }}
+        @if (admin() && c.scope === 'company' && c.is_active) {
+          <button (click)="deactivate(c)" [disabled]="pending()">Deactivate</button>
+        }
+      </p>
+    }
+    @if (categoryNext) {
+      <button (click)="loadCategories(categoryPage + 1)" [disabled]="pending()">
+        Load more categories
+      </button>
+    }
+    @if (admin()) {
+      <div class="grid">
+        <label
+          >Kind<select [(ngModel)]="taxonomyKind">
+            <option value="policy">Policy</option>
+            <option value="employee">Employee</option>
+            <option value="location">Location</option>
+          </select></label
+        ><label>Name<input [(ngModel)]="taxonomyName" maxlength="150" /></label
+        ><label>Code<input [(ngModel)]="taxonomyCode" maxlength="80" /></label>
+      </div>
+      <button (click)="createCategory()" [disabled]="pending()">Create company category</button>
+    }
+  </section>
+  @if (admin() && precedence(); as value) {
+    <section class="card">
+      <h2>Company precedence</h2>
+      <p>Order the server's applicability dimensions from first to last.</p>
+      @for (dimension of value.precedence; track dimension; let i = $index) {
+        <p>
+          {{ i + 1 }}. {{ label(dimension) }}
+          <button
+            (click)="reorder(i, -1)"
+            [disabled]="pending() || i === 0"
+            aria-label="Move precedence earlier"
+          >
+            ↑
+          </button>
+          <button
+            (click)="reorder(i, 1)"
+            [disabled]="pending() || i === value.precedence.length - 1"
+            aria-label="Move precedence later"
+          >
+            ↓
+          </button>
+        </p>
+      }
+      <button (click)="savePrecedence()" [disabled]="pending()">Save precedence</button>
+    </section>
+  }
+</section>

@@ -14,68 +14,58 @@ export interface ProcessingDocumentSeed {
 
   status?: string | null;
 
-  processing_stage?:
-    | DocumentProcessingStage
-    | null;
+  processing_stage?: DocumentProcessingStage | null;
 
-  processing_progress?:
-    | number
-    | null;
+  processing_progress?: number | null;
 
   is_ai_ready?: boolean;
   is_indexed?: boolean;
   is_ocr_completed?: boolean;
 
-  processing_error?:
-    | string
-    | null;
+  processing_error?: string | null;
 }
 
 @Injectable({
   providedIn: 'root',
 })
 export class DocumentProcessingStore {
-  private readonly realtime =
-    inject(DocumentRealtimeService);
+  private readonly realtime = inject(DocumentRealtimeService);
 
-  private readonly states =
-    new Map<
-      string,
-      DocumentProcessingState
-    >();
+  private readonly states = new Map<string, DocumentProcessingState>();
 
-  private readonly statesSubject =
-    new BehaviorSubject<
-      Map<
-        string,
-        DocumentProcessingState
-      >
-    >(
-      new Map(),
-    );
+  private readonly statesSubject = new BehaviorSubject<Map<string, DocumentProcessingState>>(
+    new Map(),
+  );
 
-  readonly states$ =
-    this.statesSubject.asObservable();
+  readonly states$ = this.statesSubject.asObservable();
 
   constructor() {
-    this.realtime.events$
-      .subscribe((event) => {
-        if (
-          event.event !==
-            'document.processing.snapshot' &&
-          event.event !==
-            'document.processing.updated'
-        ) {
-          return;
-        }
-
-        this.applyEvent(event);
+    this.realtime.revoked$.subscribe((uuid) => {
+      this.states.set(uuid, {
+        documentUuid: uuid,
+        stage: 'failed',
+        status: 'unavailable',
+        progress: 0,
+        isAiReady: false,
+        isIndexed: false,
+        isOcrCompleted: false,
+        error: 'Document access is no longer available.',
       });
+      this.emit();
+    });
+    this.realtime.events$.subscribe((event) => {
+      if (
+        event.event !== 'document.processing.snapshot' &&
+        event.event !== 'document.processing.updated'
+      ) {
+        return;
+      }
+
+      this.applyEvent(event);
+    });
   }
 
-  seedDocuments(
-    documents: ProcessingDocumentSeed[],
-  ): void {
+  seedDocuments(documents: ProcessingDocumentSeed[]): void {
     let changed = false;
 
     for (const document of documents) {
@@ -83,60 +73,31 @@ export class DocumentProcessingStore {
         continue;
       }
 
-      const previous =
-        this.states.get(
-          document.uuid,
-        );
+      if (this.states.get(document.uuid)?.status === 'unavailable') continue;
+      const previous = this.states.get(document.uuid);
 
       const stage =
-        document.processing_stage ||
-        this.inferStage(
-          document.status,
-          document.is_ai_ready,
-        );
+        document.processing_stage || this.inferStage(document.status, document.is_ai_ready);
 
-      const next:
-        DocumentProcessingState = {
-          documentUuid:
-            document.uuid,
+      const next: DocumentProcessingState = {
+        documentUuid: document.uuid,
 
-          stage,
+        stage,
 
-          status:
-            document.status ||
-            previous?.status ||
-            'processing',
+        status: document.status || previous?.status || 'processing',
 
-          progress:
-            document.processing_progress ??
-            previous?.progress ??
-            this.defaultProgress(stage),
+        progress: document.processing_progress ?? previous?.progress ?? this.defaultProgress(stage),
 
-          isAiReady:
-            document.is_ai_ready ??
-            previous?.isAiReady ??
-            false,
+        isAiReady: document.is_ai_ready ?? previous?.isAiReady ?? false,
 
-          isIndexed:
-            document.is_indexed ??
-            previous?.isIndexed ??
-            false,
+        isIndexed: document.is_indexed ?? previous?.isIndexed ?? false,
 
-          isOcrCompleted:
-            document.is_ocr_completed ??
-            previous?.isOcrCompleted ??
-            false,
+        isOcrCompleted: document.is_ocr_completed ?? previous?.isOcrCompleted ?? false,
 
-          error:
-            document.processing_error ??
-            previous?.error ??
-            null,
-        };
+        error: document.processing_error ?? previous?.error ?? null,
+      };
 
-      this.states.set(
-        document.uuid,
-        next,
-      );
+      this.states.set(document.uuid, next);
 
       changed = true;
     }
@@ -146,55 +107,26 @@ export class DocumentProcessingStore {
     }
   }
 
-  subscribeDocuments(
-    documents: ProcessingDocumentSeed[],
-  ): void {
-    this.seedDocuments(
-      documents,
-    );
+  subscribeDocuments(documents: ProcessingDocumentSeed[]): void {
+    this.seedDocuments(documents);
 
-    this.realtime.subscribeDocuments(
-      documents
-        .map(
-          (document) =>
-            document.uuid,
-        )
-        .filter(Boolean),
-    );
+    this.realtime.subscribeDocuments(documents.map((document) => document.uuid).filter(Boolean));
   }
 
-  getState(
-    documentUuid: string,
-  ):
-    | DocumentProcessingState
-    | undefined {
-    return this.states.get(
-      documentUuid,
-    );
+  getState(documentUuid: string): DocumentProcessingState | undefined {
+    return this.states.get(documentUuid);
   }
 
-  isReady(
-    documentUuid: string,
-  ): boolean {
-    const state =
-      this.getState(documentUuid);
+  isReady(documentUuid: string): boolean {
+    const state = this.getState(documentUuid);
 
-    return (
-      state?.stage === 'ready' ||
-      state?.isAiReady === true
-    );
+    return state?.stage === 'ready' || state?.isAiReady === true;
   }
 
-  isFailed(
-    documentUuid: string,
-  ): boolean {
-    const state =
-      this.getState(documentUuid);
+  isFailed(documentUuid: string): boolean {
+    const state = this.getState(documentUuid);
 
-    return (
-      state?.stage === 'failed' ||
-      state?.status === 'failed'
-    );
+    return state?.stage === 'failed' || state?.status === 'failed';
   }
 
   clear(): void {
@@ -202,92 +134,47 @@ export class DocumentProcessingStore {
     this.emit();
   }
 
-  private applyEvent(
-    event: DocumentProcessingEvent,
-  ): void {
+  private applyEvent(event: DocumentProcessingEvent): void {
     if (!event.document_uuid) {
       return;
     }
 
-    const previous =
-      this.states.get(
-        event.document_uuid,
-      );
+    const previous = this.states.get(event.document_uuid);
+    if (previous?.status === 'unavailable') return;
 
-    const stage =
-      event.stage ||
-      this.inferStage(
-        event.status,
-        event.is_ai_ready,
-      );
+    const stage = event.stage || this.inferStage(event.status, event.is_ai_ready);
 
-    const next:
-      DocumentProcessingState = {
-        documentUuid:
-          event.document_uuid,
+    const next: DocumentProcessingState = {
+      documentUuid: event.document_uuid,
 
-        stage,
+      stage,
 
-        status:
-          event.status ||
-          previous?.status ||
-          'processing',
+      status: event.status || previous?.status || 'processing',
 
-        progress:
-          event.progress ??
-          previous?.progress ??
-          this.defaultProgress(stage),
+      progress: event.progress ?? previous?.progress ?? this.defaultProgress(stage),
 
-        isAiReady:
-          event.is_ai_ready ??
-          previous?.isAiReady ??
-          false,
+      isAiReady: event.is_ai_ready ?? previous?.isAiReady ?? false,
 
-        isIndexed:
-          event.is_indexed ??
-          previous?.isIndexed ??
-          false,
+      isIndexed: event.is_indexed ?? previous?.isIndexed ?? false,
 
-        isOcrCompleted:
-          event.is_ocr_completed ??
-          previous?.isOcrCompleted ??
-          false,
+      isOcrCompleted: event.is_ocr_completed ?? previous?.isOcrCompleted ?? false,
 
-        message:
-          event.message ??
-          previous?.message,
+      message: event.message ?? previous?.message,
 
-        error:
-          event.error ??
-          previous?.error ??
-          null,
+      error: event.error ?? previous?.error ?? null,
 
-        updatedAt:
-          event.updated_at ??
-          event.occurred_at ??
-          previous?.updatedAt,
-      };
+      updatedAt: event.updated_at ?? event.occurred_at ?? previous?.updatedAt,
+    };
 
-    this.states.set(
-      event.document_uuid,
-      next,
-    );
+    this.states.set(event.document_uuid, next);
 
     this.emit();
   }
 
-  private inferStage(
-    status?: string | null,
-    isAiReady?: boolean,
-  ): DocumentProcessingStage {
-    const normalized =
-      String(status || '')
-        .toLowerCase();
+  private inferStage(status?: string | null, isAiReady?: boolean): DocumentProcessingStage {
+    const normalized = String(status || '').toLowerCase();
 
-    if (
-      isAiReady ||
-      normalized === 'ready'
-    ) {
+    if (isAiReady || normalized === 'ready') {
       return 'ready';
     }
 
@@ -295,19 +182,14 @@ export class DocumentProcessingStore {
       return 'failed';
     }
 
-    if (
-      normalized === 'uploaded' ||
-      normalized === 'queued'
-    ) {
+    if (normalized === 'uploaded' || normalized === 'queued') {
       return 'queued';
     }
 
     return 'extracting';
   }
 
-  private defaultProgress(
-    stage: DocumentProcessingStage,
-  ): number {
+  private defaultProgress(stage: DocumentProcessingStage): number {
     switch (stage) {
       case 'queued':
         return 0;
@@ -339,8 +221,6 @@ export class DocumentProcessingStore {
   }
 
   private emit(): void {
-    this.statesSubject.next(
-      new Map(this.states),
-    );
+    this.statesSubject.next(new Map(this.states));
   }
 }

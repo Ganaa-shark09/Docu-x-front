@@ -1,0 +1,70 @@
+:host {
+  display: block;
+  min-width: 0;
+  color: var(--app-text);
+}
+.compliance-tabs {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin: 1rem 0;
+}
+.compliance-tabs button[aria-pressed='true'] {
+  background: var(--app-selected);
+  color: var(--app-primary);
+  border-color: var(--app-border-strong);
+}
+.requirement,
+.evidence,
+.decision,
+.version {
+  border: 1px solid var(--app-border);
+  background: var(--app-surface-soft);
+  border-radius: 10px;
+  padding: 1rem;
+  margin: 0.75rem 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.reference {
+  font-size: 0.88rem;
+  overflow-wrap: anywhere;
+  color: var(--app-text-muted);
+}
+.review-form {
+  border: 2px solid var(--app-border-strong);
+}
+blockquote {
+  border-inline-start: 3px solid var(--app-border-strong);
+  padding-inline-start: 1rem;
+  margin: 1rem 0;
+  overflow-wrap: anywhere;
+}
+pre {
+  max-height: 60vh;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--app-surface-soft);
+  color: var(--app-text);
+  padding: 1rem;
+}
+@media (max-width: 760px) {
+  .compliance-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .compliance-tabs button {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .requirement,
+  .evidence,
+  .decision,
+  .version {
+    padding: 0.75rem;
+  }
+  .actions > * {
+    max-width: 100%;
+  }
+}

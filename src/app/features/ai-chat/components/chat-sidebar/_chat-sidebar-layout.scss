@@ -1,0 +1,207 @@
+@mixin layout {
+  .ai-chat-workspace,
+  .external-ai-workspace {
+    --rail: 64px;
+    grid-template-columns: var(--rail) minmax(0, 1fr);
+  }
+  .external-ai-workspace--documents-open {
+    grid-template-columns: var(--rail) minmax(0, 1fr) 360px;
+  }
+  .chat-sidebar {
+    display: grid;
+    min-width: 0;
+    overflow: hidden;
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    .chat-brand {
+      padding: 14px;
+      gap: 12px;
+    }
+    .chat-brand > div:first-child {
+      flex: 0 0 36px;
+    }
+    .chat-brand > div:last-child {
+      min-width: 180px;
+    }
+    .chat-brand > div:last-child,
+    app-conversation-list,
+    .chat-action-label {
+      opacity: 0;
+      transition: opacity 200ms ease;
+    }
+    app-conversation-list {
+      min-height: 0;
+      min-width: 280px;
+      pointer-events: none;
+    }
+    .chat-action {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: calc(100% - 24px);
+      min-height: 42px;
+      margin: 0 12px 8px;
+      padding: 10px;
+      border: 1px solid var(--app-border);
+      border-radius: 12px;
+      background: var(--app-sidebar);
+      color: var(--app-text);
+      cursor: pointer;
+      text-align: left;
+      white-space: nowrap;
+    }
+    .chat-action svg {
+      width: 18px;
+      height: 18px;
+      flex: 0 0 18px;
+    }
+    .chat-footer {
+      padding: 12px;
+    }
+    .chat-footer .chat-action {
+      width: 100%;
+      margin: 0;
+    }
+    .chat-action:hover {
+      background: var(--app-hover);
+    }
+    button:focus-visible {
+      outline: 2px solid var(--app-text);
+      outline-offset: -3px;
+    }
+  }
+  .chat-navigation-toggle,
+  .chat-navigation-backdrop {
+    display: none;
+  }
+  @media (min-width: 761px) {
+    .chat-sidebar {
+      width: var(--rail);
+      position: relative;
+      z-index: 110;
+      transition: width var(--app-motion-sidebar) var(--app-ease);
+    }
+    .chat-sidebar:has(:focus-visible) {
+      width: 300px;
+    }
+    .chat-sidebar:has(:focus-visible) {
+      .chat-brand > div:last-child,
+      app-conversation-list,
+      .chat-action-label {
+        opacity: 1;
+      }
+      app-conversation-list {
+        pointer-events: auto;
+      }
+    }
+  }
+  @media (hover: hover) and (pointer: fine) and (min-width: 761px) {
+    .chat-sidebar:hover {
+      width: 300px;
+    }
+    .chat-sidebar:hover {
+      .chat-brand > div:last-child,
+      app-conversation-list,
+      .chat-action-label {
+        opacity: 1;
+      }
+      app-conversation-list {
+        pointer-events: auto;
+      }
+    }
+  }
+  @media (max-width: 1024px) {
+    .external-ai-workspace--documents-open {
+      grid-template-columns: var(--rail) minmax(0, 1fr);
+    }
+    .external-documents-panel {
+      width: min(360px, calc(100vw - 64px));
+    }
+  }
+  @media (max-width: 760px), (hover: none) {
+    .ai-chat-workspace,
+    .external-ai-workspace,
+    .external-ai-workspace--documents-open {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .chat-sidebar {
+      position: absolute;
+      inset: 0 auto 0 0;
+      z-index: 130;
+      width: min(300px, calc(100vw - 64px));
+      transform: translateX(-100%);
+      visibility: hidden;
+      transition:
+        transform var(--app-motion-sidebar) var(--app-ease),
+        visibility var(--app-motion-sidebar);
+      .chat-brand > div:last-child,
+      app-conversation-list,
+      .chat-action-label {
+        opacity: 1;
+      }
+      app-conversation-list {
+        min-width: 0;
+        pointer-events: auto;
+      }
+    }
+    .chat-navigation-open .chat-sidebar {
+      transform: translateX(0);
+      visibility: visible;
+    }
+    .chat-navigation-toggle {
+      display: grid;
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      z-index: 140;
+      width: 40px;
+      height: 40px;
+      place-items: center;
+      border: 1px solid var(--app-border);
+      border-radius: 12px;
+      background: var(--app-sidebar);
+      color: var(--app-text);
+      cursor: pointer;
+      svg {
+        width: 20px;
+        height: 20px;
+      }
+    }
+    .chat-navigation-open .chat-navigation-toggle {
+      left: auto;
+      right: 12px;
+    }
+    .chat-navigation-backdrop {
+      display: block;
+      position: absolute;
+      inset: 0;
+      z-index: 120;
+      border: 0;
+      background: rgba(0, 0, 0, 0.45);
+      cursor: pointer;
+    }
+    .ai-scope-tabs,
+    .external-ai-scope-tabs {
+      left: 50%;
+      transform: translateX(-50%);
+      top: 12px;
+      width: min(250px, calc(100% - 120px));
+    }
+    .ai-scope-tabs button,
+    .external-ai-scope-tabs button {
+      padding-inline: 6px;
+      font-size: 12px;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ai-chat-workspace,
+    .external-ai-workspace,
+    .chat-sidebar {
+      transition: none;
+    }
+    .chat-sidebar .chat-action-label,
+    .chat-sidebar app-conversation-list,
+    .chat-sidebar .chat-brand > div:last-child {
+      transition: none;
+    }
+  }
+}

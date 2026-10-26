@@ -1,587 +1,543 @@
 :host {
   display: block;
-  min-height: 100vh;
+  min-height: 100dvh;
 }
-
 .docux-shell {
-  --sidebar-width: 258px;
-  --sidebar-collapsed-width: 64px;
-
-  min-height: 100vh;
-  background: var(--app-bg, #f8fafc);
-  color: var(--app-text, #111827);
+  --sidebar-width: 280px;
+  --sidebar-collapsed-width: 72px;
+  min-height: 100dvh;
+  background: var(--app-workspace);
+  color: var(--app-text);
 }
-
 .docux-sidebar {
   position: fixed;
   inset: 0 auto 0 0;
   z-index: 45;
   display: grid;
+  grid-template-rows: 76px minmax(0, 1fr);
   width: var(--sidebar-collapsed-width);
-  grid-template-rows: auto 1fr;
+  background: var(--app-sidebar);
+  border-right: 1px solid var(--app-border);
+  box-shadow: var(--app-shadow-raised);
   overflow: hidden;
-  border-right: 1px solid var(--app-border, rgba(148, 163, 184, 0.24));
-  background: var(--app-surface, #ffffff);
-  color: var(--app-text, #111827);
-  transition:
-    width 520ms cubic-bezier(0.16, 1, 0.3, 1),
-    box-shadow 520ms ease,
-    background 240ms ease;
+  transition: width var(--app-motion-sidebar) var(--app-ease);
 }
-
-.docux-sidebar:hover {
-  width: var(--sidebar-width);
-  box-shadow: 14px 0 34px rgba(15, 23, 42, 0.10);
-}
-
-.docux-main {
-  min-height: 100vh;
-  padding-left: var(--sidebar-collapsed-width);
-  transition: padding-left 520ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.docux-sidebar:hover ~ .docux-main {
-  padding-left: var(--sidebar-width);
-}
-
 .docux-brand {
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 102px;
-  border-bottom: 1px solid var(--app-border, rgba(148, 163, 184, 0.24));
-  padding: 20px 11px;
+  padding: 16px;
+  border-bottom: 1px solid var(--app-border);
+  min-width: 0;
 }
-
 .docux-brand__mark {
   display: grid;
-  width: 42px;
-  height: 42px;
-  flex: 0 0 auto;
   place-items: center;
-  border: 1px solid var(--app-border, rgba(148, 163, 184, 0.28));
-  border-radius: 14px;
-  background: var(--app-surface-soft, rgba(148, 163, 184, 0.12));
-  color: var(--app-text, #111827);
-  font-size: 14px;
-  font-weight: 600;
+  flex: 0 0 38px;
+  height: 38px;
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  background: var(--app-selected);
+  color: var(--app-primary);
+  font-weight: 750;
+  font-size: 17px;
 }
-
 .docux-brand__text {
   display: grid;
-  min-width: 0;
-  gap: 4px;
-  opacity: 0;
-  transform: translateX(-12px);
-  transition:
-    opacity 320ms ease 110ms,
-    transform 320ms ease 110ms;
+  flex-shrink: 0;
+  width: 205px;
+  gap: 2px;
 }
-
-.docux-sidebar:hover .docux-brand__text {
-  opacity: 1;
-  transform: translateX(0);
-}
-
 .docux-brand__text strong {
-  overflow: hidden;
-  color: var(--app-text, #111827);
-  font-size: 20px;
-  font-weight: 600;
+  font-size: 17px;
+  font-weight: 700;
   letter-spacing: -0.02em;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
-
 .docux-brand__text small {
-  overflow: hidden;
-  color: var(--app-text-muted, #64748b);
-  font-size: 14px;
-  font-weight: 400;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  color: var(--app-text-muted);
+  font-size: 11px;
 }
-
 .docux-sidebar__nav {
   display: grid;
   align-content: start;
-  gap: 7px;
-  padding: 16px 9px;
+  gap: 6px;
+  padding: 16px 10px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
 }
-
+.docux-sidebar__nav::-webkit-scrollbar {
+  display: none;
+}
 .docux-sidebar__link {
   display: flex;
   align-items: center;
-  gap: 13px;
+  gap: 12px;
   min-height: 44px;
+  padding: 6px 8px;
   border: 1px solid transparent;
-  border-radius: 13px;
-  padding: 0 8px;
-  color: var(--app-text, #111827);
+  border-radius: 10px;
+  color: var(--app-text-muted);
   text-decoration: none;
+  width: 100%;
+  text-align: left;
+  background: transparent;
   transition:
-    background 180ms ease,
-    border-color 180ms ease,
-    color 180ms ease;
+    background-color var(--app-motion-fast) var(--app-ease),
+    color var(--app-motion-fast) var(--app-ease);
 }
-
 .docux-sidebar__link:hover {
-  border-color: var(--app-border, rgba(148, 163, 184, 0.24));
-  background: var(--app-surface-soft, rgba(148, 163, 184, 0.12));
+  background: var(--app-hover);
+  color: var(--app-text);
 }
-
 .docux-sidebar__link.is-active {
-  border-color: var(--app-border, rgba(148, 163, 184, 0.28));
-  background: var(--app-surface-soft, rgba(148, 163, 184, 0.14));
-  color: var(--app-text, #111827);
+  background: var(--app-selected);
+  color: var(--app-primary);
+  border-color: var(--app-border);
 }
-
 .docux-sidebar__icon {
   display: grid;
+  place-items: center;
   width: 32px;
   height: 32px;
-  flex: 0 0 auto;
-  place-items: center;
-  border-radius: 11px;
-  background: var(--app-bg, #f8fafc);
-  color: var(--app-text, #111827);
+  flex: 0 0 32px;
 }
-
 .docux-sidebar__icon svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.docux-sidebar__label {
+  white-space: nowrap;
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+}
+.docux-brand__text,
+.docux-sidebar__label,
+.docux-workflow-chevron {
+  opacity: 0;
+  transition: opacity var(--app-motion-fast) var(--app-ease);
+}
+.docux-workflow-chevron {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  flex: 0 0 16px;
+  transition:
+    transform var(--app-motion) var(--app-ease),
+    opacity var(--app-motion-fast);
+}
+.docux-workflow-chevron svg {
   width: 16px;
   height: 16px;
   fill: none;
   stroke: currentColor;
-  stroke-width: 1.85;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  stroke-width: 1.8;
 }
-
-.docux-sidebar__label {
-  overflow: hidden;
-  color: var(--app-text, #111827);
-  font-size: 15px;
-  font-weight: 500;
+.docux-workflow-chevron.is-open {
+  transform: rotate(90deg);
+}
+.docux-workflow-dropdown {
+  display: grid;
+  grid-template-rows: 0fr;
   opacity: 0;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  transform: translateX(-12px);
   transition:
-    opacity 320ms ease 110ms,
-    transform 320ms ease 110ms;
+    grid-template-rows var(--app-motion) var(--app-ease),
+    opacity var(--app-motion) var(--app-ease);
 }
-
-.docux-sidebar:hover .docux-sidebar__label {
+.docux-workflow-dropdown.is-open {
+  grid-template-rows: 1fr;
   opacity: 1;
-  transform: translateX(0);
 }
-
+.docux-workflow-dropdown__clip {
+  min-height: 0;
+  overflow: hidden;
+}
+.docux-workflow-menu {
+  display: grid;
+  gap: 2px;
+  padding: 6px 0 6px 22px;
+  margin-left: 14px;
+  border-left: 1px solid var(--app-border);
+}
+.docux-workflow-menu a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 38px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  color: var(--app-text-muted);
+  text-decoration: none;
+  font-size: 12px;
+}
+.docux-workflow-menu a:hover,
+.docux-workflow-menu a.is-active {
+  background: var(--app-hover);
+  color: var(--app-text);
+}
+.docux-workflow-menu small {
+  font-size: 10px;
+  color: var(--app-text-soft);
+}
+.docux-workflow-planned {
+  padding: 8px 10px;
+  color: var(--app-text-muted);
+  font-size: 11px;
+}
+.docux-main {
+  min-width: 0;
+  min-height: 100dvh;
+  padding-left: var(--sidebar-collapsed-width);
+  transition: padding-left var(--app-motion-sidebar) var(--app-ease);
+}
 .docux-header {
   position: sticky;
   top: 0;
   z-index: 20;
   display: flex;
-  min-height: 104px;
   align-items: center;
   justify-content: space-between;
-  gap: 24px;
-  border-bottom: 1px solid var(--app-border, rgba(148, 163, 184, 0.24));
-  background: color-mix(in srgb, var(--app-bg, #ffffff) 90%, transparent);
-  padding: 22px 32px;
-  backdrop-filter: blur(14px);
+  gap: 16px;
+  min-height: 76px;
+  padding: 12px 28px;
+  border-bottom: 1px solid var(--app-border);
+  background: var(--app-workspace);
 }
-
 .docux-header h2 {
   margin: 0;
-  color: var(--app-text, #111827);
-  font-size: 25px;
-  font-weight: 700;
-  letter-spacing: -0.03em;
+  font-size: 18px;
+  font-weight: 650;
+  letter-spacing: -0.025em;
 }
-
 .docux-header p {
-  margin: 6px 0 0;
-  color: var(--app-text-muted, #64748b);
-  font-size: 15px;
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--app-text-muted);
 }
-
 .docux-header__actions {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
 }
-
 .docux-header__user {
   display: grid;
-  gap: 2px;
+  gap: 1px;
+  padding-right: 12px;
+  border-right: 1px solid var(--app-border);
   text-align: right;
 }
-
 .docux-header__user strong {
-  color: var(--app-text, #111827);
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 650;
 }
-
 .docux-header__user span {
-  color: var(--app-text-muted, #64748b);
-  font-size: 13px;
+  font-size: 11px;
+  color: var(--app-text-muted);
 }
-
-.docux-header__logout {
-  min-height: 44px;
-  border: 1px solid var(--app-border, rgba(148, 163, 184, 0.28));
-  border-radius: 14px;
-  background: var(--app-surface, #ffffff);
-  padding: 0 16px;
-  color: var(--app-text, #111827);
-  cursor: pointer;
-  font-weight: 500;
-}
-
-.docux-header__logout:hover {
-  background: var(--app-surface-soft, rgba(148, 163, 184, 0.12));
-}
-
 .docux-content {
-  padding: 32px;
+  min-width: 0;
+  padding: 28px;
+  max-width: 1600px;
+  margin-inline: auto;
 }
-
-/* Floating DocuX AI launcher */
+.docux-mobile-toggle,
+.docux-nav-scrim {
+  display: none;
+}
 .docux-ai-fab {
   position: fixed;
   right: 24px;
   bottom: 24px;
-  z-index: 1200;
-  display: grid;
-  width: 58px;
-  height: 58px;
-  place-items: center;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  box-shadow: none;
-  cursor: pointer;
-  padding: 0;
-  transition:
-    transform 260ms ease,
-    filter 260ms ease;
-}
-
-.docux-ai-fab:hover {
-  transform: translateY(-2px) scale(1.04);
-  filter: drop-shadow(0 14px 28px rgba(0, 0, 0, 0.26));
-}
-
-.docux-ai-fab:focus-visible {
-  outline: 2px solid rgba(124, 92, 255, 0.72);
-  outline-offset: 4px;
-}
-
-.docux-ai-fab__glow {
-  display: none;
-}
-
-.docux-ai-fab__icon-stage {
-  position: relative;
-  display: grid;
-  width: 52px;
-  height: 52px;
-  place-items: center;
-  overflow: hidden;
-  border: 1px solid rgba(148, 163, 184, 0.28);
-  border-radius: 999px;
-  background: #09090b;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
-}
-
-.docux-ai-fab__icon-layer {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  opacity: 0;
-  transform: rotateY(70deg) scale(0.96);
-  backface-visibility: hidden;
-  pointer-events: none;
-  transition:
-    opacity 900ms ease,
-    transform 900ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.docux-ai-fab__icon-layer--active {
-  opacity: 1;
-  transform: rotateY(0deg) scale(1);
-}
-
-.docux-ai-fab__image {
-  display: block;
-  width: 39px;
-  height: 39px;
-  object-fit: contain;
-  filter: drop-shadow(0 0 7px rgba(124, 255, 190, 0.18));
-}
-
-.docux-ai-fab__emoji {
-  display: inline-flex;
+  z-index: 50;
+  display: flex;
   align-items: center;
   justify-content: center;
-  color: #ffffff;
-  font-size: 27px;
-  line-height: 1;
-}
-
-.docux-ai-fab__popup {
-  position: absolute;
-  right: 0;
-  bottom: calc(100% + 14px);
-  width: 218px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  background: rgba(12, 14, 22, 0.97);
-  box-shadow:
-    0 18px 42px rgba(0, 0, 0, 0.34),
-    0 0 0 1px rgba(124, 92, 255, 0.08);
-  padding: 13px 14px;
-  color: #f8fafc;
-  opacity: 0;
-  pointer-events: none;
-  text-align: left;
-  transform: translateY(8px);
-  transition:
-    opacity 260ms ease,
-    transform 260ms ease,
-    visibility 260ms ease;
-  visibility: hidden;
-}
-
-.docux-ai-fab:not(.docux-ai-fab--intro-active):hover .docux-ai-fab__popup,
-.docux-ai-fab:not(.docux-ai-fab--intro-active):focus-visible .docux-ai-fab__popup {
-  opacity: 1;
-  transform: translateY(0);
-  visibility: visible;
-}
-
-.docux-ai-fab__popup::after {
-  content: '';
-  position: absolute;
-  right: 21px;
-  bottom: -6px;
-  width: 12px;
-  height: 12px;
-  background: rgba(12, 14, 22, 0.97);
-  transform: rotate(45deg);
-  border-right: 1px solid rgba(255, 255, 255, 0.06);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.docux-ai-fab__popup-title {
-  display: block;
-  margin-bottom: 3px;
-  color: #ffffff;
-  font-size: 15px;
-  font-weight: 700;
-}
-
-.docux-ai-fab__popup-subtitle {
-  display: block;
-  color: rgba(226, 232, 240, 0.82);
+  gap: 8px;
+  min-width: 48px;
+  min-height: 48px;
+  padding: 12px 16px;
+  border: 1px solid var(--app-border-strong);
+  border-radius: 14px;
+  background: var(--app-raised);
+  color: var(--app-text);
+  box-shadow: var(--app-shadow-floating);
+  font-weight: 650;
   font-size: 12px;
-  line-height: 1.35;
+  transition: background-color var(--app-motion-fast);
 }
-
-/* First dashboard AI pointer popup */
+.docux-ai-fab:hover {
+  background: var(--app-hover);
+}
+.docux-ai-fab svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: var(--app-primary);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 .docux-ai-intro {
   position: fixed;
-  right: 92px;
-  bottom: 24px;
-  z-index: 1210;
-  pointer-events: auto;
+  right: 24px;
+  bottom: 88px;
+  z-index: 51;
+  max-width: calc(100vw - 32px);
 }
-
 .docux-ai-intro__card {
-  position: relative;
-  width: 294px;
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  border-radius: 18px;
-  background: rgba(12, 14, 22, 0.98);
-  box-shadow:
-    0 18px 44px rgba(0, 0, 0, 0.38),
-    0 0 0 1px rgba(124, 92, 255, 0.10);
-  padding: 15px;
-  color: #f8fafc;
-  animation: docux-ai-intro-enter 420ms cubic-bezier(0.16, 1, 0.3, 1);
+  width: 300px;
+  max-width: 100%;
+  padding: 20px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-lg);
+  background: var(--app-raised);
+  box-shadow: var(--app-shadow-floating);
 }
-
-.docux-ai-intro__card::after {
-  content: '';
-  position: absolute;
-  right: -6px;
-  bottom: 21px;
-  width: 12px;
-  height: 12px;
-  background: rgba(12, 14, 22, 0.98);
-  transform: rotate(45deg);
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  border-right: 1px solid rgba(255, 255, 255, 0.06);
-}
-
 .docux-ai-intro__tag {
-  display: inline-flex;
-  margin-bottom: 8px;
-  border-radius: 999px;
-  background: rgba(124, 92, 255, 0.22);
-  padding: 4px 8px;
-  color: #ddd6fe;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  color: var(--app-primary);
+  font-size: 12px;
+  font-weight: 650;
 }
-
 .docux-ai-intro__card strong {
   display: block;
-  color: #ffffff;
-  font-size: 17px;
-  font-weight: 800;
+  margin: 8px 0;
+  font-size: 16px;
 }
-
 .docux-ai-intro__card p {
-  margin: 7px 0 12px;
-  color: rgba(226, 232, 240, 0.84);
-  font-size: 12px;
-  line-height: 1.45;
+  color: var(--app-text-muted);
+  font-size: 13px;
 }
-
 .docux-ai-intro__actions {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+  margin-top: 16px;
 }
-
 .docux-ai-intro__actions button {
-  min-height: 34px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 999px;
-  background: transparent;
-  padding: 0 12px;
-  color: #f8fafc;
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 650;
+  padding: 8px 12px;
+  border: 1px solid var(--app-border-strong);
+  border-radius: 8px;
+  background: var(--app-surface);
+  color: var(--app-text);
 }
-
 .docux-ai-intro__actions .docux-ai-intro__primary {
-  border-color: rgba(124, 92, 255, 0.48);
-  background: rgba(124, 92, 255, 0.32);
+  background: var(--app-primary);
+  color: var(--app-on-primary);
 }
-
-@keyframes docux-ai-intro-enter {
-  from {
-    opacity: 0;
-    transform: translateX(10px) translateY(8px) scale(0.96);
+@media (min-width: 1025px) {
+  .docux-sidebar:has(:focus-visible) {
+    width: var(--sidebar-width);
   }
-
-  to {
+  .docux-sidebar:has(:focus-visible)
+    :is(.docux-brand__text, .docux-sidebar__label, .docux-workflow-chevron) {
     opacity: 1;
-    transform: translateX(0) translateY(0) scale(1);
+  }
+  .docux-sidebar:not(:hover):not(:has(:focus-visible)) .docux-workflow-dropdown {
+    grid-template-rows: 0fr;
+    opacity: 0;
   }
 }
-
-
-@media (prefers-reduced-motion: reduce) {
-  .docux-sidebar,
-  .docux-main,
-  .docux-brand__text,
-  .docux-sidebar__label,
-  .docux-ai-fab__icon-layer {
-    transition: none;
+@media (hover: hover) and (pointer: fine) and (min-width: 1025px) {
+  .docux-sidebar:hover {
+    width: var(--sidebar-width);
+  }
+  .docux-sidebar:hover :is(.docux-brand__text, .docux-sidebar__label, .docux-workflow-chevron) {
+    opacity: 1;
   }
 }
-
-@media (max-width: 920px) {
-  .docux-shell {
-    --sidebar-collapsed-width: 58px;
-    --sidebar-width: 230px;
+@media (max-width: 1024px), (hover: none) {
+  .docux-main {
+    padding-left: 0;
   }
-
-  .docux-brand {
-    min-height: 90px;
-    padding-inline: 8px;
+  .docux-sidebar {
+    width: min(300px, 85vw);
+    visibility: hidden;
+    transform: translateX(-100%);
+    transition:
+      transform var(--app-motion-sidebar) var(--app-ease),
+      visibility var(--app-motion-sidebar);
+    z-index: 60;
   }
-
-  .docux-brand__mark {
-    width: 40px;
+  .docux-sidebar.mobile-open {
+    visibility: visible;
+    transform: translateX(0);
+  }
+  .docux-sidebar :is(.docux-brand__text, .docux-sidebar__label, .docux-workflow-chevron) {
+    opacity: 1;
+  }
+  .docux-mobile-toggle {
+    display: grid;
+    place-items: center;
+    min-width: 40px;
     height: 40px;
+    padding: 6px;
+    border: 1px solid var(--app-border-strong);
+    border-radius: 8px;
+    background: var(--app-surface);
+    color: var(--app-text);
   }
-
-  .docux-sidebar__nav {
-    padding-inline: 7px;
+  .docux-nav-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 55;
+    border: 0;
+    background: rgb(0 0 0 / 40%);
   }
-
-  .docux-sidebar__icon {
-    width: 31px;
-    height: 31px;
-  }
-
+}
+@media (max-width: 600px) {
   .docux-header {
-    min-height: 88px;
-    padding: 18px 22px;
+    gap: 8px;
+    min-height: 68px;
+    padding: 12px 16px;
   }
-
+  .docux-header h2 {
+    font-size: 16px;
+  }
   .docux-header p,
   .docux-header__user {
     display: none;
   }
-
+  .docux-header__actions {
+    gap: 6px;
+    margin-left: auto;
+  }
   .docux-content {
-    padding: 22px;
+    padding: 20px 14px 84px;
+  }
+  .docux-header .ui-button {
+    padding-inline: 10px;
+    font-size: 12px;
   }
   .docux-ai-fab {
-    right: 18px;
-    bottom: 18px;
-    width: 50px;
-    height: 50px;
-  }
-
-  .docux-ai-fab__icon-stage {
-    width: 42px;
-    height: 42px;
-  }
-
-  .docux-ai-fab__image {
-    width: 31px;
-    height: 31px;
-  }
-
-  .docux-ai-fab__emoji {
-    font-size: 22px;
-  }
-
-  .docux-ai-fab__popup {
-    min-width: 160px;
+    right: 16px;
+    bottom: 16px;
+    min-height: 44px;
   }
 }
 
+@media (min-width: 1025px) {
+  .docux-shell:has(.docux-sidebar:has(:focus-visible)) .docux-main {
+    padding-left: var(--sidebar-width);
+  }
+}
+@media (hover: hover) and (pointer: fine) and (min-width: 1025px) {
+  .docux-shell:has(.docux-sidebar:hover) .docux-main {
+    padding-left: var(--sidebar-width);
+  }
+}
+
+.docux-route-status {
+  position: absolute;
+  bottom: 0;
+  right: 24px;
+  font-size: 11px;
+  color: var(--app-text-muted);
+}
+
+.docux-header__context {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--app-text-muted);
+}
+.docux-header__context strong {
+  font-weight: 550;
+  color: var(--app-text);
+}
+.docux-header {
+  min-height: 64px;
+  padding-block: 12px;
+}
+.docux-sidebar {
+  box-shadow: none;
+}
+.docux-brand__mark {
+  border-radius: 8px;
+}
+.docux-sidebar__icon {
+  background: transparent;
+  box-shadow: none;
+  border-radius: 6px;
+}
+.docux-header__user strong {
+  font-size: 13px;
+}
+.docux-header__user span {
+  font-size: 11px;
+}
+
+.docux-account {
+  position: relative;
+}
+.docux-account summary {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  cursor: pointer;
+  list-style: none;
+  padding: 4px;
+  border-radius: 6px;
+}
+.docux-account summary:focus-visible {
+  outline: 2px solid var(--app-focus);
+  outline-offset: 3px;
+}
+.docux-avatar {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--app-selected);
+  color: var(--app-primary);
+  font-weight: 650;
+}
+.docux-account__panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 12px);
+  min-width: 220px;
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--app-border);
+  background: var(--app-surface);
+  box-shadow: var(--app-shadow-floating);
+  border-radius: 8px;
+  z-index: 60;
+}
+.docux-account__panel strong {
+  font-size: 13px;
+}
+.docux-account__panel label {
+  font-size: 12px;
+  color: var(--app-text-muted);
+}
+.docux-account__panel select {
+  background: var(--app-surface);
+  color: var(--app-text);
+  padding: 8px;
+  border: 1px solid var(--app-border-strong);
+  border-radius: 6px;
+}
+.docux-account:not([open]) .docux-account__panel {
+  display: none;
+}
 @media (max-width: 640px) {
-  .docux-sidebar {
+  .docux-account .docux-header__user {
     display: none;
   }
-
-  .docux-main,
-  .docux-sidebar:hover ~ .docux-main {
-    padding-left: 0;
-  }
-
-  .docux-header {
-    display: grid;
-  }
-
-  .docux-header__actions {
-    justify-content: space-between;
-  }
-
-  .docux-content {
-    padding: 18px;
+  .docux-header__context {
+    gap: 6px;
+    font-size: 12px;
   }
 }
