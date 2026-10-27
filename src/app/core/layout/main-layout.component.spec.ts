@@ -159,6 +159,17 @@ describe('Workflow navigation disclosure', () => {
     group.dispatchEvent(leave);
     expect(c.adminMenuOpen()).toBe(false);
   });
+  it('places authorized administration at the bottom outside primary navigation', () => {
+    c.profile.set({ username: 'admin', role: 'company_admin', is_superuser: false });
+    fixture.detectChanges();
+    const sidebar = fixture.nativeElement.querySelector('#main-sidebar');
+    const primary = sidebar.querySelector('.docux-sidebar__nav');
+    const footer = sidebar.querySelector('.docux-sidebar__footer');
+    expect(footer).toBeTruthy();
+    expect(primary.contains(footer)).toBe(false);
+    expect(sidebar.lastElementChild).toBe(footer);
+    expect(footer.querySelector('#admin-menu-toggle')).toBeTruthy();
+  });
   it('supports click and Escape on the administration menu', () => {
     c.profile.set({ username: 'admin', role: 'company_admin', is_superuser: false });
     fixture.detectChanges();
@@ -171,4 +182,21 @@ describe('Workflow navigation disclosure', () => {
     fixture.detectChanges();
     expect(button.getAttribute('aria-expanded')).toBe('false');
   });
+  it('keeps privileged administration below the primary navigation in the bottom rail', () => {
+    c.profile.set({ username: 'admin', role: 'company_admin', is_superuser: false });
+    fixture.detectChanges();
+    const shell = fixture.nativeElement.querySelector('.docux-sidebar');
+    const primary = shell.querySelector('.docux-sidebar__nav');
+    const admin = shell.querySelector('.docux-sidebar__footer');
+    expect(primary).toBeTruthy();
+    expect(admin).toBeTruthy();
+    expect(primary.compareDocumentPosition(admin) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(admin.querySelector('#admin-menu-toggle')).toBeTruthy();
+    expect(primary.querySelector('#admin-menu-toggle')).toBeNull();
+  });
+  it('provides an actual document navigation shortcut instead of a fake search input', () => {
+    const link = fixture.nativeElement.querySelector('.docux-header__find');
+    expect(link.getAttribute('href')).toBe('/documents/internal');
+  });
+
 });

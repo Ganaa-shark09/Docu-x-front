@@ -10,6 +10,7 @@ import {
   signal,
 } from '@angular/core';
 import type { EChartsType } from 'echarts/core';
+import { ChartUpdateScheduler } from './chart-update-scheduler';
 @Component({
   selector: 'app-distribution-chart',
   standalone: true,
@@ -257,7 +258,7 @@ import type { EChartsType } from 'echarts/core';
 export class DistributionChartComponent implements AfterViewInit, OnChanges, OnDestroy {
   readonly chartUnavailable = signal(false);
   readonly kind = input<'donut' | 'line'>('donut');
-  readonly colors = ['#3b82f6', '#22c55e', '#f59e0b', '#8b5cf6', '#f43f5e', '#06b6d4', '#a3a3a3'];
+  readonly colors = ['#ed8055', '#72ad93', '#e1bd72', '#818fba', '#b88a9f', '#73a7af', '#888b91'];
   readonly total = computed(() => this.rows().reduce((sum, row) => sum + row.value, 0));
   percentage(value: number) {
     return this.total() ? Math.round((value / this.total()) * 1000) / 10 : 0;
@@ -285,6 +286,7 @@ export class DistributionChartComponent implements AfterViewInit, OnChanges, OnD
   private chart?: EChartsType;
   private resize?: ResizeObserver;
   private observer?: MutationObserver;
+  private updates?: ChartUpdateScheduler;
   private destroyed = false;
   async ngAfterViewInit() {
     if (!this.plot.nativeElement.clientWidth) return;
@@ -292,10 +294,11 @@ export class DistributionChartComponent implements AfterViewInit, OnChanges, OnD
       const { createPlot } = await import('./chart-runtime');
       if (this.destroyed) return;
       this.chart = createPlot(this.plot.nativeElement);
-      this.draw();
-      this.resize = new ResizeObserver(() => this.chart?.resize());
+      this.updates = new ChartUpdateScheduler(() => this.draw(), () => this.chart?.resize());
+      this.updates.requestRender();
+      this.resize = new ResizeObserver(() => this.updates?.requestResize());
       this.resize.observe(this.plot.nativeElement);
-      this.observer = new MutationObserver(() => this.draw());
+      this.observer = new MutationObserver(() => this.updates?.requestRender());
       this.observer.observe(document.documentElement, {
         attributes: true,
         attributeFilter: ['data-theme'],
@@ -306,7 +309,7 @@ export class DistributionChartComponent implements AfterViewInit, OnChanges, OnD
     }
   }
   ngOnChanges() {
-    this.draw();
+    this.updates?.requestRender();
   }
   private draw() {
     if (!this.chart) return;
@@ -315,7 +318,8 @@ export class DistributionChartComponent implements AfterViewInit, OnChanges, OnD
     if (this.kind() === 'donut') {
       this.chart.setOption(
         {
-          animation: !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+          animation: false,
+          stateAnimation: { duration: 0 },
           tooltip: { trigger: 'item', renderMode: 'richText', confine: true },
           series: [
             {
@@ -349,7 +353,8 @@ export class DistributionChartComponent implements AfterViewInit, OnChanges, OnD
     }
     this.chart.setOption(
       {
-        animation: !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+        animation: false,
+        stateAnimation: { duration: 0 },
         tooltip: { trigger: 'axis', renderMode: 'richText', confine: true },
         grid: { left: 8, right: 18, top: 24, bottom: 20, containLabel: true },
         xAxis: {
@@ -397,6 +402,7 @@ export class DistributionChartComponent implements AfterViewInit, OnChanges, OnD
   }
   ngOnDestroy() {
     this.destroyed = true;
+    this.updates?.destroy();
     this.resize?.disconnect();
     this.observer?.disconnect();
     this.chart?.dispose();

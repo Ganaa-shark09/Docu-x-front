@@ -1,128 +1,105 @@
-<section class="dashboard space-y-6">
-  <div class="dashboard-header flex flex-wrap items-start justify-between gap-4">
-    <div>
-      <h2 class="text-2xl font-bold text-slate-950">Workspace overview</h2>
-      <p class="text-sm text-slate-500">
-        Live workspace summary for documents, approvals, extraction, notifications, and RAG usage.
-      </p>
-      <p *ngIf="overview()?.generated_at" class="mt-1 text-xs text-slate-400">
-        Last generated: {{ overview()?.generated_at | date: 'medium' }}
-      </p>
+<section class="dashboard-v3 dashboard-v6" aria-labelledby="dashboard-heading">
+  <header class="v6-commandbar">
+    <div class="v6-commandbar__title">
+      <span class="v6-overline"><span class="v6-status-dot" aria-hidden="true"></span> DOCU-X / COMMAND CENTER</span>
+      <h1 id="dashboard-heading">Overview<span class="v6-heading-dot">.</span></h1>
+      <p>Documents, approvals, and AI operations in one secure workspace.</p>
+    </div>
+    <div class="v6-commandbar__actions">
+      <div class="v6-snapshot"><span>Authorized snapshot</span><strong>@if(overview()?.generated_at){<time [attr.datetime]="overview()!.generated_at">{{overview()!.generated_at | date:'MMM d · h:mm a'}}</time>} @else {Awaiting data}</strong></div>
+      <label class="dash-auto v6-auto"><input type="checkbox" [checked]="autoRefresh()" (change)="toggleAutoRefresh()"/><span class="dash-auto__track"></span><span>Auto refresh</span></label>
+      <button type="button" class="dash-refresh" [disabled]="isLoading()" (click)="loadDashboard()"><svg [class.is-spinning]="isLoading()" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M5.7 9A7 7 0 0 1 18.2 7L20 12M4 12l1.8 5A7 7 0 0 0 18.3 15"/></svg>{{isLoading() ? 'Syncing…' : 'Refresh'}}</button>
+      <a routerLink="/documents/internal" class="dash-explore">Open documents <span aria-hidden="true">↗</span></a>
+    </div>
+  </header>
+  @if(errorMessage()){<div class="dash-error" role="alert">{{errorMessage()}} <button type="button" [disabled]="isLoading()" (click)="loadDashboard()">Retry</button></div>}
+  @if(isLoading()&&!overview()){<div class="dash-loading" role="status" aria-live="polite"><span class="dash-spinner" aria-hidden="true"></span>Loading authorized workspace metrics…</div>}
+
+  @if(overview();as data){
+    <section class="v6-summary" aria-label="Workspace performance">
+      <div class="v6-readiness">
+        <div class="v6-readiness__header"><span>AI DOCUMENT READINESS</span><span class="v6-readiness__mark" aria-hidden="true">✳</span></div>
+        <div class="v6-readiness__body"><strong>{{readinessPercentage()}}<small>%</small></strong><p><b>{{data.documents.ai_ready_documents|number}}</b> of {{data.documents.total_documents|number}} documents ready for AI</p></div>
+        <div class="dash-meter" role="meter" [attr.aria-valuenow]="readinessPercentage()" aria-valuemin="0" aria-valuemax="100" aria-label="AI-ready document percentage"><span [style.width.%]="readinessPercentage()"></span></div>
+        <div class="v6-readiness__footer"><span>Verified workspace documents</span><span>{{data.documents.indexed_documents|number}} indexed</span></div>
+      </div>
+      <div class="v6-summary__metrics">
+        <app-metric-card title="Total documents" [value]="data.documents.total_documents" [subtitle]="data.documents.indexed_documents + ' indexed'" badge="DOCUMENTS" tone="primary" />
+        <app-metric-card title="Assigned approvals" [value]="data.approvals.assigned_to_me" [subtitle]="data.approvals.pending + ' pending overall'" badge="REVIEW" tone="warning" />
+        <app-metric-card title="Unread alerts" [value]="data.notifications.unread_count" [subtitle]="data.notifications.total_notifications + ' total updates'" badge="ALERTS" />
+        <app-metric-card title="AI conversations" [value]="data.rag_usage.total_conversations" [subtitle]="data.rag_usage.total_ai_responses + ' responses'" badge="AI USAGE" />
+      </div>
+    </section>
+
+    <!-- V9: an operations-first reading order: decisions, health, portfolio, activity. -->
+    <div class="v6-sectionhead v9-sectionhead" id="dashboard-operations-heading">
+      <div><span class="v6-overline">01 / DAILY OPERATIONS</span><h2>Work requiring attention</h2><p>Decision queue and processing status at a glance</p></div>
+      <span class="v6-data-label"><span class="v6-status-dot" aria-hidden="true"></span> Authorized, server-reported metrics</span>
+    </div>
+    <div class="v9-operations-grid" aria-labelledby="dashboard-operations-heading">
+      <section class="v6-control v9-attention" aria-labelledby="v9-attention-heading">
+        <header class="v6-panelhead">
+          <div><span class="v6-overline">REVIEW QUEUE</span><h3 id="v9-attention-heading">Needs attention</h3><p>Open your next action directly</p></div>
+          <span class="v6-control__count" [attr.aria-label]="attentionCount() + ' items requiring attention'">{{attentionCount()|number}}</span>
+        </header>
+        <div class="v6-worklist">
+          <a routerLink="/approvals" class="v6-worklist__row"><span class="v6-worklist__icon v6-worklist__icon--amber" aria-hidden="true">✓</span><span><strong>Assigned approvals</strong><small>Requests awaiting your decision</small></span><b>{{data.approvals.assigned_to_me|number}}</b><span aria-hidden="true">↗</span></a>
+          <a routerLink="/workflows" class="v6-worklist__row"><span class="v6-worklist__icon v6-worklist__icon--blue" aria-hidden="true">▤</span><span><strong>Extraction reviews</strong><small>Outputs requiring validation</small></span><b>{{data.extractions.review_required|number}}</b><span aria-hidden="true">↗</span></a>
+          <a routerLink="/notifications" class="v6-worklist__row"><span class="v6-worklist__icon v6-worklist__icon--rose" aria-hidden="true">!</span><span><strong>Unread notifications</strong><small>Updates to review</small></span><b>{{data.notifications.unread_count|number}}</b><span aria-hidden="true">↗</span></a>
+        </div>
+        <p class="v9-attention__note"><span class="v6-status-dot" aria-hidden="true"></span> Counts reflect the records available to this account.</p>
+      </section>
+      <section class="dash-health-panel v6-health v9-health-panel" aria-labelledby="v9-health-heading">
+        <header class="v6-panelhead">
+          <div><span class="v6-overline">WORKFLOW QUALITY</span><h3 id="v9-health-heading">Processing health</h3><p>Progress across document and review pipelines</p></div>
+          <span class="v9-health-panel__mark" aria-hidden="true">●</span>
+        </header>
+        <div class="dash-health-rows">
+          <div><div class="dash-health-rows__label"><span>Document indexing</span><strong>{{indexedPercentage()}}%</strong></div><div class="dash-progress"><span [style.width.%]="indexedPercentage()"></span></div><small>{{data.documents.indexed_documents|number}} of {{data.documents.total_documents|number}} documents</small></div>
+          <div><div class="dash-health-rows__label"><span>Approval completion</span><strong>{{approvalPercentage()}}%</strong></div><div class="dash-progress dash-progress--peach"><span [style.width.%]="approvalPercentage()"></span></div><small>{{data.approvals.approved|number}} of {{data.approvals.total_approvals|number}} requests</small></div>
+          <div><div class="dash-health-rows__label"><span>Approved extractions</span><strong>{{extractionPercentage()}}%</strong></div><div class="dash-progress dash-progress--blue"><span [style.width.%]="extractionPercentage()"></span></div><small>{{data.extractions.approved|number}} of {{data.extractions.total_extraction_runs|number}} runs</small></div>
+        </div>
+        <div class="v6-healthmetrics v9-healthmetrics" aria-label="Additional processing statistics">
+          <app-metric-card title="Extraction runs" [value]="data.extractions.total_extraction_runs" [subtitle]="data.extractions.approved + ' approved'" badge="EXTRACTION" />
+          <app-metric-card title="Avg. confidence" [value]="formatConfidence(data.extractions.average_confidence)" [subtitle]="data.extractions.review_required + ' need review'" badge="QUALITY" />
+          <app-metric-card title="Tokens processed" [value]="data.rag_usage.total_tokens" [subtitle]="data.rag_usage.total_prompt_tokens + ' prompt tokens'" badge="AI USAGE" />
+        </div>
+      </section>
     </div>
 
-    <button
-      type="button"
-      (click)="loadDashboard()"
-      [disabled]="isLoading()"
-      class="ui-button ui-button--primary"
-    >
-      {{ isLoading() ? 'Refreshing...' : 'Refresh' }}
-    </button>
-  </div>
-
-  <div
-    *ngIf="errorMessage()"
-    class="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"
-  >
-    {{ errorMessage() }}
-  </div>
-
-  <div
-    *ngIf="isLoading() && !overview()"
-    class="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500 shadow-sm"
-  >
-    Loading dashboard metrics...
-  </div>
-
-  <ng-container *ngIf="overview() as data">
-    <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-      <app-metric-card
-        title="Total Documents"
-        [value]="data.documents.total_documents"
-        [subtitle]="data.documents.ai_ready_documents + ' AI-ready documents'"
-        badge="Docs"
-      />
-
-      <app-metric-card
-        title="Pending Approvals"
-        [value]="data.approvals.pending"
-        [subtitle]="data.approvals.assigned_to_me + ' assigned to you'"
-        badge="Review"
-      />
-
-      <app-metric-card
-        title="Unread Notifications"
-        [value]="data.notifications.unread_count"
-        [subtitle]="data.notifications.total_notifications + ' active notifications'"
-        badge="Inbox"
-      />
-
-      <app-metric-card
-        title="RAG Conversations"
-        [value]="data.rag_usage.total_conversations"
-        [subtitle]="data.rag_usage.total_ai_responses + ' AI responses'"
-        badge="AI"
-      />
+    <div class="v6-sectionhead v9-sectionhead" id="v9-portfolio-heading"><div><span class="v6-overline">02 / DOCUMENT INTELLIGENCE</span><h2>Portfolio intelligence</h2><p>Document classifications, extraction outcomes and processing states</p></div><span class="v6-data-label">Choose a category to inspect its verified count</span></div>
+    <div class="dash-distribution-grid v6-composition-grid v9-composition-grid" aria-labelledby="v9-portfolio-heading">
+      <app-dashboard-radial-card eyebrow="DOCUMENT PORTFOLIO" title="Document mix" description="By document classification" [items]="data.documents.by_type" />
+      <app-dashboard-radial-card eyebrow="WORKFLOW STATUS" title="Extraction outcomes" description="By workflow state" [items]="data.extractions.by_status" />
+      <app-dashboard-radial-card eyebrow="PROCESSING STAGE" title="Processing pipeline" description="By document status" [items]="data.documents.by_status" />
     </div>
 
-    <div class="dashboard-secondary grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-      <app-metric-card
-        title="Indexed Documents"
-        [value]="data.documents.indexed_documents"
-        [subtitle]="data.documents.failed_documents + ' failed documents'"
-        badge="Index"
-      />
-
-      <app-metric-card
-        title="Extraction Runs"
-        [value]="data.extractions.total_extraction_runs"
-        [subtitle]="data.extractions.approved + ' approved extractions'"
-        badge="Extract"
-      />
-
-      <app-metric-card
-        title="Avg Extraction Confidence"
-        [value]="formatConfidence(data.extractions.average_confidence)"
-        [subtitle]="data.extractions.review_required + ' require review'"
-        badge="Quality"
-      />
-
-      <app-metric-card
-        title="Total Tokens"
-        [value]="data.rag_usage.total_tokens"
-        [subtitle]="data.rag_usage.total_prompt_tokens + ' prompt tokens'"
-        badge="Usage"
-      />
-    </div>
-
-    <div class="dashboard-distributions">
-      <app-distribution-chart
-        kind="donut"
-        title="Document portfolio"
-        description="Documents by category"
-        [items]="data.documents.by_type"
-      />
-      <app-distribution-chart
-        kind="donut"
-        title="Workflow health"
-        description="Extraction runs by current state"
-        [items]="data.extractions.by_status"
-      />
-      <app-distribution-chart
-        kind="donut"
-        title="Document readiness"
-        description="Current document processing states"
-        [items]="data.documents.by_status"
-      />
-    </div>
-    <div class="dashboard-activity">
-      <app-distribution-chart
-        kind="line"
-        title="Document activity"
-        description="Daily uploads over the last 30 days"
-        [items]="data.documents.uploads_by_day"
-      />
+    <div class="v6-sectionhead v9-sectionhead" id="v9-activity-heading"><div><span class="v6-overline">03 / DOCUMENT ACTIVITY</span><h2>Document flow</h2><p>Actual ingestion history for documents you can access</p></div><span class="v6-data-label">Verified daily counts · no projections</span></div>
+    <div class="v6-operations v9-activity-grid" aria-labelledby="v9-activity-heading">
+      <section class="v6-flow v9-activity-chart" aria-labelledby="v6-flow-heading">
+        <header class="v6-panelhead">
+          <div><span class="v6-overline">DOCUMENT INTAKE</span><h3 id="v6-flow-heading">Intake timeline</h3><p>Explore daily volume or cumulative uploads</p></div>
+          <div class="dash-period" role="group" aria-label="Upload chart date range"><button type="button" [class.is-current]="days()===7" [attr.aria-pressed]="days()===7" (click)="setDays(7)">7D</button><button type="button" [class.is-current]="days()===14" [attr.aria-pressed]="days()===14" (click)="setDays(14)">14D</button><button type="button" [class.is-current]="days()===30" [attr.aria-pressed]="days()===30" (click)="setDays(30)">30D</button></div>
+        </header>
+        <div class="v6-flow__metrics">
+          <div><small>UPLOADS · SELECTED PERIOD</small><strong>{{trendTotal()|number}}</strong><span>documents received</span></div>
+          <div><small>ACTIVE DAYS</small><strong>{{activeDays()|number}} <em>/ {{trendRows().length}}</em></strong><span>days with intake</span></div>
+          <div><small>PEAK DAY</small><strong>{{trendPeak()|number}}</strong><span>highest daily count</span></div>
+        </div>
+        <div class="v6-charttoolbar"><div class="dash-metric-switch" role="group" aria-label="Upload chart view"><button type="button" [class.is-current]="chartMetric()==='daily'" [attr.aria-pressed]="chartMetric()==='daily'" (click)="setChartMetric('daily')">Daily activity</button><button type="button" [class.is-current]="chartMetric()==='cumulative'" [attr.aria-pressed]="chartMetric()==='cumulative'" (click)="setChartMetric('cumulative')">Cumulative</button></div><span>Server-reported values</span></div>
+        <app-dashboard-telemetry-chart mode="area" [metric]="chartMetric()" [items]="data.documents.uploads_by_day" [days]="days()" />
+        <footer class="v6-flow__footer"><span><span class="v6-flow__legend" aria-hidden="true"></span>Document uploads</span><span>{{averageDaily()|number:'1.0-1'}} per reported day</span></footer>
+      </section>
+      <section class="v9-cadence" aria-label="Seven-day intake summary">
+        <span class="v6-overline">RECENT INGESTION</span>
+        <div class="v6-weekline"><div><strong>Last seven days</strong><span>{{weeklyTotal()|number}} uploads · {{weeklyActiveDays()}} active {{weeklyActiveDays()===1?'day':'days'}}</span></div><span class="v6-weekline__source">Actual daily counts</span></div>
+        <div class="v6-spark" role="img" [attr.aria-label]="weeklyAccessibleDescription()">
+          @for(row of weeklyRows();track row.date){<span class="v6-spark__column" [class.is-positive]="row.count>0" ><i [style.height.%]="sparkHeight(row.count)"></i><small>{{row.date.slice(5)}}</small><span class="v6-spark__tooltip">{{row.date}} · {{row.count}} uploaded</span></span>}
+          @empty {<span class="v6-spark__empty">No daily upload data available.</span>}
+        </div>
+        <div class="v9-cadence__note"><span class="v6-status-dot" aria-hidden="true"></span> Updated from your authorized workspace snapshot</div>
+      </section>
     </div>
     <app-recent-activity-list [activities]="recentActivities()" />
-  </ng-container>
+  }
 </section>

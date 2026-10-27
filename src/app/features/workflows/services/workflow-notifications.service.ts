@@ -7,9 +7,15 @@ import { WorkflowNotification } from '../models/notification.model';
 @Injectable({ providedIn: 'root' })
 export class WorkflowNotificationsService {
   private readonly http = inject(HttpClient);
-  list(page = 1): Observable<Page<WorkflowNotification>> {
+  list(page = 1, status = ''): Observable<Page<WorkflowNotification>> {
     return this.http.get<Page<WorkflowNotification>>(`${environment.apiBaseUrl}/notifications/`, {
-      params: new HttpParams().set('page', page),
+      params: new HttpParams().set('page', page).set('status', status),
     });
+  }
+  markRead(uuid: string): Observable<unknown> {
+    return this.http.post(`${environment.apiBaseUrl}/notifications/${uuid}/mark-read/`, {});
+  }
+  markAllRead(): Observable<unknown> {
+    return this.http.post(`${environment.apiBaseUrl}/notifications/mark-all-read/`, {});
   }
 }

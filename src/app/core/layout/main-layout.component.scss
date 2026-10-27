@@ -14,7 +14,7 @@
   inset: 0 auto 0 0;
   z-index: 45;
   display: grid;
-  grid-template-rows: 76px minmax(0, 1fr);
+  grid-template-rows: 76px minmax(0, 1fr) auto;
   width: var(--sidebar-collapsed-width);
   background: var(--app-sidebar);
   border-right: 1px solid var(--app-border);
@@ -541,3 +541,37 @@
     font-size: 12px;
   }
 }
+
+/* Administration is an independent bottom utility zone, not the last workflow. */
+.docux-sidebar__footer {
+  display: grid;
+  min-width: 0;
+  padding: 12px 10px max(14px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--app-border);
+  background: var(--app-sidebar);
+}
+.docux-sidebar__footer .docux-admin-group { min-width: 0; }
+.docux-sidebar__footer .docux-workflow-dropdown__clip {
+  max-height: min(54dvh, 390px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.docux-sidebar__footer #admin-menu-toggle { font-weight: 650; }
+.docux-sidebar__footer #admin-menu-toggle.is-active { background: var(--app-selected); }
+@media (max-width: 640px) {
+  .docux-sidebar__footer { padding-bottom: max(18px, env(safe-area-inset-bottom)); }
+}
+/* Executive shell quick access. It is a navigation link, not a fake search input. */
+.docux-header__find {
+  display: inline-flex; align-items: center; gap: 11px;
+  min-width: 180px; min-height: 38px; padding: 6px 10px;
+  border: 1px solid var(--app-border); border-radius: 12px;
+  background: var(--app-surface); color: var(--app-text-muted);
+  font-size: 11px; font-weight: 620; text-decoration: none;
+  transition: background-color .16s ease, border-color .16s ease;
+}
+.docux-header__find:hover { background: var(--app-hover); border-color: var(--app-border-strong); color: var(--app-text); }
+.docux-header__find svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+.docux-header__find-kbd { margin-left: auto; color: var(--app-text-soft); }
+.docux-header__divider { width: 1px; height: 25px; background: var(--app-border); }
+@media(max-width:800px) { .docux-header__find { display: none; } .docux-header__divider { display:none; } }

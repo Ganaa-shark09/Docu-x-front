@@ -66,6 +66,13 @@ describe('Real notification API drawer', () => {
       .flush({ results: [{ ...row, status: 'read' }], next: null });
     expect(c.rows()[0].status).toBe('read');
   });
+  it('offers a complete notification center and accessible unread controls', () => {
+    expect(f.nativeElement.querySelector('button[aria-label="Close notifications"]')).toBeTruthy();
+    expect(f.nativeElement.querySelectorAll('[aria-pressed]').length).toBe(3);
+    expect(f.nativeElement.textContent).toContain('Open notification center');
+    expect(f.nativeElement.querySelector('.notify-v3')).toBeTruthy();
+    expect(f.nativeElement.querySelector('.notify-v3__item.is-unread')).toBeTruthy();
+  });
   it('prevents duplicate writes and handles errors with retry', () => {
     c.markAll();
     c.markAll();

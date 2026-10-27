@@ -1,0 +1,476 @@
+/* DOCU-X · Readiness Design System / V8
+   The AI DOCUMENT READINESS tile is the source of truth, in BOTH appearances.
+   Loaded LAST by Angular. Each background is intentionally green, not blue-gray.
+   Values, access policies, risk states and data are not changed by this stylesheet. */
+:root,
+html[data-theme='light'] {
+  color-scheme: light;
+  --app-bg: #eaf2eb;
+  --app-workspace: #edf5ef;
+  --app-sidebar: #e6f0e8;
+  --app-surface: #f9fdf8;
+  --app-surface-soft: #e5f1e7;
+  --app-raised: #fffefa;
+  --app-inset: #eaf3eb;
+  --app-hover: #dcece0;
+  --app-selected: #d3e9d9;
+  --app-border: #cddfd1;
+  --app-border-strong: #83ab91;
+  --app-text: #183629;
+  --app-text-muted: #4c6c59;
+  --app-text-soft: #567463;
+  --app-disabled-text: #657e6c;
+  --app-primary: #236d48;
+  --app-primary-hover: #195c3a;
+  --app-on-primary: #ffffff;
+  --app-focus: #236d48;
+  --app-accent-rgb: 35 109 72;
+  --app-shadow: rgb(19 66 38 / 7%);
+  --app-shadow-raised: 0 12px 32px rgb(22 71 44 / 6%);
+  --app-shadow-floating: 0 32px 90px rgb(17 54 31 / 19%);
+  --app-radius-sm: 10px;
+  --app-radius: 14px;
+  --app-radius-lg: 20px;
+  --app-success-bg: #dcefe2;
+  --app-success-border: #70a684;
+  --app-success-text: #1e6940;
+  --app-info-bg: #e0efe7;
+  --app-info-text: #2d684d;
+  --app-warning-bg: #f8eedb;
+  --app-warning-border: #cbad75;
+  --app-warning-text: #7b5a25;
+  --app-danger-bg: #fceae7;
+  --app-danger-border: #d59a91;
+  --app-danger-text: #923d35;
+  --docux-orange: #2f8659;
+  --docux-lime: #367750;
+  --docux-grid: rgb(36 95 58 / 8%);
+  --docux-chip: #e3f0e6;
+  --docux-glass: rgb(246 253 247 / 88%);
+  --docux-glass-border: rgb(117 168 130 / 39%);
+  --docux-header-glass: rgb(237 248 240 / 92%);
+  --docux-hero-bg: #204532;
+  --docux-hero-ink: #f6fff7;
+  --docux-hero-muted: #cce6d2;
+  --docux-chart-1: #24784e;
+  --docux-chart-2: #4a9c70;
+  --docux-chart-3: #b3944e;
+  --docux-chart-4: #5b9491;
+  --docux-chart-5: #7c9851;
+  --docux-chart-6: #967daa;
+  --docux-chart-soft: rgb(50 135 83 / 17%);
+  --readiness-panel-start: #f7fcf6;
+  --readiness-panel-end: #e5f2e7;
+  --readiness-ambient: rgb(52 126 77 / 10%);
+  --readiness-ring: rgb(58 134 80 / 10%);
+  --readiness-glow: rgb(62 145 93 / 9%);
+  --readiness-line: #c6ddcc;
+  --readiness-highlight: #276d49;
+  --readiness-selection: #d4e9d9;
+}
+html[data-theme='dark'] {
+  color-scheme: dark;
+  --app-bg: #0b1610;
+  --app-workspace: #0d1913;
+  --app-sidebar: #12221a;
+  --app-surface: #192c22;
+  --app-surface-soft: #223b2d;
+  --app-raised: #263d30;
+  --app-inset: #14271d;
+  --app-hover: #2b4937;
+  --app-selected: #2c523d;
+  --app-border: #335342;
+  --app-border-strong: #6b997c;
+  --app-text: #effaf0;
+  --app-text-muted: #bdd5c4;
+  --app-text-soft: #a9cab4;
+  --app-disabled-text: #92b29d;
+  --app-primary: #9ce7b4;
+  --app-primary-hover: #bbf3cd;
+  --app-on-primary: #0e2d1c;
+  --app-focus: #abefbf;
+  --app-accent-rgb: 156 231 180;
+  --app-shadow: rgb(0 0 0 / 26%);
+  --app-shadow-raised: 0 18px 45px rgb(0 10 4 / 25%);
+  --app-shadow-floating: 0 34px 95px rgb(0 0 0 / 60%);
+  --app-success-bg: #1c4030;
+  --app-success-border: #5c9973;
+  --app-success-text: #a8e9bd;
+  --app-info-bg: #203f30;
+  --app-info-text: #b8eacb;
+  --app-warning-bg: #443a26;
+  --app-warning-border: #b99b62;
+  --app-warning-text: #f2d6a5;
+  --app-danger-bg: #472e2b;
+  --app-danger-border: #bd8178;
+  --app-danger-text: #ffd1c8;
+  --docux-orange: #9ce7b4;
+  --docux-lime: #83cea0;
+  --docux-grid: rgb(156 227 173 / 7%);
+  --docux-chip: #284634;
+  --docux-glass: rgb(23 46 33 / 88%);
+  --docux-glass-border: rgb(143 220 166 / 24%);
+  --docux-header-glass: rgb(14 30 21 / 93%);
+  --docux-hero-bg: #193024;
+  --docux-hero-ink: #f2fff5;
+  --docux-hero-muted: #badbc3;
+  --docux-chart-1: #9ce7b4;
+  --docux-chart-2: #60bc87;
+  --docux-chart-3: #d8ba7a;
+  --docux-chart-4: #79c3b3;
+  --docux-chart-5: #b5cc81;
+  --docux-chart-6: #b9a8d4;
+  --docux-chart-soft: rgb(144 234 169 / 17%);
+  --readiness-panel-start: #203b2d;
+  --readiness-panel-end: #14271d;
+  --readiness-ambient: rgb(98 207 129 / 16%);
+  --readiness-ring: rgb(118 231 149 / 10%);
+  --readiness-glow: rgb(117 222 144 / 12%);
+  --readiness-line: #375d46;
+  --readiness-highlight: #a6eebc;
+  --readiness-selection: #2f5840;
+}
+
+/* Angular's Appearance service writes html[data-theme] even for System default.
+   No second switch, no duplicated OS color scheme implementation. */
+html[data-theme] {
+  --mat-sys-primary: var(--app-primary);
+  --mat-sys-on-primary: var(--app-on-primary);
+  --mat-sys-surface: var(--app-surface);
+  --mat-sys-surface-container: var(--app-surface);
+  --mat-sys-surface-container-low: var(--app-inset);
+  --mat-sys-surface-container-high: var(--app-surface-soft);
+  --mat-sys-surface-container-highest: var(--app-hover);
+  --mat-sys-on-surface: var(--app-text);
+  --mat-sys-on-surface-variant: var(--app-text-muted);
+  --mat-sys-outline: var(--app-border-strong);
+  --mat-sys-outline-variant: var(--app-border);
+  --mdc-filled-text-field-container-color: var(--app-inset);
+  --mdc-dialog-container-color: var(--app-raised);
+  background: var(--app-workspace);
+  color: var(--app-text);
+}
+html[data-theme] body {
+  background: radial-gradient(ellipse 53vw 35vw at 92% 2%, var(--readiness-ambient), transparent 75%), var(--app-workspace);
+  color: var(--app-text);
+}
+::selection { background: var(--app-selected); color: var(--app-text); }
+
+/* The entire shell uses forest layers rather than the old navy backgrounds. */
+html[data-theme] .docux-shell,
+html[data-theme] .docux-main {
+  background: var(--app-workspace);
+  color: var(--app-text);
+}
+html[data-theme] .docux-sidebar {
+  background: linear-gradient(174deg, var(--app-sidebar), var(--app-inset));
+  border-right: 1px solid var(--app-border);
+  box-shadow: inset -1px 0 var(--readiness-ring);
+}
+html[data-theme] .docux-sidebar__footer {
+  background: var(--app-sidebar);
+  border-top-color: var(--app-border);
+}
+html[data-theme] .docux-brand__mark {
+  background: linear-gradient(142deg, var(--app-selected), var(--app-surface-soft));
+  color: var(--readiness-highlight);
+  border: 1px solid var(--app-border-strong);
+  box-shadow: 0 0 0 5px var(--readiness-ring);
+}
+html[data-theme] .docux-sidebar__link { color: var(--app-text-muted); }
+html[data-theme] .docux-sidebar__link:hover { color: var(--app-text); background: var(--app-hover); }
+html[data-theme] .docux-sidebar__link.is-active,
+html[data-theme] .docux-sidebar__footer .docux-sidebar__link.is-active {
+  background: var(--app-selected);
+  border-color: var(--app-border-strong);
+  color: var(--readiness-highlight);
+  box-shadow: inset 3px 0 var(--app-primary);
+}
+html[data-theme] .docux-header {
+  background: var(--docux-header-glass);
+  border-bottom: 1px solid var(--app-border);
+  -webkit-backdrop-filter: blur(22px);
+  backdrop-filter: blur(22px);
+}
+html[data-theme] .docux-header__find,
+html[data-theme] .docux-account__panel {
+  background: var(--app-raised);
+  color: var(--app-text);
+  border-color: var(--app-border);
+  box-shadow: var(--app-shadow-raised);
+}
+html[data-theme] .docux-header__find:hover { background: var(--app-hover); color: var(--app-text); }
+html[data-theme] .docux-ai-fab {
+  background: linear-gradient(145deg,var(--app-raised),var(--app-surface));
+  border: 1px solid var(--app-border-strong);
+  color: var(--app-text);
+  box-shadow: var(--app-shadow-floating);
+}
+html[data-theme] .docux-ai-fab svg { stroke: var(--app-primary); }
+
+/* Enterprise shared cards / app-wide inputs. No global overriding of alert semantics. */
+html[data-theme] .ui-panel,
+html[data-theme] .ui-card,
+html[data-theme] .ui-metric,
+html[data-theme] .ui-dialog,
+html[data-theme] .workspace-panel,
+html[data-theme] .governance-card,
+html[data-theme] .document-card,
+html[data-theme] .upload-form-card,
+html[data-theme] .source-card,
+html[data-theme] .proof-panel {
+  background: radial-gradient(ellipse at 92% 0%,var(--readiness-ambient),transparent 59%),
+    linear-gradient(145deg,var(--readiness-panel-start),var(--readiness-panel-end));
+  border: 1px solid var(--readiness-line);
+  color: var(--app-text);
+  border-radius: var(--app-radius-lg);
+  box-shadow: var(--app-shadow-raised);
+}
+html[data-theme] .ui-panel:hover,
+html[data-theme] .ui-card:hover,
+html[data-theme] .ui-metric:hover { border-color: var(--app-border-strong); }
+html[data-theme] .ui-button--primary:not(:disabled) {
+  background: var(--app-primary);
+  border-color: var(--app-primary);
+  color: var(--app-on-primary);
+}
+html[data-theme] .ui-button--primary:not(:disabled):hover { background: var(--app-primary-hover); }
+html[data-theme] .ui-button,
+html[data-theme] .ui-field,
+html[data-theme] input:not([type='checkbox']):not([type='radio']),
+html[data-theme] textarea,
+html[data-theme] select { border-radius: var(--app-radius-sm); }
+html[data-theme] input:not([type='checkbox']):not([type='radio']),
+html[data-theme] textarea,
+html[data-theme] select {
+  background: var(--app-inset);
+  border-color: var(--app-border-strong);
+  color: var(--app-text);
+}
+html[data-theme] .ui-table,
+html[data-theme] .ui-table th,
+html[data-theme] .ui-table td { border-color: var(--app-border); }
+html[data-theme] .ui-table th { background: var(--app-surface-soft); color: var(--app-text-muted); }
+html[data-theme] .ui-table tbody tr:hover { background: var(--app-hover); }
+html[data-theme] :is(button,a,input,select,textarea,[role='button']):focus-visible {
+  outline: 2px solid var(--app-focus);
+  outline-offset: 3px;
+}
+
+/* Repeat the readiness-card material on every dashboard KPI and analytics panel. */
+html[data-theme] .dashboard-v6 {
+  --v6-accent: var(--app-primary);
+  --dash-warm: var(--app-primary);
+  --v6-line: var(--app-border);
+  --v6-ink: var(--app-text);
+  --v6-muted: var(--app-text-muted);
+  color: var(--app-text);
+}
+html[data-theme] .dashboard-v6 .v6-commandbar { border-color: var(--app-border); }
+html[data-theme] .dashboard-v6 :is(.v6-overline,.v6-heading-dot,.dash-panel-kicker) {
+  color: var(--readiness-highlight);
+}
+html[data-theme] .dashboard-v6 :is(.v6-flow,.v6-control,.v6-health,.dash-chart-panel,.dash-actions-panel,.dash-health-panel) {
+  background: radial-gradient(ellipse at 95% 0%,var(--readiness-ambient),transparent 61%),
+    linear-gradient(143deg,var(--readiness-panel-start),var(--readiness-panel-end));
+  border: 1px solid var(--readiness-line);
+  color: var(--app-text);
+  border-radius: 20px;
+  box-shadow: var(--app-shadow-raised);
+}
+html[data-theme] .dashboard-v6 :is(.v6-flow,.v6-control,.v6-health)::before {
+  pointer-events: none;
+}
+html[data-theme] .dashboard-v6 .v6-control__count {
+  background: var(--app-selected);
+  border-color: var(--app-border-strong);
+  color: var(--app-text);
+}
+html[data-theme] .dashboard-v6 .v6-worklist__row:hover { background: var(--app-hover); }
+html[data-theme] .dashboard-v6 .v6-worklist__icon--blue,
+html[data-theme] .dashboard-v6 .dash-period button.is-current {
+  background: var(--app-selected);
+  color: var(--readiness-highlight);
+  border-color: var(--app-border);
+}
+html[data-theme] .dashboard-v6 .v6-spark__column.is-positive i {
+  background: linear-gradient(0deg,var(--docux-chart-2),var(--docux-chart-1));
+  box-shadow: 0 0 14px var(--readiness-glow);
+}
+html[data-theme] .dashboard-v6 .v6-readiness {
+  /* Deliberately keep the source card's darker green treatment in both themes. */
+  background: radial-gradient(circle at 98% 5%,rgb(104 214 143 / 20%),transparent 60%),
+    linear-gradient(142deg,#20392c,#14271e);
+  border-color: rgb(149 232 173 / 29%);
+  color: #f1fcf2;
+}
+html[data-theme] .dashboard-v6 .v6-readiness__body strong { color:#f1fcf2; }
+html[data-theme] .dashboard-v6 .v6-readiness__header,
+html[data-theme] .dashboard-v6 .v6-readiness__footer { color:#cae2cf; }
+html[data-theme] .dashboard-v6 .v6-readiness__body p { color:#c1d7c7; }
+html[data-theme] .dashboard-v6 .v6-readiness .dash-meter span {
+  background: linear-gradient(90deg,#60ad82,#a2edb9);
+}
+
+/* Segment explorers inherit the same material, not slate backgrounds. */
+html[data-theme] app-dashboard-radial-card .composition {
+  background: radial-gradient(ellipse at 95% 0%,var(--readiness-ambient),transparent 65%),
+    linear-gradient(142deg,var(--readiness-panel-start),var(--readiness-panel-end));
+  border: 1px solid var(--readiness-line);
+  color: var(--app-text);
+  box-shadow: var(--app-shadow-raised);
+}
+html[data-theme] app-dashboard-radial-card .composition__legend-item:is(:hover,.is-active) {
+  background: var(--app-selected);
+  border-color: var(--app-border-strong);
+}
+html[data-theme] app-dashboard-radial-card .composition__mark,
+html[data-theme] app-dashboard-radial-card .composition__track {
+  color: var(--readiness-highlight);
+}
+
+/* Transparent notifications with the same forest saturation as dashboard cards. */
+html[data-theme] .notification-v3__hero,
+html[data-theme] .notification-v3__workspace,
+html[data-theme] .notification-v3__stats > div,
+html[data-theme] .notify-v3,
+html[data-theme] .notify-v3__item,
+html[data-theme] .notification-drawer .mat-mdc-dialog-surface {
+  background: radial-gradient(ellipse at 100% 0%,var(--readiness-ambient),transparent 63%),var(--docux-glass);
+  border-color: var(--docux-glass-border);
+  color: var(--app-text);
+  box-shadow: var(--app-shadow-raised);
+  -webkit-backdrop-filter: blur(25px) saturate(125%);
+  backdrop-filter: blur(25px) saturate(125%);
+}
+html[data-theme] .notification-v3__item.is-unread,
+html[data-theme] .notify-v3__item.is-unread {
+  background: var(--app-selected);
+  border-color: var(--app-border-strong);
+  box-shadow: inset 3px 0 var(--app-primary);
+}
+html[data-theme] .notification-v3__button--accent,
+html[data-theme] .notify-v3__center-link {
+  background: var(--app-primary);
+  border-color: var(--app-primary);
+  color: var(--app-on-primary);
+}
+html[data-theme] .cdk-overlay-pane :is(.mat-mdc-dialog-surface,.mat-mdc-menu-panel,.mat-mdc-select-panel) {
+  background: var(--app-raised);
+  color: var(--app-text);
+  border: 1px solid var(--app-border);
+  box-shadow: var(--app-shadow-floating);
+}
+html[data-theme] .cdk-overlay-pane.notification-drawer :is(.mat-mdc-dialog-surface,.mdc-dialog__surface),
+html[data-theme] .notification-drawer .mat-mdc-dialog-surface {
+  background: var(--docux-glass) !important;
+  border: 1px solid var(--docux-glass-border);
+  backdrop-filter: blur(26px) saturate(126%);
+  -webkit-backdrop-filter: blur(26px) saturate(126%);
+}
+html[data-theme] .toast-stack .toast {
+  background: var(--docux-glass);
+  color: var(--app-text);
+  border-color: var(--docux-glass-border);
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme] :is(.ui-metric,.ui-panel,.composition,.notify-v3__item) {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  html[data-theme] :is(.notification-v3__hero,.notification-v3__workspace,.notify-v3,.toast-stack .toast) {
+    background: var(--app-surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+@media (forced-colors: active) {
+  html[data-theme] :is(.ui-metric,.v6-flow,.v6-control,.notification-v3__item,.docux-sidebar__link.is-active) {
+    border: 1px solid CanvasText;
+  }
+}
+
+/* The feature modules have their own component styles; color the actual surfaces,
+   not only generic .ui-card that many pages do not render. */
+html[data-theme] :is(
+  .document-filters,.document-table-card,.document-upload-panel,.document-detail__panel,
+  .document-scope-tabs,.governance-policy-page .card,.document-governance__panel,
+  .page .card,.page .panel,.invoice-workspace .card,.contract-workspace .card,
+  .finance-workspace .card,.compliance-workspace .card,
+  .ai-chat-sidebar,.chat-sidebar,.chat-message,.chat-card,
+  .approval-panel,.extraction-panel,.audit-panel
+) {
+  background: radial-gradient(ellipse at 95% 0%,var(--readiness-ambient),transparent 65%),
+    linear-gradient(142deg,var(--readiness-panel-start),var(--readiness-panel-end));
+  color: var(--app-text);
+  border-color: var(--readiness-line);
+  box-shadow: var(--app-shadow-raised);
+}
+html[data-theme] :is(.document-scope-tabs__button--active,.chat-navigation-tab.is-active) {
+  color: var(--app-on-primary);
+  background: var(--app-primary);
+}
+/* Preserve semantic label meanings, avoiding green overrides of risk, errors or warnings. */
+html[data-theme] :is(.document-table-card,.document-filters,.page .card,.ai-chat-sidebar) :is(h1,h2,h3,strong) {
+  color: var(--app-text);
+}
+html[data-theme] :is(.document-table-card,.document-filters,.page .card,.ai-chat-sidebar) :is(p,small,.muted) {
+  color: var(--app-text-muted);
+}
+@media (prefers-reduced-transparency: reduce) {
+  html[data-theme] .notification-drawer .mat-mdc-dialog-surface { background: var(--app-surface) !important; }
+}
+
+
+/* V9 · Precision finishing: readiness palette is the material, not the rings. */
+html[data-theme='dark'] {
+  --readiness-panel-start:#20392c;
+  --readiness-panel-end:#14271e;
+  --readiness-ambient:rgb(91 167 117 / 7%);
+  --readiness-ring:transparent;
+  --readiness-glow:transparent;
+  --readiness-line:#335442;
+  --readiness-highlight:#a5ecc0;
+}
+:root,html[data-theme='light'] {
+  --readiness-panel-start:#fafff9;
+  --readiness-panel-end:#eaf5ec;
+  --readiness-ambient:rgb(51 112 70 / 4%);
+  --readiness-ring:transparent;
+  --readiness-glow:transparent;
+  --readiness-line:#c9dfcf;
+  --readiness-highlight:#236d48;
+}
+html[data-theme] .dashboard-v6 .v6-readiness {
+  background:linear-gradient(145deg,var(--readiness-panel-start),var(--readiness-panel-end));
+  color:var(--app-text);border-color:var(--readiness-line);
+}
+html[data-theme] .dashboard-v6 .v6-readiness::after {content:none;display:none;box-shadow:none;}
+html[data-theme] .dashboard-v6 .v6-readiness__body strong,
+html[data-theme] .dashboard-v6 .v6-readiness__body p b {color:var(--app-text);}
+html[data-theme] .dashboard-v6 .v6-readiness__header,
+html[data-theme] .dashboard-v6 .v6-readiness__body p,
+html[data-theme] .dashboard-v6 .v6-readiness__footer {color:var(--app-text-muted);}
+html[data-theme] .dashboard-v6 .v6-readiness__mark,
+html[data-theme] .dashboard-v6 .v6-readiness__body small {color:var(--readiness-highlight);}
+html[data-theme] .dashboard-v6 :is(.v6-flow,.v6-control,.v6-health,.v9-cadence),
+html[data-theme] app-dashboard-radial-card .composition {
+  background:linear-gradient(145deg,var(--readiness-panel-start),var(--readiness-panel-end));
+  border-color:var(--readiness-line);
+}
+html[data-theme] .dashboard-v6 :is(.v6-flow,.v6-control)::before,
+html[data-theme] .dashboard-v6 :is(.v6-flow,.v6-control)::after {
+  content:none!important;display:none!important;box-shadow:none!important;
+}
+html[data-theme] .dashboard-v6 .v9-healthmetrics app-metric-card .ui-metric {
+  min-height:118px;padding:14px 15px;background:var(--app-inset);
+  border-color:var(--app-border);box-shadow:none;
+}
+html[data-theme] .dashboard-v6 .v9-healthmetrics app-metric-card .metric-value {margin:10px 0 5px;font-size:29px;}
+html[data-theme] .dashboard-v6 .v9-healthmetrics app-metric-card .metric-tag {font-size:8px;}
+html[data-theme] .dashboard-v6 .v9-healthmetrics app-metric-card .ui-metric::after {content:none;display:none;}
+html[data-theme] .dashboard-v6 .v9-healthmetrics app-metric-card .ui-metric:hover {box-shadow:none;}
+html[data-theme] app-dashboard-radial-card .composition::before {opacity:.25;}
+html[data-theme] .dashboard-v6 :is(.v9-attention,.v9-health-panel,.v9-cadence,.v9-activity-chart) {box-shadow:var(--app-shadow-raised);}

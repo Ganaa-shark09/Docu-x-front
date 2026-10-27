@@ -1,0 +1,299 @@
+/* DOCU-X | Obsidian / Pearl visual language
+ * Scope: application shell, shared enterprise surfaces, data density and notifications.
+ * Tokens retain the app-* interface consumed by all existing feature modules.
+ */
+:root, html[data-theme='light'] {
+  --app-bg: #eef0f3;
+  --app-workspace: #f3f4f6;
+  --app-sidebar: #fcfcfd;
+  --app-surface: #ffffff;
+  --app-surface-soft: #f6f7f9;
+  --app-raised: #ffffff;
+  --app-inset: #eceff3;
+  --app-hover: #f0f2f5;
+  --app-selected: #fff0e9;
+  --app-border: #e2e5ea;
+  --app-border-strong: #929aa5;
+  --app-text: #1b2027;
+  --app-text-muted: #586371;
+  --app-text-soft: #647080;
+  --app-disabled-text: #6c7784;
+  --app-primary: #c84b26;
+  --app-accent-rgb: 200 75 38;
+  --app-primary-hover: #ad3c1d;
+  --app-on-primary: #ffffff;
+  --app-focus: #c84b26;
+  --app-danger-bg: #fff0ee;
+  --app-danger-border: #d9796b;
+  --app-danger-text: #9b3024;
+  --app-success-bg: #e8f5ee;
+  --app-success-border: #77ad92;
+  --app-success-text: #1d6c49;
+  --app-warning-bg: #fff4e5;
+  --app-warning-border: #bb884a;
+  --app-warning-text: #865015;
+  --app-info-bg: #eaf1f7;
+  --app-info-text: #315d8b;
+  --app-shadow: rgb(22 26 34 / 6%);
+  --app-shadow-raised: 0 12px 35px rgb(25 29 38 / 4%);
+  --app-shadow-floating: 0 24px 80px rgb(13 18 25 / 16%);
+  --app-radius-sm: 10px;
+  --app-radius: 14px;
+  --app-radius-lg: 19px;
+  --docux-orange: #ec673b;
+  --docux-lime: #34765e;
+  --docux-glass: rgb(255 255 255 / 85%);
+  --docux-glass-border: rgb(255 255 255 / 80%);
+  --docux-grid: rgb(30 44 60 / 5%);
+  --docux-chip: #f4f6f8;
+  --docux-hero-bg: #171a1d;
+  --docux-hero-ink: #f8f9f9;
+  --docux-hero-muted: #b8bfc1;
+  --docux-header-glass: rgb(248 249 251 / 90%);
+}
+html[data-theme='dark'] {
+  color-scheme: dark;
+  --app-bg: #080a0d;
+  --app-workspace: #0d1014;
+  --app-sidebar: #101215;
+  --app-surface: #171a1e;
+  --app-surface-soft: #1d2126;
+  --app-raised: #20242a;
+  --app-inset: #111419;
+  --app-hover: #292e34;
+  --app-selected: #40271f;
+  --app-border: #30343a;
+  --app-border-strong: #6b747f;
+  --app-text: #f5f6f7;
+  --app-text-muted: #bec5ce;
+  --app-text-soft: #a3acb6;
+  --app-disabled-text: #a4abb3;
+  --app-primary: #ff946c;
+  --app-accent-rgb: 255 148 108;
+  --app-primary-hover: #ffc0a6;
+  --app-on-primary: #25120c;
+  --app-focus: #ffab86;
+  --app-danger-bg: #442a2d;
+  --app-danger-border: #c4777c;
+  --app-danger-text: #ffbac1;
+  --app-success-bg: #1b342c;
+  --app-success-border: #568f74;
+  --app-success-text: #a4e5c3;
+  --app-warning-bg: #3a3021;
+  --app-warning-border: #af8a4e;
+  --app-warning-text: #f4d392;
+  --app-info-bg: #253344;
+  --app-info-text: #b8d5f9;
+  --app-shadow: rgb(0 0 0 / 20%);
+  --app-shadow-raised: 0 16px 32px rgb(0 0 0 / 15%);
+  --app-shadow-floating: 0 30px 100px rgb(0 0 0 / 55%);
+  --docux-orange: #ff7948;
+  --docux-lime: #b4e1ad;
+  --docux-glass: rgb(21 24 28 / 82%);
+  --docux-glass-border: rgb(255 255 255 / 12%);
+  --docux-grid: rgb(255 255 255 / 4%);
+  --docux-chip: #272b31;
+  --docux-hero-bg: #17191b;
+  --docux-hero-ink: #f8f9f9;
+  --docux-hero-muted: #bdc3c6;
+  --docux-header-glass: rgb(14 16 19 / 91%);
+}
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme]) {
+    color-scheme: dark;
+    --app-bg: #080a0d; --app-workspace: #0d1014; --app-sidebar: #101215;
+    --app-surface: #171a1e; --app-surface-soft: #1d2126; --app-raised: #20242a;
+    --app-inset: #111419; --app-hover: #292e34; --app-selected: #40271f;
+    --app-border: #30343a; --app-border-strong: #6b747f;
+    --app-text: #f5f6f7; --app-text-muted: #bec5ce; --app-text-soft: #a3acb6;
+    --app-disabled-text: #a4abb3; --app-primary: #ff946c; --app-accent-rgb: 255 148 108;
+    --app-primary-hover: #ffc0a6; --app-on-primary: #25120c; --app-focus: #ffab86;
+    --app-danger-bg: #442a2d; --app-danger-border: #c4777c; --app-danger-text: #ffbac1;
+    --app-success-bg: #1b342c; --app-success-border: #568f74; --app-success-text: #a4e5c3;
+    --app-warning-bg: #3a3021; --app-warning-border: #af8a4e; --app-warning-text: #f4d392;
+    --app-info-bg: #253344; --app-info-text: #b8d5f9;
+    --app-shadow: rgb(0 0 0 / 20%); --app-shadow-raised: 0 16px 32px rgb(0 0 0 / 15%);
+    --app-shadow-floating: 0 30px 100px rgb(0 0 0 / 55%);
+    --docux-orange: #ff7948; --docux-lime: #b4e1ad; --docux-glass: rgb(21 24 28 / 82%);
+    --docux-glass-border: rgb(255 255 255 / 12%); --docux-grid: rgb(255 255 255 / 4%);
+    --docux-chip: #272b31; --docux-hero-bg: #17191b; --docux-hero-ink: #f8f9f9;
+    --docux-hero-muted: #bdc3c6; --docux-header-glass: rgb(14 16 19 / 91%);
+  }
+}
+/* Core shape and readable data density throughout the application */
+html, body { background: var(--app-workspace); }
+body { font-feature-settings: 'cv11','ss01'; -webkit-font-smoothing: antialiased; }
+body, button, input, textarea, select { font-family: 'Inter', 'Segoe UI', ui-sans-serif, system-ui, sans-serif; }
+:where(a, button, input, select, textarea, summary):focus-visible {
+  outline: 2px solid var(--app-focus);
+  outline-offset: 3px;
+}
+.ui-panel, .ui-card, .ui-metric, .ui-dialog {
+  border-radius: var(--app-radius-lg);
+  box-shadow: var(--app-shadow-raised);
+}
+.ui-panel, .ui-card { border-color: var(--app-border); }
+.ui-button { border-radius: var(--app-radius-sm); }
+:where(input:not([type='checkbox']):not([type='radio']),select,textarea) {
+  border-radius: var(--app-radius-sm);
+}
+:where(.ui-table, .activity-table, table) { font-variant-numeric: tabular-nums; }
+:where(.ui-table, table) tr { transition: background-color .16s ease; }
+::selection { background: var(--app-selected); color: var(--app-text); }
+/* Obsidian left rail: navigation remains compact; administration remains pinned at bottom. */
+.docux-shell { background: var(--app-workspace); }
+.docux-sidebar {
+  background: var(--app-sidebar);
+  border-right: 1px solid var(--app-border);
+  box-shadow: none;
+}
+.docux-brand { padding: 16px 14px; border-bottom-color: var(--app-border); }
+.docux-brand__mark {
+  background: var(--docux-orange); color: #fff;
+  border: none; border-radius: 13px;
+  box-shadow: 0 9px 24px rgb(236 103 59 / 23%);
+  transform: rotate(-7deg);
+}
+.docux-brand__text strong { letter-spacing: -.04em; }
+.docux-sidebar__nav { gap: 5px; padding: 20px 12px 14px; }
+.docux-sidebar__link { min-height: 47px; border-radius: 12px; }
+.docux-sidebar__link:hover { background: var(--app-hover); }
+.docux-sidebar__link.is-active {
+  background: var(--app-selected); border-color: transparent;
+  color: var(--app-primary);
+}
+.docux-sidebar__icon { border-radius: 9px; }
+.docux-sidebar__link.is-active .docux-sidebar__icon { color: var(--docux-orange); }
+.docux-sidebar__footer { border-top: 1px solid var(--app-border); background: var(--app-sidebar); }
+.docux-sidebar__footer::before {
+  content: 'WORKSPACE SETTINGS'; display: block;
+  padding: 0 6px 10px; font-size: 9px; font-weight: 800; letter-spacing: .12em;
+  color: var(--app-text-soft);
+}
+.docux-header {
+  min-height: 77px;
+  background: var(--docux-header-glass);
+  border-bottom: 1px solid var(--app-border);
+  -webkit-backdrop-filter: blur(22px); backdrop-filter: blur(22px);
+}
+.docux-header__context { letter-spacing: -.01em; }
+.docux-header__context strong { color: var(--app-text); }
+.docux-header__actions { gap: 10px; }
+.docux-avatar {
+  background: linear-gradient(145deg, var(--docux-orange), #a73b25);
+  color: #fff; border-color: transparent;
+}
+.docux-content { padding-block: 26px 58px; }
+.docux-ai-fab {
+  background: var(--app-surface); border: 1px solid var(--app-border);
+  border-radius: 17px; box-shadow: var(--app-shadow-floating);
+}
+.docux-ai-fab:hover { border-color: var(--app-primary); }
+/* Keep data visualizations faithful to the server while increasing legibility. */
+app-distribution-chart section,
+app-recent-activity-list .activity-panel {
+  border-radius: var(--app-radius-lg);
+  border-color: var(--app-border);
+  box-shadow: var(--app-shadow-raised);
+}
+app-distribution-chart section { background: var(--app-surface); padding: 24px; }
+app-distribution-chart h3 { font-weight: 720; letter-spacing: -.025em; }
+app-distribution-chart .chart-kind { color: var(--app-primary); }
+app-distribution-chart .donut-legend { font-variant-numeric: tabular-nums; }
+app-recent-activity-list .activity-panel { background: var(--app-surface); }
+app-recent-activity-list .activity-icon { border-radius: 12px; }
+app-recent-activity-list .activity-filter select { border-radius: 10px; }
+/* Notification drawer: translucent, but still readable in both themes. */
+.docux-notification-backdrop.cdk-overlay-backdrop {
+  background: rgb(0 0 0 / 31%);
+  backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px);
+}
+.notification-drawer .mat-mdc-dialog-surface {
+  border: 1px solid var(--docux-glass-border);
+  border-left: 1px solid var(--app-border-strong);
+  border-radius: 21px 0 0 21px;
+  overflow: hidden;
+  background: var(--docux-glass);
+  backdrop-filter: blur(36px) saturate(140%);
+  -webkit-backdrop-filter: blur(36px) saturate(140%);
+  box-shadow: var(--app-shadow-floating);
+}
+.notification-drawer app-notification-drawer { background: transparent; }
+.notification-drawer .notify-shell,
+.notification-drawer .notify-footer { background: transparent; }
+.notification-drawer .notify-item { transition: background-color .16s ease; }
+.notification-drawer .notify-item:hover { background: color-mix(in srgb, var(--app-hover) 60%, transparent); }
+.notification-drawer .notify-item--unread {
+  background: color-mix(in srgb, var(--app-selected) 42%, transparent);
+}
+.notification-drawer .notify-close,
+.notification-drawer .notify-action { background: color-mix(in srgb, var(--app-surface) 74%, transparent); }
+.notification-drawer .notify-head__icon { border-radius: 13px; }
+.notification-drawer .notify-type { letter-spacing: .11em; }
+.notification-drawer .notify-toolbar { background: color-mix(in srgb, var(--app-surface) 36%, transparent); }
+/* Account popover, dialogs and action alerts honor the same visual language. */
+.docux-account__panel {
+  border-radius: 16px; border: 1px solid var(--docux-glass-border);
+  background: var(--docux-glass); box-shadow: var(--app-shadow-floating);
+  backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+}
+.toast-stack .toast {
+  background: var(--docux-glass);
+  border: 1px solid var(--docux-glass-border);
+  border-left: 3px solid var(--toast-accent);
+  border-radius: 15px;
+  backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+  box-shadow: var(--app-shadow-floating);
+}
+/* Notification center and dashboard share matte / translucent layer geometry. */
+.notification-center__hero,
+.notification-center__panel,
+.dashboard-hero, .dashboard-priority { border-radius: var(--app-radius-lg); }
+.notification-center__panel {
+  background: var(--docux-glass);
+  backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px);
+  border: 1px solid var(--docux-glass-border);
+  box-shadow: var(--app-shadow-raised);
+}
+.notification-center__item { transition: background-color .18s ease; }
+.notification-center__item:hover { background: color-mix(in srgb, var(--app-hover) 55%, transparent); }
+.notification-center__item--unread { background: color-mix(in srgb, var(--app-selected) 38%, transparent); }
+/* Explicit mobile behavior and accessibility. */
+@media (max-width: 1024px) {
+  .docux-sidebar__footer::before { padding-left: 8px; }
+  .docux-content { padding: 18px 17px 48px; }
+}
+@media (max-width: 640px) {
+  .docux-header { min-height: 67px; }
+  .docux-brand__mark { transform: none; }
+  .notification-drawer .mat-mdc-dialog-surface { border-radius: 0; border-left: 0; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .notification-drawer .mat-mdc-dialog-surface,
+  .notification-center__panel,.docux-account__panel,.toast-stack .toast {
+    background: var(--app-surface); backdrop-filter: none; -webkit-backdrop-filter: none;
+  }
+}
+@media (forced-colors: active) {
+  .notification-drawer .mat-mdc-dialog-surface, .notification-center__panel { border: 1px solid CanvasText; }
+}
+/* Persistent desktop navigation follows the reference's visible information hierarchy.
+ * Existing hover/focus logic continues to govern disclosure menus, not sidebar width. */
+@media (min-width: 1025px) and (hover: hover) and (pointer: fine) {
+  .docux-shell { --sidebar-width: 276px; }
+  .docux-sidebar { width: var(--sidebar-width); }
+  .docux-main { padding-left: var(--sidebar-width); }
+  .docux-sidebar :is(.docux-brand__text,.docux-sidebar__label,.docux-workflow-chevron) { opacity: 1; }
+  .docux-brand__text { width: 185px; }
+  .docux-sidebar__nav { scrollbar-width: thin; }
+  .docux-sidebar__nav::-webkit-scrollbar { display: initial; width: 3px; }
+  .docux-sidebar__nav::-webkit-scrollbar-thumb { background: var(--app-border-strong); border-radius: 6px; }
+}
+
+/* DOCU-X floating glass notification sheet — dark and light contrast-aware. */
+.notification-drawer{--mat-dialog-container-max-width:min(470px,calc(100vw - 24px));--mat-dialog-container-shape:18px;border-radius:18px;overflow:hidden;box-shadow:0 25px 85px rgb(0 0 0 / 34%);border:1px solid var(--docux-glass-border,var(--app-border));animation:docux-glass-enter .22s cubic-bezier(.2,.7,.2,1)}
+.notification-drawer .mat-mdc-dialog-surface{border-radius:18px!important;overflow:hidden;background:var(--docux-glass,var(--app-surface))!important;backdrop-filter:blur(28px) saturate(145%);-webkit-backdrop-filter:blur(28px) saturate(145%)}
+.docux-notification-backdrop{background:rgb(6 10 13 / 39%)!important;backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+@keyframes docux-glass-enter{from{transform:translateX(22px);opacity:.5}to{transform:translateX(0);opacity:1}}
+@media(max-width:600px){.notification-drawer{border-radius:0;--mat-dialog-container-shape:0}.notification-drawer .mat-mdc-dialog-surface{border-radius:0!important}}
+@media(prefers-reduced-motion:reduce){.notification-drawer{animation:none}}

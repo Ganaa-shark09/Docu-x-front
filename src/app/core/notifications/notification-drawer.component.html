@@ -1,0 +1,34 @@
+<div class="notify-v3">
+  <header class="notify-v3__header">
+    <div class="notify-v3__crest" aria-hidden="true">◈</div>
+    <div class="notify-v3__headline"><span>PRIVATE / ACCOUNT FEED</span><h2 id="notification-drawer-title">Notifications</h2><p>Decisions and updates that matter</p></div>
+    <button class="notify-v3__close" type="button" (click)="close()" aria-label="Close notifications">×</button>
+  </header>
+  <div class="notify-v3__overview"><div><span>ON THIS PAGE</span><strong>{{rows().length}}</strong></div><div><span>UNREAD</span><strong class="notify-v3__highlight">{{visibleUnread()}}</strong></div><div class="notify-v3__overview-note"><span class="notify-v3__secure">●</span> Private account feed</div></div>
+  <div class="notify-v3__toolbar"><div class="notify-v3__tabs" role="group" aria-label="Filter notifications">
+    <button type="button" [class.is-current]="status()===''" [attr.aria-pressed]="status()===''" (click)="filter('')">All</button>
+    <button type="button" [class.is-current]="status()==='unread'" [attr.aria-pressed]="status()==='unread'" (click)="filter('unread')">Unread</button>
+    <button type="button" [class.is-current]="status()==='read'" [attr.aria-pressed]="status()==='read'" (click)="filter('read')">Read</button>
+  </div><button type="button" class="notify-v3__markall" (click)="markAll()" [disabled]="busy()||loading()">✓ All read</button></div>
+  <mat-dialog-content class="notify-v3__list" aria-live="polite">
+    @if(error()){<div role="alert" class="notify-v3__error"><strong>Notification request failed</strong><p>{{error()}}</p><button type="button" (click)="load()" [disabled]="loading()">Retry</button></div>}
+    @if(loading()){<div role="status" class="notify-v3__loading"><span class="notify-v3__spinner"></span>Loading your inbox…</div>}
+    @else {
+      @for(n of rows();track n.uuid){
+        <article class="notify-v3__item" [class.is-unread]="n.status==='unread'" [class.is-important]="n.priority==='high'||n.priority==='urgent'||n.priority==='critical'">
+          <span class="notify-v3__glyph" aria-hidden="true">{{n.priority==='high'||n.priority==='urgent'||n.priority==='critical'?'!':'↗'}}</span>
+          <div class="notify-v3__content"><div class="notify-v3__meta"><span>{{n.notification_type.replaceAll('_',' ')}}</span>
+            @if(n.priority==='high'||n.priority==='urgent'||n.priority==='critical'){<span class="notify-v3__priority">{{n.priority}} priority</span>}
+            @if(n.status==='unread'){<span class="notify-v3__unread">●</span>}
+          </div>
+          <h3>{{n.title}}</h3><p>{{n.message}}</p><time [attr.datetime]="n.created_at">{{n.created_at|date:'MMM d, y · h:mm a'}}</time>
+          <div class="notify-v3__actions">@if(path(n)){<button type="button" class="notify-v3__open" (click)="navigate(n)">View record ↗</button>}
+            @if(n.status==='unread'){<button type="button" (click)="mark(n)" [disabled]="busy()">Mark read</button>}
+          </div></div>
+        </article>
+      } @empty {@if(!error()){<div class="notify-v3__empty"><span aria-hidden="true">✓</span><h3>All caught up</h3><p>There are no {{status()||'new'}} notifications on this page.</p></div>}}
+    }
+  </mat-dialog-content>
+  <footer class="notify-v3__footer"><nav class="notify-v3__pager" aria-label="Notification pages"><button type="button" [disabled]="page<=1||loading()" (click)="load(page-1)">← Previous</button><span>{{page}}</span><button type="button" [disabled]="!next()||loading()" (click)="load(page+1)">Next →</button></nav>
+    <button type="button" class="notify-v3__center-link" (click)="openInbox()">Open notification center <span aria-hidden="true">↗</span></button></footer>
+</div>

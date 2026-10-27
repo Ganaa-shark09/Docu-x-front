@@ -182,7 +182,9 @@
           </a>
         }
       }
-      @if (profile()?.is_superuser || profile()?.role === 'company_admin' || profile()?.role === 'platform_admin') {
+    </nav>
+    @if (profile()?.is_superuser || profile()?.role === 'company_admin' || profile()?.role === 'platform_admin') {
+      <nav class="docux-sidebar__footer" aria-label="Administration navigation">
         <div class="docux-workflow-group docux-admin-group" (pointerenter)="openAdminMenu($event)" (pointerleave)="leaveAdminMenu($event)" (focusout)="adminFocusOut($event)">
           <button id="admin-menu-toggle" type="button" class="docux-sidebar__link" [class.is-active]="adminActive()" aria-label="Administration" aria-controls="admin-submenu" [attr.aria-expanded]="adminMenuOpen()" (click)="toggleAdminMenu()">
             <span class="docux-sidebar__icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M6 20V7l6-3 6 3v13M9 10h2m2 0h2m-6 4h2m2 0h2m-4 6v-3h2v3" /></svg></span>
@@ -199,8 +201,8 @@
             </div></div>
           </div>
         </div>
-      }
-    </nav>
+      </nav>
+    }
   </aside>
 
   @if (mobileNavigationOpen()) {
@@ -234,6 +236,10 @@
       </div>
 
       <div class="docux-header__actions">
+        <!-- <a class="docux-header__find" routerLink="/documents/internal" title="Browse documents">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.2"/><path d="m15.5 15.5 4.2 4.2"/></svg>
+        </a> -->
+        <span class="docux-header__divider" aria-hidden="true"></span>
         <app-notification-bell />
         <details class="docux-account" #account (keydown.escape)="account.open = false">
           <summary aria-label="Account menu">

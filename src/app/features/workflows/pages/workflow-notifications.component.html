@@ -1,0 +1,59 @@
+<section class="notification-v3" aria-labelledby="notification-center-title">
+  <header class="notification-v3__hero">
+    <div class="notification-v3__hero-main"><span class="notification-v3__eyebrow"><span class="notification-v3__signal" aria-hidden="true"></span> SECURE ACTIVITY FEED</span>
+      <h1 id="notification-center-title">Inbox<span>.</span></h1>
+      <p>Every relevant approval, workflow event and system update, in one place.</p>
+    </div>
+    <div class="notification-v3__hero-actions">
+      <button type="button" class="notification-v3__button" (click)="load(page)" [disabled]="loading() || busy()"><span aria-hidden="true">↻</span> {{loading() ? 'Refreshing…' : 'Refresh'}}</button>
+      <button type="button" class="notification-v3__button notification-v3__button--accent" (click)="markAll()" [disabled]="busy() || loading()">✓ Mark all read</button>
+    </div>
+  </header>
+
+  <div class="notification-v3__stats" aria-label="Visible notification summary">
+    <div><span>PAGE RESULTS</span><strong>{{visibleCount()}}</strong><small>On this page</small></div>
+    <div><span>UNREAD ON PAGE</span><strong>{{visibleUnread()}}</strong><small>Require attention</small></div>
+    <div class="notification-v3__stat-note"><span>PRIVATE FEED</span><strong><span aria-hidden="true">◈</span> Account scoped</strong><small>Only notifications permitted for this account</small></div>
+  </div>
+
+  <div class="notification-v3__workspace">
+    <div class="notification-v3__toolbar"><div><span class="notification-v3__eyebrow">NOTIFICATION STREAM</span><h2>Activity <span>@if(result();as rows){ {{rows.results.length}} }</span></h2></div>
+      <div class="notification-v3__toolbar-actions">
+        <label class="notification-v3__search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.9" cy="10.9" r="6.1"/><path d="m15.4 15.4 4.4 4.4"/></svg>
+          <input type="search" [value]="query()" (input)="setQuery($any($event.target).value)" placeholder="Search current page" aria-label="Search notifications on this page" />
+        </label>
+      <div class="notification-v3__filters" role="group" aria-label="Notification filters">
+        <button type="button" [class.is-active]="status()===''" [attr.aria-pressed]="status()===''" (click)="filter('')">All</button>
+        <button type="button" [class.is-active]="status()==='unread'" [attr.aria-pressed]="status()==='unread'" (click)="filter('unread')">Unread</button>
+        <button type="button" [class.is-active]="status()==='read'" [attr.aria-pressed]="status()==='read'" (click)="filter('read')">Read</button>
+      </div>
+      </div>
+    </div>
+    @if(error()){<div class="notification-v3__error" role="alert">{{error()}} <button type="button" [disabled]="loading()" (click)="load(page)">Retry</button></div>}
+    @if(loading()){<div class="notification-v3__loading" role="status"><span class="notification-v3__spinner"></span>Loading secure notifications…</div>}
+    @if(result();as rows){
+      <div class="notification-v3__list">
+        @for(group of groups();track group.key){
+          <div class="notification-v3__group-heading"><span>{{group.label}}</span><span>{{group.rows.length}} {{group.rows.length === 1 ? 'update' : 'updates'}}</span></div>
+          @for(n of group.rows;track n.uuid){
+          <article class="notification-v3__item" [class.is-unread]="n.status==='unread'" [class.is-important]="n.priority==='high'||n.priority==='urgent'||n.priority==='critical'">
+            <span class="notification-v3__item-icon" aria-hidden="true">{{n.priority==='high'||n.priority==='urgent'||n.priority==='critical' ? '!' : '↗'}}</span>
+            <div class="notification-v3__item-main">
+              <div class="notification-v3__meta"><span class="notification-v3__type">{{n.notification_type.replaceAll('_',' ')}}</span>
+                @if(n.priority==='high'||n.priority==='urgent'||n.priority==='critical'){<span class="notification-v3__priority">{{n.priority}} priority</span>}
+                <time [attr.datetime]="n.created_at">{{n.created_at|date:'MMM d, y · h:mm a'}}</time>
+              </div>
+              <h3>{{n.title}} @if(n.status==='unread'){<span class="notification-v3__new">UNREAD</span>}</h3>
+              <p>{{n.message}}</p>
+              <div class="notification-v3__actions">@if(path(n);as target){<a [routerLink]="target">View record <span aria-hidden="true">↗</span></a>}
+                @if(n.status==='unread'){<button type="button" [disabled]="busy()" (click)="mark(n)">✓ Mark as read</button>}
+              </div>
+            </div>
+          </article>
+          }
+        } @empty {<div class="notification-v3__empty"><span aria-hidden="true">✓</span><h3>{{query() ? 'No matching updates' : 'You’re all caught up'}}</h3><p>{{query() ? 'Try another search on this page.' : 'No notifications match this filter.'}}</p></div>}
+      </div>
+      <nav class="notification-v3__pagination" aria-label="Notification pages"><button type="button" [disabled]="!rows.previous||loading()||busy()" (click)="load(page-1)">← Previous</button><span>Page {{page}}</span><button type="button" [disabled]="!rows.next||loading()||busy()" (click)="load(page+1)">Next →</button></nav>
+    }
+  </div>
+</section>

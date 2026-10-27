@@ -25,7 +25,12 @@
                 "input": "public"
               }
             ],
-            "styles": ["src/styles.css", "src/enterprise.scss"],
+            "styles": [
+              "src/styles.css",
+              "src/enterprise.scss",
+              "src/docux-visual-system.css",
+              "src/docux-readiness-theme-v8.css"
+            ],
             "security": {
               "allowedHosts": []
             }

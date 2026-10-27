@@ -13,4 +13,5 @@ export class MetricCardComponent {
   @Input() value: string | number = '-';
   @Input() subtitle = '';
   @Input() badge = 'Metric';
+  @Input() tone: 'default' | 'primary' | 'warning' = 'default';
 }
