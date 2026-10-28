@@ -148,3 +148,25 @@ describe('DOCU-X V9 readiness surfaces and operational hierarchy', () => {
     http.verify({ignoreCancelled:true});
   });
 });
+
+
+describe('DOCU-X V11 keyboard-accessible animated ingestion bars', () => {
+  it('labels each actual day and assigns distinct entrance delays', () => {
+    TestBed.configureTestingModule({imports:[DashboardPageComponent],providers:[provideHttpClient(),provideHttpClientTesting(),provideRouter([])]});
+    const http=TestBed.inject(HttpTestingController);
+    const fixture=TestBed.createComponent(DashboardPageComponent);
+    http.expectOne(r=>r.url.includes('/dashboard/overview/')).flush(overview);
+    http.expectOne(r=>r.url.includes('/dashboard/recent-activity/')).flush({results:[]});
+    fixture.detectChanges();
+    const chart=fixture.nativeElement.querySelector('.v6-spark') as HTMLElement;
+    expect(chart.getAttribute('role')).toBe('group');
+    const bars=Array.from(chart.querySelectorAll('.v6-spark__column')) as HTMLElement[];
+    expect(bars.length).toBe(4);
+    bars.forEach((bar,index)=>{
+      expect(bar.getAttribute('tabindex')).toBe('0');
+      expect(bar.getAttribute('aria-label')).toContain('uploaded');
+      expect((bar.querySelector('i') as HTMLElement).style.getPropertyValue('--docux-spark-index')).toBe(String(index));
+    });
+    fixture.destroy();http.verify({ignoreCancelled:true});
+  });
+});

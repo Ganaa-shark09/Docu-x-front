@@ -93,8 +93,15 @@
       <section class="v9-cadence" aria-label="Seven-day intake summary">
         <span class="v6-overline">RECENT INGESTION</span>
         <div class="v6-weekline"><div><strong>Last seven days</strong><span>{{weeklyTotal()|number}} uploads · {{weeklyActiveDays()}} active {{weeklyActiveDays()===1?'day':'days'}}</span></div><span class="v6-weekline__source">Actual daily counts</span></div>
-        <div class="v6-spark" role="img" [attr.aria-label]="weeklyAccessibleDescription()">
-          @for(row of weeklyRows();track row.date){<span class="v6-spark__column" [class.is-positive]="row.count>0" ><i [style.height.%]="sparkHeight(row.count)"></i><small>{{row.date.slice(5)}}</small><span class="v6-spark__tooltip">{{row.date}} · {{row.count}} uploaded</span></span>}
+        <div class="v6-spark" role="group" [attr.aria-label]="weeklyAccessibleDescription()">
+          @for(row of weeklyRows();track row.date;let barIndex = $index){
+            <span class="v6-spark__column" [class.is-positive]="row.count>0" tabindex="0"
+              [attr.aria-label]="row.date + ': ' + row.count + ' uploaded'">
+              <i aria-hidden="true" [style.height.%]="sparkHeight(row.count)" [style.--docux-spark-index]="barIndex"></i>
+              <small aria-hidden="true">{{row.date.slice(5)}}</small>
+              <span class="v6-spark__tooltip" aria-hidden="true">{{row.date}} · {{row.count}} uploaded</span>
+            </span>
+          }
           @empty {<span class="v6-spark__empty">No daily upload data available.</span>}
         </div>
         <div class="v9-cadence__note"><span class="v6-status-dot" aria-hidden="true"></span> Updated from your authorized workspace snapshot</div>

@@ -326,3 +326,28 @@
   .dashboard-v6 .v9-attention .v6-worklist__row {transition:none!important;}
   .dashboard-v6 .v9-attention .v6-worklist__row:hover {transform:none;}
 }
+
+/* DOCU-X V11: verified 7-day bars rise sequentially, then transition between
+   server snapshots. No continuous loops or fabricated activity. */
+.dashboard-v6 .v9-cadence .v6-spark__column {border-radius:9px;outline-offset:3px;}
+.dashboard-v6 .v9-cadence .v6-spark__column:focus-visible {
+  outline:2px solid var(--app-focus);outline-offset:3px;
+}
+.dashboard-v6 .v9-cadence .v6-spark__column i {
+  transform-origin:50% 100%;
+  animation:docux-v11-ingestion-rise .78s cubic-bezier(.18,.84,.24,1) both;
+  animation-delay:calc(var(--docux-spark-index,0) * 75ms);
+  transition:height .75s cubic-bezier(.2,.8,.24,1),filter .22s ease,background .22s ease;
+}
+.dashboard-v6 .v9-cadence .v6-spark__column:is(:hover,:focus-visible) i {
+  filter:brightness(1.2) drop-shadow(0 0 7px color-mix(in srgb,var(--app-primary) 30%,transparent));
+}
+.dashboard-v6 .v9-cadence .v6-spark__column:is(:hover,:focus-visible) .v6-spark__tooltip {display:block;}
+.dashboard-v6 .v9-cadence .v6-spark__column .v6-spark__tooltip {pointer-events:none;}
+@keyframes docux-v11-ingestion-rise {
+  from {transform:scaleY(.015);opacity:.2;}
+  to {transform:scaleY(1);opacity:1;}
+}
+@media (prefers-reduced-motion:reduce) {
+  .dashboard-v6 .v9-cadence .v6-spark__column i {animation:none!important;transition:none!important;}
+}

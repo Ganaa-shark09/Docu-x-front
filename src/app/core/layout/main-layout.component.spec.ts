@@ -195,8 +195,12 @@ describe('Workflow navigation disclosure', () => {
     expect(primary.querySelector('#admin-menu-toggle')).toBeNull();
   });
   it('provides an actual document navigation shortcut instead of a fake search input', () => {
-    const link = fixture.nativeElement.querySelector('.docux-header__find');
-    expect(link.getAttribute('href')).toBe('/documents/internal');
+    const link: HTMLAnchorElement | null = fixture.nativeElement.querySelector(
+      '.docux-header__actions a[href="/documents/internal"]',
+    );
+    expect(link).not.toBeNull();
+    expect(link?.getAttribute('href')).toBe('/documents/internal');
+    expect((link?.getAttribute('aria-label') || link?.textContent || '').trim().length).toBeGreaterThan(0);
   });
 
 });

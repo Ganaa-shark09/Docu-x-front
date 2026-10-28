@@ -1,4 +1,4 @@
-import { Component, computed, input, signal } from '@angular/core';
+import { AfterViewInit, Component, computed, effect, ElementRef, inject, input, NgZone, OnDestroy, signal } from '@angular/core';
 
 type RadialSegment = {key: string; label: string; value: number; length: number; start: number; color: string};
 
@@ -14,19 +14,20 @@ type RadialSegment = {key: string; label: string; value: number; length: number;
       </header>
       <div class="composition__body">
         <div class="composition__graphic" role="img" [attr.aria-label]="descriptionText()">
-          <svg viewBox="0 0 200 200" aria-hidden="true" focusable="false">
+          <svg class="composition__ring" [class.is-revolving]="spinStarted()" viewBox="0 0 200 200" aria-hidden="true" focusable="false">
             <circle class="composition__track" cx="100" cy="100" r="75" pathLength="100" fill="none" stroke-width="18" />
-            @for(segment of segments();track segment.key){
+            @for(segment of segments();track segment.key + ':' + segment.length.toFixed(4) + ':' + segment.start.toFixed(4)){
               <circle class="composition__segment" [class.is-muted]="activeSegment() && activeSegment()!.key!==segment.key"
                 cx="100" cy="100" r="75" pathLength="100" fill="none" stroke-width="18"
-                [attr.stroke]="segment.color" [attr.stroke-dasharray]="segment.length + ' ' + (100-segment.length)"
+                [attr.stroke]="segment.color" [style.--docux-ring-target]="segment.length + ' ' + (100-segment.length)"
+                [attr.stroke-dasharray]="segment.length + ' ' + (100-segment.length)"
                 [attr.stroke-dashoffset]="-segment.start">
                 <title>{{segment.label}}: {{segment.value}} records, {{segment.length.toFixed(1)}}%</title>
               </circle>
             }
           </svg>
           <div class="composition__center"><span>{{activeSegment() ? 'SELECTED' : 'TOTAL RECORDS'}}</span>
-            <strong>{{activeSegment()?.value ?? total()}}</strong>
+            <strong [attr.aria-label]="(activeSegment()?.value ?? total()) + ' records'" aria-live="off">{{displayCount()}}</strong>
             <small>{{activeSegment() ? activeSegment()!.length.toFixed(1) + '% of total' : 'verified records'}}</small>
           </div>
         </div>
@@ -63,7 +64,7 @@ type RadialSegment = {key: string; label: string; value: number; length: number;
     .composition__body{display:grid;grid-template-columns:minmax(125px,.85fr) minmax(126px,1fr);gap:12px;align-items:center;flex:1;min-width:0}
     .composition__graphic{position:relative;width:100%;max-width:225px;aspect-ratio:1;margin:auto}
     .composition__graphic svg{display:block;width:100%;height:100%;overflow:visible;transform:rotate(-90deg);filter:drop-shadow(0 9px 12px rgb(0 0 0 / 9%))}
-    .composition__track{stroke:var(--app-surface-soft)}.composition__segment{stroke-linecap:round;animation:fill-ring .85s cubic-bezier(.22,.8,.24,1) both;transition:opacity .2s,stroke-width .2s}
+    .composition__track{stroke:var(--app-surface-soft)}.composition__segment{stroke-linecap:round;transition:opacity .2s,stroke-width .2s}
     .composition__segment.is-muted{opacity:.18}
     .composition__center{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:3px;pointer-events:none;text-align:center}
     .composition__center span{font-size:8px;letter-spacing:.13em;font-weight:780;color:var(--app-text-muted)}
@@ -78,8 +79,6 @@ type RadialSegment = {key: string; label: string; value: number; length: number;
     .composition__empty{padding:16px 4px;text-align:center}.composition__empty span{color:var(--app-primary);font-size:23px}
     .composition footer{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:23px;margin-top:auto;padding-top:10px;border-top:1px solid var(--app-border);color:var(--app-text-muted);font-size:10px}
     .composition__reset{border:0;background:transparent;color:var(--app-primary);font-size:10px;font-weight:760;cursor:pointer}.composition__foot-dot{width:7px;height:7px;background:var(--app-success-text);border-radius:50%}
-    .composition__segment{transform-box:fill-box;transform-origin:center}
-    @keyframes fill-ring{from{opacity:0;transform:scale(.98) rotate(-2deg)}to{opacity:1;transform:scale(1) rotate(0)}}
     @media(max-width:450px){.composition__body{grid-template-columns:1fr}.composition__graphic{max-width:200px}.composition__legend{grid-template-columns:1fr 1fr}}
     @media(prefers-reduced-motion:reduce){.composition,.composition__segment,.composition__legend-item{animation:none!important;transition:none!important}.composition:hover{transform:none}}
 
@@ -104,14 +103,68 @@ type RadialSegment = {key: string; label: string; value: number; length: number;
     .composition__bar{height:3px;grid-column:2/-1;display:block;overflow:hidden;border-radius:5px;background:var(--app-surface-soft)}
     .composition__bar i{display:block;height:100%;min-width:2px;border-radius:5px;transition:width .6s cubic-bezier(.2,.8,.2,1);animation:docux-grow-bar .8s cubic-bezier(.19,.8,.2,1) both;transform-origin:left center}
     @keyframes docux-grow-bar{from{transform:scaleX(.08);opacity:.45}to{transform:scaleX(1);opacity:1}}
+    /* One full clockwise revolution, then the exact original -90deg orientation.
+       The class is applied once when verified data first becomes visible. */
+    .composition__graphic svg.is-revolving{
+      animation:docux-ring-one-turn 1.5s cubic-bezier(.2,.74,.24,1) 0s 1 both;
+    }
+    @keyframes docux-ring-one-turn{
+      from{transform:rotate(-450deg)}
+      to{transform:rotate(-90deg)}
+    }
+    .composition__center strong{font-variant-numeric:tabular-nums;transition:color .2s ease}
+    .composition__graphic:hover .composition__center strong{color:var(--readiness-highlight,var(--app-primary))}
     .composition footer{padding-top:13px;font-size:10px}
     @media(max-width:550px){.composition__body{grid-template-columns: minmax(120px,.8fr) minmax(135px,1fr);gap:7px}.composition{padding:16px}}
     @media(max-width:390px){.composition__body{grid-template-columns:1fr}.composition__graphic{max-width:205px}.composition__legend{grid-template-columns:1fr}}
-    @media(prefers-reduced-motion:reduce){.composition__bar i,.composition__segment{transition:none!important}}
+    @media(prefers-reduced-motion:reduce){.composition__bar i,.composition__segment,.composition__graphic svg.is-revolving{transition:none!important;animation:none!important}}
     @media(prefers-reduced-motion:reduce){.composition__bar i{animation:none!important}}
   `]
 })
-export class DashboardRadialCardComponent {
+export class DashboardRadialCardComponent implements AfterViewInit, OnDestroy {
+  private readonly host = inject(ElementRef<HTMLElement>);
+  private readonly zone = inject(NgZone);
+  private observer: IntersectionObserver | null = null;
+  private readonly visible = signal(false);
+  private hasStarted = false;
+  readonly spinStarted = signal(false);
+
+  /** Counts always match the authorized snapshot, including while the ring rotates. */
+  readonly displayCount = computed(() => this.activeSegment()?.value ?? this.total());
+
+  constructor() {
+    effect(() => {
+      // Only begin when the card enters the viewport AND has actual segments.
+      // Never replay on filter selection, server refresh, or clearing the dataset.
+      if (this.visible() && this.segments().length > 0 && !this.hasStarted) {
+        this.hasStarted = true;
+        this.spinStarted.set(true);
+      }
+    });
+  }
+
+  ngAfterViewInit(): void {
+    if (typeof IntersectionObserver === 'undefined') {
+      this.visible.set(true);
+      return;
+    }
+    this.zone.runOutsideAngular(() => {
+      this.observer = new IntersectionObserver((entries) => {
+        if (entries.some(entry => entry.isIntersecting)) {
+          this.observer?.disconnect();
+          this.observer = null;
+          this.zone.run(() => this.visible.set(true));
+        }
+      }, { threshold: 0.15 });
+      this.observer.observe(this.host.nativeElement);
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.observer?.disconnect();
+    this.observer = null;
+  }
+
   readonly title = input.required<string>();
   readonly eyebrow = input<string>('PORTFOLIO');
   readonly description = input<string>('Current categorized records');
