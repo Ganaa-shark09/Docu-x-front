@@ -1,59 +1,65 @@
-# DocuXFront
+# DOCU-X Platform AI Administration — V3
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.0.8.
+**Purpose:** Remove the operational need for Django Admin to configure AI provider credentials and company model access. Platform superusers can do it within DOCU-X. Company administrators still manage their default model on the existing Company AI Models page; end users still choose granted models in Internal AI.
 
-## Development server
+## Install backend first
 
-To start a local development server, run:
-
-```bash
-ng serve
-```
-
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+Copy `DOCUX-Platform-AI-Administration-V3.zip` into `Docu_X-back`, then:
 
 ```bash
-ng generate component component-name
+python -m zipfile -e DOCUX-Platform-AI-Administration-V3.zip .
+python install-docux-platform-ai-v3.py --target backend --diff
+python install-docux-platform-ai-v3.py --target backend --apply
+python install-docux-platform-ai-v3.py --target backend --verify
+docker compose -f docker-compose.local.yml exec -T django python manage.py check
+docker compose -f docker-compose.local.yml exec -T django python manage.py makemigrations --check --dry-run
+docker compose -f docker-compose.local.yml exec -T django python -m pytest -q apps/ai_engine/tests/test_platform_ai_administration.py
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+No new migration is required: V3 uses `LLMProviderConfig`, `CompanyModelGrant`, and `Company` from the installed backend V2 migration. All new endpoints require an authenticated **active Django superuser**. They do not depend on `request.user.company` and never return the encrypted key or plaintext key. Configured secrets are encrypted via `LLMProviderConfig.set_api_key`.
+
+## Install frontend second
+
+Copy the **same ZIP** into `Docu_X-front`, then:
 
 ```bash
-ng generate --help
+python -m zipfile -e DOCUX-Platform-AI-Administration-V3.zip .
+python install-docux-platform-ai-v3.py --target frontend --diff
+python install-docux-platform-ai-v3.py --target frontend --apply
+python install-docux-platform-ai-v3.py --target frontend --verify
+npx ng build
 ```
 
-## Building
+Route: **`/administration/platform/ai-models`** (visible in Administration only to Django superusers). Existing `/administration/company/ai-models` remains the company default / member catalog page.
 
-To build the project run:
+## API endpoints (superuser only)
 
-```bash
-ng build
-```
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/api/ai/platform/companies/` | Paginated company listing with routing flags |
+| PATCH | `/api/ai/platform/companies/{uuid}/` | Allow cloud/local AI for company |
+| GET | `/api/ai/platform/providers/?company={uuid}` | Company-owned provider configurations; only `has_api_key`, never key material |
+| POST | `/api/ai/platform/providers/` | Create provider config and encrypt supplied `api_key` |
+| PATCH | `/api/ai/platform/providers/{uuid}/` | Update provider, rotate key, disable connection |
+| GET | `/api/ai/company-models/?company={uuid}` | Existing superuser grant catalog |
+| POST/PATCH | `/api/ai/company-models/` | Existing superuser grant / enable / disable APIs |
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+Provider type and owner are immutable after creation. API keys are write-only; leaving the field blank when editing preserves the previous key. The optional `DOCUX_OLLAMA_ALLOWED_HOSTS` environment variable controls the allowlist of server-side Ollama endpoints (default `ollama,localhost,127.0.0.1`). Groq, Gemini, Anthropic, and OpenAI use fixed official endpoints rather than user-supplied destination URLs. Azure requires HTTPS + deployment identifier. All cloud providers require credentials before activation.
 
-## Running unit tests
+## Suggested first use
 
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
+1. Login to DOCU-X as a **platform superuser** and open **Administration → Platform AI governance**.
+2. Select a company. Set cloud/local AI routing policy and save.
+3. Add a Groq provider named `Groq production`, model `openai/gpt-oss-120b`, and paste its API key (write-only password field).
+4. Create a model grant for that company by selecting the Groq connection, model ID `openai/gpt-oss-120b`, and display name `GPT OSS 120B`.
+5. Login as that company's administrator to select its default under **Administration → AI models**. Company users can select the same model in **Internal AI**.
+6. Verify an actual response with an authorized non-sensitive test prompt. The DOCU-X data firewall still determines whether documents can be sent to cloud AI.
 
-```bash
-ng test
-```
+## Scope & validation
 
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+- Frontend: Angular TS/strict template and Sass compilers passed in reconstructed fixture. Full build on the current branch remains a local verification step.
+- Backend: Python syntax compilation passed; integration tests are bundled but need Docker to run (Django is not installed in this artifact environment).
+- No database migration and no credential values packaged.
+- Changes are guarded by exact V2 backend + V2.1 frontend source hashes. If any current source differs, installer aborts instead of overwriting it. A `--diff` preview is required before applying. Installer backups go to the system temp folder outside Git.
+- Existing specialized HR Q&A, external chat, and workflow model routes are **not** changed by this patch. Only the existing Internal AI governance pathway is used for response selection.
+- For a production rollout, verify network egress policy, configured encryption keys, actual provider availability, and persistent audit event integration. Current code emits key-free structured server log entries for provider/policy changes; it does not yet create dedicated persistent audit-event rows.
