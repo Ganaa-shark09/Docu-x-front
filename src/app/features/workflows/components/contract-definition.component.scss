@@ -1,0 +1,215 @@
+:host { display: block; min-width: 0; }
+.contract-setup {
+  --setup-surface: var(--app-surface, #fff);
+  --setup-soft: var(--app-surface-soft, #f1f7f3);
+  --setup-text: var(--app-text, #152f22);
+  --setup-muted: var(--app-text-muted, #537163);
+  --setup-border: var(--app-border, #d4e4d9);
+  --setup-accent: #18804e;
+  --setup-primary: #9fe9bd;
+  --setup-primary-text: #0b2e1c;
+  padding: 0 24px 22px;
+  background: var(--setup-surface);
+  color: var(--setup-text);
+}
+:host-context(html[data-theme='dark']) .contract-setup,
+:host-context([data-theme='dark']) .contract-setup {
+  --setup-accent: #a0eabd;
+  --setup-primary: #a0eabd;
+  --setup-primary-text: #102b1e;
+}
+.contract-setup *, .contract-setup *::before, .contract-setup *::after { box-sizing: border-box; }
+.contract-setup__intro { padding: 24px 0 18px; }
+.contract-setup__intro h2 { margin: 0; color: var(--setup-text); font-size: 17px; }
+.contract-setup__intro p { margin: 6px 0 0; color: var(--setup-muted); font-size: 13px; line-height: 1.55; }
+.contract-setup__error { border: 1px solid var(--app-danger-text, #a33); border-radius: 9px; padding: 12px; color: var(--app-danger-text, #a33); }
+.contract-setup__section { border-top: 1px solid var(--setup-border); padding: 22px 0 24px; }
+.contract-setup__section-heading { display: flex; gap: 14px; align-items: flex-start; margin-bottom: 19px; }
+.contract-setup__step { flex: 0 0 32px; width: 32px; height: 32px; display: grid; place-items: center; border: 1px solid var(--setup-border); border-radius: 9px; background: var(--setup-soft); color: var(--setup-accent); font-size: 12px; font-weight: 800; }
+.contract-setup__section-heading h3 { margin: 0 0 5px; color: var(--setup-text); font-size: 16px; font-weight: 710; }
+.contract-setup__section-heading p { margin: 0; color: var(--setup-muted); font-size: 12px; line-height: 1.5; }
+.contract-setup__grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 18px; }
+.contract-setup__grid > label { display: grid; align-content: start; gap: 8px; color: var(--setup-text); font-size: 12px; font-weight: 650; }
+.contract-setup__grid > label small { color: var(--setup-muted); font-size: 11px; font-weight: 400; }
+.contract-setup input:not([type='checkbox']), .contract-setup select { display: block; width: 100%; min-width: 0; min-height: 43px; padding: 9px 12px; border: 1px solid var(--setup-border); border-radius: 8px; background: var(--setup-surface); color: var(--setup-text); font: inherit; font-size: 13px; }
+.contract-setup input:focus-visible, .contract-setup select:focus-visible, .contract-setup button:focus-visible { outline: 2px solid var(--setup-accent); outline-offset: 2px; }
+.contract-setup__assignments { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; }
+.contract-setup__assignment { min-width: 0; border: 1px solid var(--setup-border); padding: 16px; border-radius: 11px; background: var(--setup-soft); }
+.contract-setup__assignment h4 { margin: 0 0 6px; font-size: 14px; color: var(--setup-text); }
+.contract-setup__assignment h4 span { font-size: 10px; font-weight: 500; color: var(--setup-muted); margin-left: 5px; }
+.contract-setup__assignment p { margin: 0 0 14px; color: var(--setup-muted); font-size: 12px; line-height: 1.5; }
+.contract-setup__switch-grid { display: grid; gap: 10px; margin-bottom: 20px; }
+.contract-setup__check { display: flex; align-items: flex-start; gap: 11px; padding: 12px 14px; border-radius: 9px; border: 1px solid var(--setup-border); cursor: pointer; }
+.contract-setup__check input { flex: 0 0 auto; margin-top: 4px; accent-color: var(--setup-accent); }
+.contract-setup__check strong { display: block; color: var(--setup-text); font-size: 12px; }
+.contract-setup__check small { display: block; margin-top: 4px; color: var(--setup-muted); line-height: 1.5; font-size: 11px; }
+.contract-setup__playbook { margin: 14px 0 0; padding: 15px; border: 1px solid var(--setup-border); border-radius: 9px; }
+.contract-setup__footer { border-top: 1px solid var(--setup-border); display: flex; gap: 20px; align-items: center; justify-content: space-between; padding-top: 20px; }
+.contract-setup__footer p { color: var(--setup-muted); line-height: 1.55; font-size: 11px; max-width: 620px; margin: 0; }
+.contract-setup__submit { font: inherit; font-size: 13px; font-weight: 750; border: 1px solid transparent; border-radius: 9px; background: var(--setup-primary); color: var(--setup-primary-text); cursor: pointer; padding: 11px 18px; white-space: nowrap; }
+.contract-setup__submit:disabled { opacity: .5; cursor: not-allowed; }
+@media (max-width:850px) { .contract-setup__assignments, .contract-setup__grid { grid-template-columns: 1fr; }.contract-setup__footer { flex-direction: column; align-items: stretch; }.contract-setup__submit { align-self: flex-start; } }
+@media (max-width:650px) { .contract-setup { padding: 0 16px 18px; } }
+
+/* V10: compact, bounded policy cards. The explicit grid prevents inherited label
+   rules from stretching checkbox text into vertically stacked letters. */
+.contract-setup { width: 100%; max-width: 100%; min-width: 0; overflow-wrap: normal; }
+.contract-setup__section { min-width: 0; }
+.contract-setup__switch-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+  align-items: start !important;
+  margin: 0 0 22px;
+}
+.contract-setup label.contract-setup__check {
+  box-sizing: border-box;
+  display: grid !important;
+  grid-template-columns: 19px minmax(0, 1fr) !important;
+  grid-template-rows: auto !important;
+  align-content: start !important;
+  align-items: start !important;
+  justify-content: start !important;
+  justify-items: start !important;
+  column-gap: 12px !important;
+  row-gap: 0 !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  height: auto !important;
+  min-height: 78px !important;
+  max-height: none !important;
+  padding: 16px !important;
+  margin: 0 !important;
+  border-radius: 11px;
+  border: 1px solid var(--setup-border);
+  background: var(--setup-soft);
+  cursor: pointer;
+}
+.contract-setup label.contract-setup__check--single { max-width: 100%; }
+.contract-setup label.contract-setup__check > input[type='checkbox'] {
+  appearance: auto;
+  display: block !important;
+  position: static !important;
+  width: 18px !important;
+  min-width: 18px !important;
+  max-width: 18px !important;
+  height: 18px !important;
+  min-height: 18px !important;
+  max-height: 18px !important;
+  margin: 1px 0 0 !important;
+  padding: 0 !important;
+  align-self: start !important;
+  justify-self: start !important;
+  border-radius: 4px;
+  accent-color: var(--setup-accent);
+}
+.contract-setup .contract-setup__check-copy {
+  display: block !important;
+  box-sizing: border-box;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  width: auto !important;
+  overflow-wrap: break-word !important;
+  word-break: normal !important;
+  white-space: normal !important;
+  writing-mode: horizontal-tb !important;
+  text-orientation: mixed !important;
+  letter-spacing: normal;
+}
+.contract-setup .contract-setup__check-copy > strong {
+  display: block;
+  margin: 0 0 5px;
+  font-size: 13px;
+  line-height: 1.35;
+  font-weight: 730;
+  color: var(--setup-text);
+}
+.contract-setup .contract-setup__check-copy > small {
+  display: block;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--setup-muted);
+}
+.contract-setup__assignments { align-items: start; }
+.contract-setup__assignment app-workflow-assignment,
+.contract-setup__playbook app-legal-playbook-picker { display: block; width: 100%; min-width: 0; max-width: 100%; }
+.contract-setup__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+.contract-setup__grid > label { min-width: 0; }
+@media (max-width: 800px) {
+  .contract-setup__switch-grid,
+  .contract-setup__assignments,
+  .contract-setup__grid { grid-template-columns: minmax(0, 1fr) !important; }
+  .contract-setup label.contract-setup__check { min-height: 72px !important; }
+}
+
+/* V10 stepper, fixed action area, and bounded single-step presentation. */
+.contract-setup__progress {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding: 2px 0 24px;
+}
+.contract-setup__progress span {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--setup-border);
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--setup-muted);
+}
+.contract-setup__progress span b {
+  display: grid;
+  place-items: center;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--setup-soft);
+  color: var(--setup-muted);
+  font-size: 11px;
+}
+.contract-setup__progress span.is-current {
+  border-color: var(--setup-accent);
+  color: var(--setup-text);
+  background: var(--setup-soft);
+}
+.contract-setup__progress span.is-current b,
+.contract-setup__progress span.is-complete b {
+  background: var(--setup-primary);
+  color: var(--setup-primary-text);
+}
+.contract-setup__section { max-width: 100%; padding-top: 22px; padding-bottom: 26px; }
+.contract-setup__section-heading { margin-bottom: 20px; }
+.contract-setup__footer { margin-top: 4px; }
+.contract-setup__footer-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+.contract-setup__back {
+  min-height: 42px;
+  padding: 10px 17px;
+  border-radius: 9px;
+  border: 1px solid var(--setup-border);
+  background: transparent;
+  color: var(--setup-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.contract-setup__back:hover { background: var(--setup-soft); }
+.contract-setup__back:disabled { opacity: .5; cursor: not-allowed; }
+@media(max-width: 760px) {
+  .contract-setup__progress { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .contract-setup__footer { align-items: stretch; }
+  .contract-setup__footer-actions { width: 100%; }
+}
+@media(max-width: 420px) {
+  .contract-setup__progress span { padding: 9px; font-size: 11px; }
+  .contract-setup__footer-actions > button { flex: 1 1 auto; }
+}
+
+/* V13 — conflict guidance stays close to the stable-code field. */
+.contract-setup__field-note { display: block; margin-top: 4px; border-left: 3px solid var(--app-warning-text, #c18a23); padding: 8px 10px; border-radius: 4px; color: var(--setup-text); background: var(--setup-soft); font-size: 12px; font-weight: 500; line-height: 1.5; }

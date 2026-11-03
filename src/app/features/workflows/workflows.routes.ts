@@ -1,5 +1,10 @@
 import { Routes } from '@angular/router';
 export const WORKFLOWS_ROUTES: Routes = [
+  {
+    path: 'contract-workspace',
+    loadChildren: () => import('../contracts/contracts.routes').then(m => m.CONTRACTS_ROUTES),
+  },
+
   { path: 'compliance', pathMatch: 'full', redirectTo: 'compliance/assessments' },
   ...['frameworks', 'controls', 'assessments'].flatMap((mode) => [
     {

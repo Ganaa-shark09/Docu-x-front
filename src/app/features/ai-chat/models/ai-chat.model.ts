@@ -2,6 +2,8 @@ import { HRAnswerPolicy, HRContext } from '../../workflows/models/hr-policy.mode
 export type AiChatScope = 'internal' | 'external';
 
 export interface AiChatRequest {
+  /** UUID of an approved company grant, never a raw provider model ID. */
+  model_uuid?: string;
   domain?: 'hr_policy';
   policy_context?: HRContext;
   idempotency_key?: string;

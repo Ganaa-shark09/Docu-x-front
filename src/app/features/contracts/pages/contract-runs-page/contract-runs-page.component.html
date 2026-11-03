@@ -1,0 +1,53 @@
+<div class="cr-page">
+  <app-contract-area-nav active="runs" />
+
+  <header class="cr-heading">
+    <div>
+      <span class="cr-kicker">LEGAL OPERATIONS</span>
+      <h1>Contract review runs</h1>
+      <p>Track review execution and open the associated workflow or source-backed review.</p>
+    </div>
+  </header>
+
+  <section class="cr-panel">
+    <div class="cr-panel__head">
+      <div>
+        <h2>Accessible contract runs</h2>
+        <p>Only runs linked to an accessible contract review are listed here. Other workflow runs remain in the global Workflows queue.</p>
+      </div>
+      <button type="button" class="cr-text-button" (click)="load()" [disabled]="loading">Refresh</button>
+    </div>
+    <form class="cr-filters" (ngSubmit)="applyFilters()">
+      <label><span>Search contracts</span><input type="search" name="search" [(ngModel)]="draftSearch" maxlength="100" placeholder="Document title" /></label>
+      <label><span>Status</span><select name="status" [(ngModel)]="draftStatus"><option value="">All statuses</option><option *ngFor="let item of statuses" [value]="item.value">{{ item.label }}</option></select></label>
+      <button class="cr-button cr-button--primary" type="submit" [disabled]="loading">Apply</button>
+      <button class="cr-text-button" type="button" (click)="resetFilters()" [disabled]="loading">Reset</button>
+    </form>
+    <div class="cr-state" *ngIf="loading" role="status">Loading contract runs…</div>
+    <div class="cr-state cr-state--error" *ngIf="error" role="alert">{{ error }}</div>
+    <div class="cr-state" *ngIf="!loading && !error && !rows.length">
+      <h3>No matching contract runs</h3>
+      <p>Start a review or adjust your filters. Only accessible contract reviews are included.</p>
+      <a class="cr-button cr-button--secondary" routerLink="/workflows/contract-workspace">Open contract register</a>
+    </div>
+    <div class="cr-table-scroll" *ngIf="!loading && !error && rows.length">
+      <table class="cr-table">
+        <thead><tr><th>Contract</th><th>Status</th><th>Created</th><th>Review revision</th><th>Actions</th></tr></thead>
+        <tbody><tr *ngFor="let row of rows; trackBy: trackRow">
+          <td><strong>{{ row.document_title || 'Untitled contract' }}</strong><small>{{ row.contract_type || 'Contract review' }}</small></td>
+          <td><span class="cr-status">{{ statusLabel(row.status) | titlecase }}</span></td>
+          <td>{{ row.created_at | date:'mediumDate' }}</td>
+          <td>{{ row.revision }}</td>
+          <td class="cr-actions">
+            <a [routerLink]="['/workflows/contract-workspace', row.uuid]">View review</a>
+            <a *ngIf="row.workflow_uuid" [routerLink]="['/workflows/runs', row.workflow_uuid]">Open run</a>
+          </td>
+        </tr></tbody>
+      </table>
+    </div>
+    <footer class="cr-footer" *ngIf="!loading && !error && count">
+      <span>{{ firstRecord }}–{{ lastRecord }} of {{ count }} accessible reviews</span>
+      <div><button type="button" (click)="load(page - 1)" [disabled]="!previous || loading">Previous</button><span>Page {{ page }}</span><button type="button" (click)="load(page + 1)" [disabled]="!next || loading">Next</button></div>
+    </footer>
+  </section>
+</div>

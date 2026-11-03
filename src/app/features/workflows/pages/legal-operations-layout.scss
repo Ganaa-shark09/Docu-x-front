@@ -1,0 +1,58 @@
+/* DOCUX_UNIFIED_OPS_V17: legal playbooks share Contract workspace visual hierarchy. */
+:host { display: block; min-width: 0; }
+.docux-unified-legal {
+  width: 100%;
+  max-width: 1500px;
+  margin: 0 auto;
+  padding: 4px 0 34px;
+  display: grid;
+  gap: 22px;
+  color: var(--app-text, #eaf6ee);
+}
+.docux-unified-legal .heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 0 0 8px;
+  margin: 0;
+}
+.docux-unified-legal .heading h1 {
+  font-size: clamp(26px, 2.7vw, 34px);
+  font-weight: 730;
+  letter-spacing: -.035em;
+  line-height: 1.18;
+  margin: 8px 0;
+  color: var(--app-text, #eaf6ee);
+}
+.docux-unified-legal .heading p {
+  max-width: 700px;
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0;
+  color: var(--app-text-muted, #b6cfbf);
+}
+.docux-unified-legal .heading button {
+  min-height: 39px;
+  padding: 8px 14px;
+  border-radius: 9px;
+  background: var(--app-surface, #1a3425);
+  border: 1px solid var(--app-border, #355340);
+  color: var(--app-text, #eaf6ee);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 680;
+}
+.docux-unified-legal .heading button:disabled { opacity: .55; cursor: not-allowed; }
+.docux-unified-legal :is(.card, .legal-card) {
+  border-radius: 13px;
+  border-color: var(--app-border, #355340);
+}
+.docux-unified-legal :is(a, button, input, select, textarea):focus-visible {
+  outline: 2px solid var(--app-success-text, #9de8ba);
+  outline-offset: 2px;
+}
+@media(max-width: 720px) {
+  .docux-unified-legal { padding: 4px 0 24px; gap: 18px; }
+  .docux-unified-legal .heading { align-items: flex-start; flex-direction: column; }
+}

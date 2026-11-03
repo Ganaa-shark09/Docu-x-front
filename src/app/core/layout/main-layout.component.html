@@ -1,4 +1,4 @@
-﻿<a class="sr-only focus:not-sr-only ui-button" href="#workspace-main">Skip to workspace</a>
+<a class="sr-only focus:not-sr-only ui-button" href="#workspace-main">Skip to workspace</a>
 <div class="docux-shell" [class.docux-shell--ai-launching]="isLaunchingAi">
   <aside
     id="main-sidebar"
@@ -66,20 +66,20 @@
                     (click)="closeNavigation()"
                     >All workflows</a
                   >
+                  <!-- DOCUX_NAV_V12 shared workflow administration and monitoring -->
                   <a
                     routerLinkActive="is-active"
                     ariaCurrentWhenActive="page"
                     routerLink="/workflows/invoices"
                     (click)="closeNavigation()"
-                    ><span>Invoices</span><small>Accounts payable</small></a
+                    ><span>Invoices</span><small>Processing workspace</small></a
                   >
                   <a
                     routerLinkActive="is-active"
                     ariaCurrentWhenActive="page"
-                    routerLink="/workflows/definitions"
-                    [queryParams]="{ type: 'contract_review' }"
+                    routerLink="/workflows/contract-workspace"
                     (click)="closeNavigation()"
-                    ><span>Contract review</span><small>Available</small></a
+                    ><span>Contract review</span><small>Reviews & obligations</small></a
                   >
                   <a
                     routerLinkActive="is-active"
@@ -87,7 +87,7 @@
                     routerLink="/workflows/definitions"
                     [queryParams]="{ type: 'legal_clause_intelligence' }"
                     (click)="closeNavigation()"
-                    ><span>Legal clause intelligence</span><small>Available</small></a
+                    ><span>Legal clause intelligence</span><small>Clause workflows</small></a
                   >
                   @if (
                     ['company_admin', 'platform_admin', 'department_admin'].includes(
@@ -114,21 +114,21 @@
                     ariaCurrentWhenActive="page"
                     routerLink="/workflows/rfp-projects"
                     (click)="closeNavigation()"
-                    ><span>RFP &amp; proposals</span><small>Available</small></a
+                    ><span>RFP &amp; proposals</span><small>Proposal workspace</small></a
                   >
                   <a
                     routerLinkActive="is-active"
                     ariaCurrentWhenActive="page"
                     routerLink="/workflows/compliance"
                     (click)="closeNavigation()"
-                    ><span>Compliance</span><small>Available</small></a
+                    ><span>Compliance</span><small>Assessments & controls</small></a
                   >
                   <a
                     routerLinkActive="is-active"
                     ariaCurrentWhenActive="page"
                     routerLink="/workflows/finance-audits"
                     (click)="closeNavigation()"
-                    ><span>Finance audit</span><small>Available</small></a
+                    ><span>Finance audit</span><small>Audit workspace</small></a
                   >
                 </div>
               </div>
@@ -168,7 +168,14 @@
                 <path d="M14 20l3-3-3-3"></path>
               </svg>
 
-              <svg *ngSwitchCase="'notifications'" viewBox="0 0 24 24" aria-hidden="true">
+              <svg *ngSwitchCase="'contracts'" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M7 3h7l4 4v14H7z"></path>
+            <path d="M14 3v5h4"></path>
+            <path d="M10 12h5M10 16h5"></path>
+            <path d="m9 20 2 2 4-4"></path>
+          </svg>
+
+          <svg *ngSwitchCase="'notifications'" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M18 9a6 6 0 0 0-12 0c0 7-2.5 7-2.5 7h17S18 16 18 9"></path>
                 <path d="M10 20h4"></path>
               </svg>
@@ -194,7 +201,9 @@
           <div id="admin-submenu" class="docux-workflow-dropdown" [class.is-open]="adminMenuOpen()" [attr.aria-hidden]="!adminMenuOpen()" [attr.inert]="adminMenuOpen() ? null : ''">
             <div class="docux-workflow-dropdown__clip"><div class="docux-workflow-menu">
               @if (profile()?.is_superuser) { <a routerLink="/administration/organizations" routerLinkActive="is-active" ariaCurrentWhenActive="page" (click)="closeNavigation()">Organizations</a> }
-              <a routerLink="/administration/company" routerLinkActive="is-active" ariaCurrentWhenActive="page" (click)="closeNavigation()">Company</a>
+              <a routerLink="/administration/company" [routerLinkActiveOptions]="{ exact: true }" routerLinkActive="is-active" ariaCurrentWhenActive="page" (click)="closeNavigation()">Company</a>
+              @if (profile()?.is_superuser) { <a routerLink="/administration/platform/ai-models" routerLinkActive="is-active" ariaCurrentWhenActive="page" (click)="closeNavigation()">Platform AI governance</a> }
+              <a routerLink="/administration/company/ai-models" routerLinkActive="is-active" ariaCurrentWhenActive="page" (click)="closeNavigation()">AI models</a>
               <a routerLink="/administration/users" routerLinkActive="is-active" ariaCurrentWhenActive="page" (click)="closeNavigation()">Users</a>
               <a routerLink="/administration/departments" routerLinkActive="is-active" ariaCurrentWhenActive="page" (click)="closeNavigation()">Departments</a>
               <a routerLink="/administration/access" routerLinkActive="is-active" ariaCurrentWhenActive="page" (click)="closeNavigation()">Department access</a>
@@ -273,7 +282,7 @@
     </header>
 
     <main id="workspace-main" class="docux-content" tabindex="-1" [attr.aria-busy]="navigating()">
-      <app-workflow-breadcrumbs /><router-outlet (activate)="focusWorkspace()"></router-outlet>
+      @if (!hideSharedWorkflowBreadcrumbs()) { <app-workflow-breadcrumbs /> }<router-outlet (activate)="focusWorkspace()"></router-outlet>
     </main>
   </div>
   <div class="docux-ai-intro" *ngIf="isAiIntroVisible">

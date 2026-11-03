@@ -1,0 +1,132 @@
+<section class="platform-ai-page">
+  <header class="platform-head">
+    <div>
+      <p class="eyebrow">Administration / Platform / AI governance</p>
+      <h1>AI model administration</h1>
+      <p class="subtle">Configure company-specific AI providers and decide which models each company can access.</p>
+    </div>
+    <a routerLink="/administration/company/ai-models" class="btn btn--secondary">Company model settings</a>
+  </header>
+
+  <div *ngIf="checkingAccess" class="panel" role="status">Verifying platform administration permissions…</div>
+  <div *ngIf="!checkingAccess && accessDenied" class="panel" role="alert">
+    <h2>Platform superuser access required</h2>
+    <p>Provider credentials and company grants can only be changed by an authorized DOCU-X platform superuser.</p>
+  </div>
+  <div *ngIf="error" class="feedback error" role="alert">{{ error }}</div>
+  <div *ngIf="success" class="feedback success" role="status">{{ success }}</div>
+
+  <ng-container *ngIf="!checkingAccess && isSuperuser">
+    <section class="panel" aria-labelledby="company-heading">
+      <div class="panel-title">
+        <div><span class="step">01</span><h2 id="company-heading">Company &amp; routing policy</h2></div>
+        <button type="button" class="btn btn--secondary" (click)="loadCompanies()" [disabled]="busy || loading">Refresh companies</button>
+      </div>
+      <div class="form-grid">
+        <label class="field field--wide">Company
+          <select name="company" [ngModel]="selectedCompanyUuid" (ngModelChange)="selectCompany($event)" [disabled]="busy || loading">
+            <option value="">Select a company</option>
+            <option *ngFor="let c of companies; trackBy: trackCompany" [value]="c.uuid">{{ c.name }} ({{ c.slug }})</option>
+          </select>
+        </label>
+      </div>
+      <p *ngIf="!companies.length && !loading" class="subtle">No companies are available. Create a company through Organizations first.</p>
+      <div *ngIf="company" class="policy-controls">
+        <label class="check"><input type="checkbox" name="allow_cloud" [(ngModel)]="company.allow_cloud_llm" /> Allow approved cloud AI models</label>
+        <label class="check"><input type="checkbox" name="allow_local" [(ngModel)]="company.allow_local_llm" /> Allow private/local AI models</label>
+        <button type="button" class="btn" (click)="savePolicy()" [disabled]="busy">Save routing policy</button>
+      </div>
+      <p class="hint">Company policy is enforced server-side. Cloud access does not override document classification or the DOCU-X data firewall.</p>
+    </section>
+
+    <div *ngIf="company" class="workspace-columns">
+      <section class="panel" aria-labelledby="provider-heading">
+        <div class="panel-title">
+          <div><span class="step">02</span><h2 id="provider-heading">Provider credentials</h2></div>
+          <button type="button" class="btn btn--secondary" (click)="newProvider()" [disabled]="busy">New provider</button>
+        </div>
+        <p class="subtle">One company-owned configuration per provider connection. API keys are write-only and never displayed again.</p>
+        <div class="provider-list" *ngIf="providers.length">
+          <div class="list-item" *ngFor="let provider of providers; trackBy: trackProvider">
+            <div class="item-copy"><strong>{{ provider.name }}</strong><span>{{ provider.provider_type | uppercase }} · {{ provider.model_name || provider.deployment_name || 'No default model' }}</span></div>
+            <div class="item-actions">
+              <span class="state" [class.off]="!provider.is_active">{{ provider.is_active ? 'Active' : 'Inactive' }}</span>
+              <span class="state" [class.off]="!provider.has_api_key && cloudProviders.has(provider.provider_type)">{{ provider.has_api_key ? 'Key saved' : (cloudProviders.has(provider.provider_type) ? 'No key' : 'Local') }}</span>
+              <button type="button" class="btn btn--small" (click)="editProvider(provider)" [disabled]="busy">Edit</button>
+            </div>
+          </div>
+        </div>
+        <p *ngIf="!providers.length" class="hint">No provider connections for this company. Add one below.</p>
+        <form class="form-grid form-divider" (ngSubmit)="saveProvider()" #providerNgForm="ngForm">
+          <div class="form-caption">{{ editingProviderUuid ? 'Edit provider / rotate key' : 'Create provider connection' }}</div>
+          <label class="field">Connection name
+            <input name="providerName" [(ngModel)]="providerForm.name" required maxlength="150" placeholder="Groq production" />
+          </label>
+          <label class="field">Provider
+            <select name="providerType" [(ngModel)]="providerForm.provider_type" (ngModelChange)="providerTypeChanged()" [disabled]="!!editingProviderUuid">
+              <option *ngFor="let p of providerTypes" [value]="p.value">{{ p.label }}</option>
+            </select>
+          </label>
+          <label class="field field--wide">Default provider model ID
+            <input name="modelName" [(ngModel)]="providerForm.model_name" maxlength="150" placeholder="openai/gpt-oss-120b" />
+          </label>
+          <label *ngIf="requiresKey" class="field field--wide">{{ editingProviderUuid ? 'Replace API key (leave blank to retain existing key)' : 'API key' }}
+            <input name="apiKey" type="password" [(ngModel)]="providerForm.api_key" autocomplete="new-password" spellcheck="false" placeholder="Enter provider secret securely" />
+            <small>Encrypted on the backend. Never returned to the browser.</small>
+          </label>
+          <label *ngIf="showEndpoint" class="field field--wide">{{ providerForm.provider_type === 'ollama' ? 'Ollama base URL' : 'Azure OpenAI HTTPS endpoint' }}
+            <input name="endpointUrl" [(ngModel)]="providerForm.endpoint_url" maxlength="500" placeholder="http://ollama:11434" />
+          </label>
+          <label *ngIf="providerForm.provider_type === 'azure_openai'" class="field">Azure deployment
+            <input name="deploymentName" [(ngModel)]="providerForm.deployment_name" maxlength="150" />
+          </label>
+          <label *ngIf="providerForm.provider_type === 'azure_openai'" class="field">Azure API version
+            <input name="apiVersion" [(ngModel)]="providerForm.api_version" maxlength="50" />
+          </label>
+          <label class="field">Max output tokens
+            <input name="maxTokens" type="number" min="1" max="100000" [(ngModel)]="providerForm.max_tokens" required />
+          </label>
+          <label class="field">Temperature
+            <input name="temperature" type="number" min="0" max="2" step="0.1" [(ngModel)]="providerForm.temperature" required />
+          </label>
+          <label class="check field--wide"><input type="checkbox" name="providerActive" [(ngModel)]="providerForm.is_active" /> Enable provider</label>
+          <div class="form-actions field--wide">
+            <button type="submit" class="btn btn--primary" [disabled]="busy || providerNgForm.invalid">{{ busy ? 'Saving…' : (editingProviderUuid ? 'Update provider' : 'Save provider') }}</button>
+            <button *ngIf="editingProviderUuid" type="button" class="btn btn--secondary" (click)="newProvider()" [disabled]="busy">Cancel editing</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel" aria-labelledby="grant-heading">
+        <div class="panel-title"><div><span class="step">03</span><h2 id="grant-heading">Approved company models</h2></div><span class="count">{{ approvedCount }} enabled</span></div>
+        <p class="subtle">Choose which specific model IDs this company can use. Disabling access takes effect for new requests.</p>
+        <div class="grant-list" *ngIf="grants.length">
+          <div class="list-item" *ngFor="let grant of grants; trackBy: trackGrant">
+            <div class="item-copy"><strong>{{ grant.display_name || grant.model_id }}</strong><span>{{ grant.provider_type | uppercase }} · {{ grant.model_id }}</span></div>
+            <div class="item-actions"><span *ngIf="grant.is_default" class="state">Default</span>
+              <button type="button" class="btn btn--small" [disabled]="busy" (click)="toggleGrant(grant)">{{ grant.is_enabled ? 'Disable' : 'Enable' }}</button>
+            </div>
+          </div>
+        </div>
+        <div *ngIf="!grants.length" class="empty">No model grants yet. Configure a provider first, then approve the models below.</div>
+        <form class="form-grid form-divider" (ngSubmit)="createGrant()" #grantNgForm="ngForm">
+          <div class="form-caption">Grant model access</div>
+          <label class="field field--wide">Provider connection
+            <select name="grantProvider" [(ngModel)]="grantForm.provider_config" (ngModelChange)="grantProviderChanged()" required>
+              <option value="">Choose an active provider</option>
+              <option *ngFor="let p of availableProviders; trackBy: trackProvider" [value]="p.uuid">{{ p.name }} ({{ p.provider_type }})</option>
+            </select>
+          </label>
+          <label class="field field--wide">Provider model ID
+            <input name="grantModel" [(ngModel)]="grantForm.model_id" required maxlength="150" placeholder="openai/gpt-oss-120b" />
+          </label>
+          <label class="field field--wide">Display name
+            <input name="grantLabel" [(ngModel)]="grantForm.display_name" maxlength="160" placeholder="GPT OSS 120B" />
+          </label>
+          <button type="submit" class="btn btn--primary field--wide" [disabled]="busy || grantNgForm.invalid || !availableProviders.length">Grant model to company</button>
+        </form>
+        <p class="hint">Company administrators choose the default from approved models on <a routerLink="/administration/company/ai-models">Company AI models</a>. Company users can select those models in Internal AI.</p>
+      </section>
+    </div>
+  </ng-container>
+</section>

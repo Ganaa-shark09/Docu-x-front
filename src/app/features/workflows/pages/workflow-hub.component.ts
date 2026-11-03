@@ -4,79 +4,66 @@ import { RouterLink } from '@angular/router';
 @Component({
   standalone: true,
   imports: [RouterLink],
-  styleUrls: ['../workflow.scss'],
+  styleUrls: ['../workflow.scss', './workflow-hub.component.scss'],
   template: `
-    <section class="page">
-      <header>
+    <section class="page wf-home">
+      <header class="wf-home__heading">
         <div>
           <span class="eyebrow">DOCUMENT OPERATIONS</span>
-          <h1>All Workflows</h1>
-          <p class="muted">Start document work, track progress, and continue authorized reviews.</p>
+          <h1>Workflow hub</h1>
+          <p class="muted">Monitor active work, find the right document workspace, and manage workflow setup in one place.</p>
         </div>
       </header>
-      <div class="grid">
-        <article class="card">
-          <h2>Workflow definitions</h2>
-          <p>Browse published workflows and start work with accessible documents.</p>
-          <a class="button primary" routerLink="/workflows/definitions">Open definitions</a>
-        </article>
-        <article class="card">
-          <h2>Workflow runs</h2>
-          <p>Track work, findings, reviews, approvals, and recorded outputs.</p>
-          <a class="button" routerLink="/workflows/runs">Open all runs</a>
-        </article>
-        <article class="card">
-          <h2>Extraction history</h2>
-          <p>Inspect existing extraction runs and their review history.</p>
-          <a class="button" routerLink="/workflows/extractions">Open extraction history</a>
-        </article>
-      </div>
-      <section class="card">
-        <h2>Continue active work</h2>
-        <p class="muted">These queues use the existing server status filters.</p>
-        <div class="actions">
-          <a class="button" routerLink="/workflows/runs" [queryParams]="{ status: 'processing' }"
-            >Processing</a
-          >
-          <a class="button" routerLink="/workflows/runs" [queryParams]="{ status: 'queued' }"
-            >Queued</a
-          >
-          <a
-            class="button"
-            routerLink="/workflows/runs"
-            [queryParams]="{ status: 'review_required' }"
-            >Review required</a
-          >
-          <a
-            class="button"
-            routerLink="/workflows/runs"
-            [queryParams]="{ status: 'approval_required' }"
-            >Approval required</a
-          >
+
+      <section class="wf-home__section" aria-labelledby="wf-home-tools">
+        <div class="wf-home__section-heading">
+          <div><h2 id="wf-home-tools">Workflow tools</h2><p>Configuration, monitoring, and extraction history are available here—not in the sidebar.</p></div>
+        </div>
+        <div class="wf-home__grid wf-home__grid--three">
+          <a class="wf-home__tile" routerLink="/workflows/definitions">
+            <span class="wf-home__tile-number">CONFIGURATION</span>
+            <strong>Definitions &amp; setup <span aria-hidden="true">→</span></strong>
+            <small>Create, publish and manage reusable invoice, contract and legal workflows.</small>
+          </a>
+          <a class="wf-home__tile" routerLink="/workflows/runs">
+            <span class="wf-home__tile-number">MONITORING</span>
+            <strong>Workflow runs <span aria-hidden="true">→</span></strong>
+            <small>Track processing, human reviews, approvals and exceptions.</small>
+          </a>
+          <a class="wf-home__tile" routerLink="/workflows/extractions">
+            <span class="wf-home__tile-number">DOCUMENT PROCESSING</span>
+            <strong>Extraction runs <span aria-hidden="true">→</span></strong>
+            <small>Inspect extraction results, confidence and correction history.</small>
+          </a>
         </div>
       </section>
-      <section class="card">
-        <h2>Document workspaces</h2>
-        <div class="actions">
-          <a class="button" routerLink="/workflows/invoices"
-            >Invoices</a
-          >
-          <a
-            class="button"
-            routerLink="/workflows/definitions"
-            [queryParams]="{ type: 'contract_review' }"
-            >Contract review</a
-          >
-          <a
-            class="button"
-            routerLink="/workflows/definitions"
-            [queryParams]="{ type: 'legal_clause_intelligence' }"
-            >Legal clause intelligence</a
-          >
-          <a class="button" routerLink="/workflows/hr-policies">HR policies</a>
-          <a class="button" routerLink="/workflows/rfp-projects">RFP &amp; proposals</a>
-          <a class="button" routerLink="/workflows/finance-audits">Finance audit</a>
-          <a class="button" routerLink="/workflows/compliance">Compliance</a>
+
+      <section class="wf-home__section" aria-labelledby="wf-home-queues">
+        <div class="wf-home__section-heading">
+          <div><h2 id="wf-home-queues">Continue active work</h2><p>Jump straight into a status queue, or open your assigned approvals.</p></div>
+          <a class="wf-home__link" routerLink="/approvals">Approval queue →</a>
+        </div>
+        <div class="wf-home__quick-queue" aria-label="Workflow run status shortcuts">
+          <span>Review queues</span>
+          <a routerLink="/workflows/runs" [queryParams]="{ status: 'processing' }">Processing</a>
+          <a routerLink="/workflows/runs" [queryParams]="{ status: 'review_required' }">Needs review</a>
+          <a routerLink="/workflows/runs" [queryParams]="{ status: 'approval_required' }">Needs approval</a>
+          <a routerLink="/workflows/runs" [queryParams]="{ status: 'exception' }">Exceptions</a>
+        </div>
+      </section>
+
+      <section class="wf-home__section" aria-labelledby="wf-home-workspaces">
+        <div class="wf-home__section-heading"><div><h2 id="wf-home-workspaces">Document workspaces</h2><p>Use a dedicated workspace for each business process.</p></div></div>
+        <div class="wf-home__grid wf-home__grid--two">
+          <a class="wf-home__tile" routerLink="/workflows/invoices"><span class="wf-home__tile-number">ACCOUNTS PAYABLE</span><strong>Invoices <span aria-hidden="true">→</span></strong><small>Process invoices, batches, validation and exception handling.</small></a>
+          <a class="wf-home__tile" routerLink="/workflows/contract-workspace"><span class="wf-home__tile-number">LEGAL OPERATIONS</span><strong>Contract review <span aria-hidden="true">→</span></strong><small>Start reviews, follow contracts, inspect findings, milestones, obligations and related playbooks.</small></a>
+          <a class="wf-home__tile" routerLink="/workflows/legal/playbooks"><span class="wf-home__tile-number">LEGAL GOVERNANCE</span><strong>Legal playbooks <span aria-hidden="true">→</span></strong><small>Manage shared legal clauses and organization review requirements.</small></a>
+          <a class="wf-home__tile" routerLink="/workflows/rfp-projects"><span class="wf-home__tile-number">PROPOSALS</span><strong>RFP &amp; proposals <span aria-hidden="true">→</span></strong><small>Manage requests, source-backed responses and controlled disclosure.</small></a>
+        </div>
+        <div class="wf-home__secondary-links">
+          <a routerLink="/workflows/hr-policies">HR policies &amp; Q&amp;A</a>
+          <a routerLink="/workflows/compliance">Compliance</a>
+          <a routerLink="/workflows/finance-audits">Finance audits</a>
         </div>
       </section>
     </section>

@@ -13,148 +13,8 @@ import { WorkflowAssignmentComponent } from './workflow-assignment.component';
   selector: 'app-contract-definition',
   standalone: true,
   imports: [FormsModule, WorkflowAssignmentComponent, LegalPlaybookPickerComponent],
-  styleUrls: ['../workflow.scss', './contract.scss'],
-  template: ` <form class="card" (ngSubmit)="create()">
-    <h2>Create contract workflow</h2>
-    <p class="muted">
-      Installs the server-validated contract lifecycle with a frozen policy. Select authorized
-      review and approval assignments.
-    </p>
-    @if (error()) {
-      <p class="error" role="alert">{{ error() }}</p>
-    }
-    <div class="grid">
-      <label
-        >Name<input
-          name="contract-name"
-          [(ngModel)]="name"
-          required
-          maxlength="150"
-          [disabled]="pending()"
-      /></label>
-      <label
-        >Code<input
-          name="contract-code"
-          [(ngModel)]="code"
-          required
-          maxlength="80"
-          pattern="[-a-zA-Z0-9_]+"
-          [disabled]="pending()"
-      /></label>
-      <label
-        >Department<select
-          name="contract-department"
-          [(ngModel)]="department"
-          [disabled]="pending()"
-        >
-          @if (companyAdmin()) {
-            <option [ngValue]="null">Company wide</option>
-          }
-          @for (member of departments(); track member.department) {
-            <option [ngValue]="member.department">{{ member.department_name }}</option>
-          }
-        </select></label
-      >
-    </div>
-    <h3>Reviewer</h3>
-    <app-workflow-assignment
-      [memberships]="memberships()"
-      [disabled]="pending()"
-      (changed)="reviewer = $event"
-    />
-    <h3>Approver (optional)</h3>
-    <p class="muted">When omitted, the reviewer assignment is used for required approval.</p>
-    <app-workflow-assignment
-      [memberships]="memberships()"
-      [disabled]="pending()"
-      (changed)="approver = $event"
-    />
-    <div class="grid">
-      <label class="check"
-        ><input
-          type="checkbox"
-          name="contract-approval"
-          [(ngModel)]="policy.require_approval"
-          [disabled]="pending()"
-        />Require approval</label
-      >
-      <label class="check"
-        ><input
-          type="checkbox"
-          name="contract-review"
-          [(ngModel)]="policy.force_review"
-          [disabled]="pending()"
-        />Always require human review</label
-      >
-
-      <label class="check"
-        ><input
-          type="checkbox"
-          name="contract-ai"
-          [(ngModel)]="policy.use_ai"
-          [disabled]="pending()"
-        />Use authorized AI extraction</label
-      >
-      <label
-        >Minimum extraction confidence (0â€“1)<input
-          name="contract-confidence"
-          [(ngModel)]="threshold"
-          inputmode="decimal"
-          maxlength="80"
-          [disabled]="pending()"
-      /></label>
-
-      <label
-        >Decimal convention<select
-          name="contract-decimal"
-          [(ngModel)]="policy.decimal_separator"
-          [disabled]="pending()"
-        >
-          <option [ngValue]="null">Require review when ambiguous</option>
-          <option value=".">Decimal point</option>
-          <option value=",">Decimal comma</option>
-        </select></label
-      >
-      <label
-        >Numeric date convention<select
-          name="contract-date"
-          [(ngModel)]="policy.date_order"
-          [disabled]="pending()"
-        >
-          <option [ngValue]="null">Require review when ambiguous</option>
-          <option value="DMY">Day / month / year</option>
-          <option value="MDY">Month / day / year</option>
-        </select></label
-      >
-    </div>
-    <label class="check"
-      ><input
-        type="checkbox"
-        name="contract-legal"
-        [(ngModel)]="legalEnabled"
-        (ngModelChange)="legalVersion = null"
-        [disabled]="pending()"
-      />Enable legal clause comparison with a pinned playbook</label
-    >
-    @if (legalEnabled) {
-      <app-legal-playbook-picker
-        [disabled]="pending()"
-        (changed)="legalVersion = $event"
-        (denied)="accessDenied.emit()"
-      />
-    }
-    <p class="muted">
-      The server enforces permissions, AI routing and validation. A contract review analyzes one
-      principal document.
-    </p>
-    <button
-      class="primary"
-      type="submit"
-      [disabled]="pending() || !authorized() || !reviewer || (legalEnabled && !legalVersion)"
-    >
-      {{ pending() ? 'Creating contract workflowâ€¦' : 'Create and publish contract workflow' }}
-    </button>
-  </form>`,
+  templateUrl: './contract-definition.component.html',
+  styleUrls: ['../workflow.scss', './contract.scss', './contract-definition.component.scss'],
 })
 export class ContractDefinitionComponent {
   readonly memberships = input<Membership[]>([]);
@@ -167,6 +27,33 @@ export class ContractDefinitionComponent {
   private readonly destroy = inject(DestroyRef);
   readonly pending = signal(false);
   readonly error = signal('');
+  readonly definitionConflict = signal(false);
+  step = 1;
+  stepError = '';
+
+  nextStep(): void {
+    if (this.pending()) return;
+    this.stepError = '';
+    if (this.step === 1 && (!this.name.trim() || !/^[-a-zA-Z0-9_]{1,80}$/.test(this.code))) {
+      this.stepError = 'Enter a workflow name and a valid workflow code before continuing.';
+      return;
+    }
+    if (this.step === 2 && !this.reviewer) {
+      this.stepError = 'Choose a reviewer before continuing.';
+      return;
+    }
+    if (this.step === 3 && !/^(?:0(?:\.\d+)?|1(?:\.0+)?)$/.test(this.threshold)) {
+      this.stepError = 'Confidence must be a decimal between 0 and 1.';
+      return;
+    }
+    this.step = Math.min(4, this.step + 1);
+  }
+
+  previousStep(): void {
+    if (this.pending()) return;
+    this.stepError = '';
+    this.step = Math.max(1, this.step - 1);
+  }
   name = 'Contract review';
   code = '';
   department: number | null = null;
@@ -209,6 +96,8 @@ export class ContractDefinitionComponent {
       this.error.set('Choose an authorized department.');
       return;
     }
+    this.stepError = '';
+    this.definitionConflict.set(false);
     this.pending.set(true);
     this.busyChange.emit(true);
     this.error.set('');
@@ -237,7 +126,19 @@ export class ContractDefinitionComponent {
         error: (e) => {
           this.pending.set(false);
           this.busyChange.emit(false);
-          this.error.set(this.api.message(e, 'create'));
+          const serverMessage = this.api.message(e, 'create');
+          // A conflict is not a missing field in step 4. Keep the typed values,
+          // return to workflow identity and explain the server's decision.
+          const isConflict = e instanceof HttpErrorResponse && (
+            e.status === 409 || /conflict|existing definition|already exists|ownership/i.test(serverMessage)
+          );
+          if (isConflict) {
+            this.definitionConflict.set(true);
+            this.step = 1;
+            this.error.set('The server rejected this workflow because its definition or ownership scope conflicts with an existing workflow. Review the stable code and department, or open the existing definition. No new workflow was published.');
+          } else {
+            this.error.set(serverMessage);
+          }
           if (e instanceof HttpErrorResponse && [401, 403, 404].includes(e.status))
             this.accessDenied.emit();
         },

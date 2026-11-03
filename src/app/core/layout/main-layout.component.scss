@@ -423,17 +423,6 @@
   }
 }
 
-@media (min-width: 1025px) {
-  .docux-shell:has(.docux-sidebar:has(:focus-visible)) .docux-main {
-    padding-left: var(--sidebar-width);
-  }
-}
-@media (hover: hover) and (pointer: fine) and (min-width: 1025px) {
-  .docux-shell:has(.docux-sidebar:hover) .docux-main {
-    padding-left: var(--sidebar-width);
-  }
-}
-
 .docux-route-status {
   position: absolute;
   bottom: 0;

@@ -1,0 +1,156 @@
+<form class="contract-setup" (ngSubmit)="create()" aria-labelledby="contract-setup-title">
+  <div class="contract-setup__intro">
+    <h2 id="contract-setup-title">Contract workflow configuration</h2>
+    <p>Define a reusable review process. Publishing makes this workflow available to authorized teams; it does not start a document review.</p>
+  </div>
+
+  @if (error()) {
+    <p class="contract-setup__error" role="alert">{{ error() }}</p>
+  }
+
+  <nav class="contract-setup__progress" aria-label="Workflow creation steps">
+    <span [class.is-current]="step === 1" [class.is-complete]="step > 1"><b>1</b> Details</span>
+    <span [class.is-current]="step === 2" [class.is-complete]="step > 2"><b>2</b> People</span>
+    <span [class.is-current]="step === 3" [class.is-complete]="step > 3"><b>3</b> Review policy</span>
+    <span [class.is-current]="step === 4"><b>4</b> Legal options</span>
+  </nav>
+  @if (stepError) {
+    <p class="contract-setup__error" role="alert">{{ stepError }}</p>
+  }
+
+  @if (step === 1) {
+  <section class="contract-setup__section" aria-labelledby="contract-setup-basics">
+    <div class="contract-setup__section-heading">
+      <span class="contract-setup__step" aria-hidden="true">01</span>
+      <div>
+        <h3 id="contract-setup-basics">Workflow details</h3>
+        <p>Name and scope this review process for the right team.</p>
+      </div>
+    </div>
+    <div class="contract-setup__grid">
+      <label>Workflow name
+        <input name="contract-name" [(ngModel)]="name" required maxlength="150" [disabled]="pending()" placeholder="e.g. Vendor contract review" />
+      </label>
+      <label>Workflow code
+        <input name="contract-code" [(ngModel)]="code" required maxlength="80" pattern="[-a-zA-Z0-9_]+" [disabled]="pending()" placeholder="vendor_contract_review" />
+        <small>Letters, numbers, hyphens and underscores.</small>
+        @if (definitionConflict()) {
+          <span class="contract-setup__field-note" role="status">
+            A workflow with this code or ownership scope may already exist. Try a distinct stable code, confirm department permissions, or open the existing definition.
+          </span>
+        }
+      </label>
+      <label>Department scope
+        <select name="contract-department" [(ngModel)]="department" [disabled]="pending()">
+          @if (companyAdmin()) {
+            <option [ngValue]="null">Company wide</option>
+          }
+          @for (member of departments(); track member.department) {
+            <option [ngValue]="member.department">{{ member.department_name }}</option>
+          }
+        </select>
+      </label>
+    </div>
+  </section>
+
+  }
+  @if (step === 2) {
+  <section class="contract-setup__section" aria-labelledby="contract-setup-people">
+    <div class="contract-setup__section-heading">
+      <span class="contract-setup__step" aria-hidden="true">02</span>
+      <div>
+        <h3 id="contract-setup-people">Review responsibility</h3>
+        <p>Select authorized reviewers and approval responsibility.</p>
+      </div>
+    </div>
+    <div class="contract-setup__assignments">
+      <div class="contract-setup__assignment">
+        <h4>Reviewer <span>Required</span></h4>
+        <p>Responsible for reviewing evidence and correcting the extracted contract facts.</p>
+        <app-workflow-assignment [memberships]="memberships()" [disabled]="pending()" (changed)="reviewer = $event" />
+      </div>
+      <div class="contract-setup__assignment">
+        <h4>Approver <span>Optional assignment</span></h4>
+        <p>Leave blank to reuse the reviewer when approval is required by policy.</p>
+        <app-workflow-assignment [memberships]="memberships()" [disabled]="pending()" (changed)="approver = $event" />
+      </div>
+    </div>
+  </section>
+
+  }
+  @if (step === 3) {
+  <section class="contract-setup__section" aria-labelledby="contract-setup-policy">
+    <div class="contract-setup__section-heading">
+      <span class="contract-setup__step" aria-hidden="true">03</span>
+      <div>
+        <h3 id="contract-setup-policy">Review policy &amp; extraction</h3>
+        <p>Set how the system handles review, authorized AI extraction and ambiguous values.</p>
+      </div>
+    </div>
+    <div class="contract-setup__switch-grid" role="group" aria-label="Review and AI settings">
+      <label class="contract-setup__check">
+        <input type="checkbox" name="contract-approval" [(ngModel)]="policy.require_approval" [disabled]="pending()" />
+        <span class="contract-setup__check-copy"><strong>Require approval</strong><small>Send verified contract findings to the assigned approver before completion.</small></span>
+      </label>
+      <label class="contract-setup__check">
+        <input type="checkbox" name="contract-review" [(ngModel)]="policy.force_review" [disabled]="pending()" />
+        <span class="contract-setup__check-copy"><strong>Always require human review</strong><small>Every extraction must be reviewed before it can be approved.</small></span>
+      </label>
+      <label class="contract-setup__check">
+        <input type="checkbox" name="contract-ai" [(ngModel)]="policy.use_ai" [disabled]="pending()" />
+        <span class="contract-setup__check-copy"><strong>Use authorized AI extraction</strong><small>Subject to document permissions and the organization's model routing policy.</small></span>
+      </label>
+    </div>
+    <div class="contract-setup__grid">
+      <label>Minimum extraction confidence (0–1)
+        <input name="contract-confidence" [(ngModel)]="threshold" inputmode="decimal" maxlength="80" [disabled]="pending()" placeholder="0.85" />
+      </label>
+      <label>Decimal convention
+        <select name="contract-decimal" [(ngModel)]="policy.decimal_separator" [disabled]="pending()">
+          <option [ngValue]="null">Review ambiguous numbers</option><option value=".">Decimal point (.)</option><option value=",">Decimal comma (,)</option>
+        </select>
+      </label>
+      <label>Numeric date convention
+        <select name="contract-date" [(ngModel)]="policy.date_order" [disabled]="pending()">
+          <option [ngValue]="null">Review ambiguous dates</option><option value="DMY">Day / month / year</option><option value="MDY">Month / day / year</option>
+        </select>
+      </label>
+    </div>
+  </section>
+
+  }
+  @if (step === 4) {
+  <section class="contract-setup__section" aria-labelledby="contract-setup-legal">
+    <div class="contract-setup__section-heading">
+      <span class="contract-setup__step" aria-hidden="true">04</span>
+      <div>
+        <h3 id="contract-setup-legal">Legal clause comparison</h3>
+        <p>Optional: pin an approved playbook for clause evaluation.</p>
+      </div>
+    </div>
+    <label class="contract-setup__check contract-setup__check--single">
+      <input type="checkbox" name="contract-legal" [(ngModel)]="legalEnabled" (ngModelChange)="legalVersion = null" [disabled]="pending()" />
+      <span class="contract-setup__check-copy"><strong>Enable legal clause comparison</strong><small>Compare clauses against a pinned, authorized playbook.</small></span>
+    </label>
+    @if (legalEnabled) {
+      <div class="contract-setup__playbook"><app-legal-playbook-picker [disabled]="pending()" (changed)="legalVersion = $event" (denied)="accessDenied.emit()" /></div>
+    }
+  </section>
+
+  }
+  <footer class="contract-setup__footer">
+    <p>Workflow setup is separate from reviewing a contract. After publishing, start a review from the contract register using an authorized document.</p>
+    <div class="contract-setup__footer-actions">
+      @if (step > 1) {
+        <button type="button" class="contract-setup__back" (click)="previousStep()" [disabled]="pending()">Back</button>
+      }
+      @if (step < 4) {
+        <button type="button" class="contract-setup__submit" (click)="nextStep()" [disabled]="pending() || !authorized()">Continue →</button>
+      } @else {
+        <button class="contract-setup__submit" type="submit" [disabled]="pending() || !authorized() || !reviewer || (legalEnabled && !legalVersion)">
+          {{ pending() ? 'Creating workflow…' : 'Create & publish workflow' }}
+        </button>
+      }
+    </div>
+  </footer>
+</form>

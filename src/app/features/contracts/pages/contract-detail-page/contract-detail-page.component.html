@@ -1,0 +1,67 @@
+<div class="cx-page">
+  <app-contract-area-nav active="detail" />
+
+  <!-- DOCUX_NAV_V12 contract context -->
+
+  <header class="cx-page-header cx-page-header--detail cx-detail-header">
+    <div>
+      <div class="cx-eyebrow"><span class="cx-eyebrow__dot" aria-hidden="true"></span> SOURCE-VERIFIED REVIEW</div>
+      <h1>Contract review details</h1>
+      <p>Review structured contract facts, validation findings, source-backed dates, and assigned follow-ups in one place.</p>
+      <p class="cx-detail-reference" *ngIf="review && !loadingReview">Review {{ review.uuid }} · Revision {{ review.revision }}</p>
+    </div>
+    <div class="cx-actions">
+      <button class="cx-btn cx-btn--secondary" type="button" (click)="reload()" [disabled]="loadingReview || loadingMilestones || loadingObligations">Refresh details</button>
+    </div>
+  </header>
+
+  <div class="cx-notice cx-notice--error" role="alert" *ngIf="reviewError">{{ reviewError }}</div>
+  <div class="cx-notice cx-notice--error" role="alert" *ngIf="actionError">{{ actionError }}</div>
+  <div class="cx-notice cx-notice--success" role="status" *ngIf="actionMessage">{{ actionMessage }}</div>
+  <div class="cx-notice cx-notice--warning" role="status" *ngIf="hasStaleObligations">Source revision changed. Stale obligation updates are blocked until a fresh review is completed.</div>
+  <div *ngIf="loadingReview" class="cx-panel cx-state" role="status"><span class="cx-spinner" aria-hidden="true"></span><p>Loading authorized contract detail…</p></div>
+
+  <section *ngIf="review && !loadingReview" class="cx-review-bar" aria-label="Contract review at a glance"><div><small>Workflow stage</small><span class="cx-status" [attr.data-tone]="reviewStatus === 'completed' ? 'positive' : 'neutral'">{{ label(reviewStatus) | titlecase }}</span></div><div><small>Review revision</small><strong>{{ review.revision }}</strong></div><div><small>Findings</small><strong>{{ findings.length }}</strong></div><div><small>Tracked obligations</small><strong>{{ obligations.length }}</strong></div></section>
+
+  <nav class="cx-tabs cx-review-tabs" role="tablist" aria-label="Contract review sections" *ngIf="review && !loadingReview">
+    <button type="button" role="tab" [class.is-current]="activeTab === 'overview'" [attr.aria-selected]="activeTab === 'overview'" (click)="activeTab='overview'">Overview</button>
+    <button type="button" role="tab" [class.is-current]="activeTab === 'findings'" [attr.aria-selected]="activeTab === 'findings'" (click)="activeTab='findings'">Findings <span class="cx-tab-count">{{ findings.length }}</span></button>
+    <button type="button" role="tab" [class.is-current]="activeTab === 'milestones'" [attr.aria-selected]="activeTab === 'milestones'" (click)="activeTab='milestones'">Milestones <span class="cx-tab-count">{{ snapshot?.milestones?.length ?? 0 }}</span></button>
+    <button type="button" role="tab" [class.is-current]="activeTab === 'obligations'" [attr.aria-selected]="activeTab === 'obligations'" (click)="activeTab='obligations'">Obligations <span class="cx-tab-count">{{ obligations.length }}</span></button>
+  </nav>
+
+  <ng-container *ngIf="review && !loadingReview">
+    <div class="cx-detail-grid" *ngIf="activeTab === 'overview'">
+      <section class="cx-panel"><header class="cx-panel-head"><div><h2>Extracted contract information</h2><p>Key details returned by your authorized, source-reviewed extraction.</p></div></header><div class="cx-fact-grid" *ngIf="details.length"><div class="cx-fact" *ngFor="let fact of details"><small>{{ fact.label }}</small><strong>{{ fact.value }}</strong></div></div><div class="cx-state cx-state--compact" *ngIf="!details.length"><h3>No structured facts returned</h3><p>This review has not returned accessible contract facts.</p></div></section>
+      <aside class="cx-panel cx-side-panel"><header class="cx-panel-head"><div><h2>Review status</h2><p>A concise view of the review and human follow-up.</p></div></header><ol class="cx-steps"><li><span class="cx-step-marker">1</span><div><strong>Document in workspace</strong><p>Source document linked to the review.</p></div></li><li><span class="cx-step-marker" [class.is-complete]="isFinalized">{{ isFinalized ? '✓' : '2' }}</span><div><strong>Evidence review</strong><p>{{ isFinalized ? 'Finalized review output available.' : 'Finalized output not confirmed.' }}</p></div></li><li><span class="cx-step-marker" [class.is-complete]="completedCount > 0">{{ completedCount > 0 ? '✓' : '3' }}</span><div><strong>Human follow-up</strong><p>{{ completedCount }} of {{ obligations.length }} obligations attested complete.</p></div></li></ol><p class="cx-muted cx-side-link">Approvals are recorded in the corresponding workflow run.</p></aside>
+    </div>
+
+    <section class="cx-panel" *ngIf="activeTab === 'findings'"><header class="cx-panel-head"><div><h2>Review findings</h2><p>Validation messages returned by the backend.</p></div><span class="cx-count">{{ findings.length }} findings</span></header>
+      <div class="cx-state" *ngIf="!findings.length"><span class="cx-state__glyph" aria-hidden="true">✓</span><h3>No findings returned</h3><p>This does not certify that a contract is risk-free. Follow your approval process.</p></div>
+      <div class="cx-record-list" *ngIf="findings.length"><article class="cx-record" *ngFor="let finding of findings"><span class="cx-record__marker" aria-hidden="true">!</span><div><div class="cx-record__meta"><span class="cx-status" data-tone="attention">{{ label(finding.severity) | titlecase }}</span><span *ngIf="finding.field">{{ label(finding.field) | titlecase }}</span></div><p>{{ finding.label }}</p></div></article></div>
+    </section>
+
+    <section class="cx-panel" *ngIf="activeTab === 'milestones'"><header class="cx-panel-head"><div><h2>Source-backed milestones</h2><p>Only dates accepted by the backend with evidence are listed.</p></div><span class="cx-count">{{ snapshot?.milestones?.length || 0 }} dates</span></header>
+      <div *ngIf="milestoneError" class="cx-notice cx-notice--error" role="alert">{{ milestoneError }}</div>
+      <div class="cx-state" role="status" *ngIf="loadingMilestones"><span class="cx-spinner" aria-hidden="true"></span><p>Loading source-backed dates…</p></div>
+      <div class="cx-state" *ngIf="!loadingMilestones && !milestoneError && !snapshot?.milestones?.length"><span class="cx-state__glyph" aria-hidden="true">◷</span><h3>No verified dates available</h3><p>Only milestones with approved source evidence will appear here.</p></div>
+      <div class="cx-timeline" *ngIf="snapshot?.milestones?.length"><article class="cx-timeline-row" *ngFor="let milestone of snapshot!.milestones; trackBy: trackMilestone"><div class="cx-date-block"><small>{{ label(milestone.source_field) | titlecase }}</small><strong>{{ milestone.date | date:'mediumDate' }}</strong></div><div><span class="cx-status" data-tone="positive">Source-backed</span><div class="cx-evidence" *ngIf="evidenceLines(milestone.evidence).length"><small>Source evidence</small><p *ngFor="let line of evidenceLines(milestone.evidence)">{{ line }}</p></div><p class="cx-muted" *ngIf="!evidenceLines(milestone.evidence).length">Evidence detail was not included in the response.</p></div></article></div>
+    </section>
+
+    <div class="cx-obligation-grid" *ngIf="activeTab === 'obligations'">
+      <section class="cx-panel"><header class="cx-panel-head"><div><h2>Tracked obligations</h2><p>Source-linked responsibilities with human attestation history.</p></div><span class="cx-count">{{ obligations.length }} tracked</span></header>
+        <div class="cx-notice cx-notice--error" role="alert" *ngIf="obligationError">{{ obligationError }}</div>
+        <div class="cx-state" role="status" *ngIf="loadingObligations"><span class="cx-spinner" aria-hidden="true"></span><p>Loading obligations…</p></div>
+        <div class="cx-state" *ngIf="!loadingObligations && !obligationError && !obligations.length"><span class="cx-state__glyph" aria-hidden="true">☷</span><h3>No tracked obligations</h3><p>Assign a source-backed row to begin a human follow-up.</p></div>
+        <div class="cx-task-list" *ngIf="obligations.length"><article class="cx-task" *ngFor="let item of obligations; trackBy: trackObligation"><div class="cx-task__head"><div><small>ROW {{ item.source_index + 1 }} · OWNER #{{ item.owner_id }}</small><h3>{{ snapshotValue(item,'action') || snapshotValue(item,'obligation') || 'Source obligation' }}</h3><p class="cx-muted" *ngIf="snapshotValue(item,'due_date')">Due {{ snapshotValue(item,'due_date') }}</p></div><div class="cx-badges"><span class="cx-status" [attr.data-tone]="item.status === 'completed' ? 'positive' : item.status === 'in_progress' ? 'attention' : 'neutral'">{{ label(item.status) | titlecase }}</span><span class="cx-status" data-tone="negative" *ngIf="item.stale">Stale</span></div></div>
+          <div class="cx-evidence" *ngIf="evidenceLines(item.source_snapshot['evidence']).length"><small>Verified source evidence</small><p *ngFor="let line of evidenceLines(item.source_snapshot['evidence'])">{{ line }}</p></div>
+          <details class="cx-history"><summary>Event history ({{ item.events.length }})</summary><ol><li *ngFor="let event of item.events"><strong>{{ label(event.to_status) | titlecase }}</strong><span>{{ event.created_at | date:'medium' }} · Actor {{ event.actor_id == null ? 'unavailable' : '#' + event.actor_id }}</span><p>{{ event.reason }}</p></li></ol></details>
+          <form *ngIf="item.status !== 'completed' && !item.stale" class="cx-transition" (ngSubmit)="transition(item)"><label class="cx-control"><span>{{ item.status === 'open' ? 'Progress reason' : 'Completion attestation' }}</span><textarea rows="2" [name]="'reason-' + item.uuid" [ngModel]="transitionReasons[item.uuid] || ''" (ngModelChange)="transitionReasons[item.uuid] = $event" maxlength="500" placeholder="Enter an auditable reason (3–500 characters)"></textarea></label><button type="submit" class="cx-btn cx-btn--primary" [disabled]="!!transitioningId || assigning || (transitionReasons[item.uuid] || '').trim().length < 3">{{ transitioningId === item.uuid ? 'Saving…' : item.status === 'open' ? 'Start progress' : 'Attest completion' }}</button></form>
+          <p class="cx-muted" *ngIf="item.stale">Read-only: source revision has changed.</p>
+        </article></div>
+      </section>
+      <aside class="cx-panel cx-side-panel"><header class="cx-panel-head"><div><h2>Assign a follow-up</h2><p>Select a verified source obligation and authorized owner.</p></div></header><div class="cx-panel-body"><div class="cx-notice cx-notice--warning" *ngIf="!canAssign">Assignments require a finalized, accessible review with available source obligations.</div><form class="cx-assign" *ngIf="canAssign" (ngSubmit)="assign()"><label class="cx-control"><span>Source obligation</span><select name="sourceIndex" [ngModel]="selectedSourceIndex" (ngModelChange)="selectedSourceIndex = $event == null ? null : +$event" required><option [ngValue]="null">Select reviewed obligation</option><option *ngFor="let row of availableSourceObligations; trackBy: trackSource" [ngValue]="row.index">{{ row.index + 1 }} — {{ row.action || 'Obligation' }}</option></select></label><label class="cx-control"><span>Authorized owner user ID</span><input type="number" name="ownerId" [(ngModel)]="ownerId" min="1" step="1" placeholder="Numeric user ID" required /></label><button type="submit" class="cx-btn cx-btn--primary cx-btn--block" [disabled]="assigning || !availableSourceObligations.length || selectedSourceIndex == null || !ownerId">{{ assigning ? 'Assigning…' : 'Assign follow-up' }}</button><p class="cx-muted">The backend validates user authorization, tenancy and source revision.</p></form></div></aside>
+    </div>
+  </ng-container>
+  <p class="cx-footnote">Follow-up completion is a human attestation. It does not constitute legal certification or contract signature.</p>
+</div>

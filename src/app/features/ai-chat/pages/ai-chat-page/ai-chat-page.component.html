@@ -418,12 +418,25 @@
       [isSending]="isSending"
     ></app-chat-message-list>
 
-    <div class="internal-scope-bar" *ngIf="!hrMode">
-      <span>Document scope:</span>
-      <strong>{{ selectedDocumentCountLabel }}</strong>
-      <button type="button" *ngIf="selectedDocuments.length" (click)="clearSelectedDocuments()">
-        Clear
-      </button>
+    <div class="internal-scope-bar docux-response-controls" *ngIf="!hrMode">
+      <div class="docux-response-controls__scope">
+        <span>Documents</span>
+        <strong [title]="selectedDocumentCountLabel">{{ selectedDocumentCountLabel }}</strong>
+        <button type="button" *ngIf="selectedDocuments.length" (click)="clearSelectedDocuments()">Clear</button>
+      </div>
+      <div class="docux-response-controls__model">
+        <label for="docux-response-model">Response model</label>
+        <select id="docux-response-model" [(ngModel)]="selectedModelUuid" [disabled]="isLoadingModels || isSending || !!modelCatalogError && !companyModels.length">
+          <option value="">Company default</option>
+          <option *ngFor="let model of companyModels; trackBy: trackModel" [value]="model.uuid">
+            {{ model.display_name || model.model_id }} · {{ model.provider_type }}{{ model.is_default ? ' (default)' : '' }}
+          </option>
+        </select>
+        <button type="button" class="docux-response-controls__refresh" (click)="loadApprovedModels()" [disabled]="isLoadingModels || isSending" title="Refresh approved models" aria-label="Refresh approved models">↻</button>
+      </div>
+      <a class="docux-response-controls__manage" routerLink="/administration/company/ai-models" title="View company approved AI models">Manage</a>
+      <small class="docux-response-controls__notice" *ngIf="modelCatalogError" role="status">{{ modelCatalogError }}</small>
+      <small class="docux-response-controls__notice" *ngIf="!isLoadingModels && !modelCatalogError && !companyModels.length">No explicit model grants; the backend's company policy controls routing.</small>
     </div>
 
     <app-chat-input

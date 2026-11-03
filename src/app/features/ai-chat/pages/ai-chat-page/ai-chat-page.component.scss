@@ -1965,3 +1965,89 @@ app-chat-input {
     flex: 1;
   }
 }
+
+/* DOCUX_AI_MODEL_GOVERNANCE_FRONTEND_V2 — aligned with the existing chat composer. */
+.internal-scope-bar.docux-response-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px 14px;
+  box-sizing: border-box;
+  width: min(900px, calc(100% - 48px));
+  max-width: min(900px, calc(100% - 48px));
+  bottom: 88px;
+  padding: 8px 12px;
+  font-size: 12px;
+  white-space: normal;
+}
+.docux-response-controls__scope,
+.docux-response-controls__model {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+.docux-response-controls__scope { flex: 1 1 175px; }
+.docux-response-controls__scope strong {
+  max-width: min(220px, 45vw);
+  font-size: 12px;
+}
+.docux-response-controls__model { flex: 0 1 auto; }
+.docux-response-controls__model label { flex: 0 0 auto; color: var(--app-text-muted); }
+.docux-response-controls__model select {
+  min-width: 125px;
+  max-width: min(270px, 35vw);
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--app-surface);
+  color: var(--app-text);
+  padding: 5px 8px;
+  font: inherit;
+  text-overflow: ellipsis;
+}
+.docux-response-controls__model select:focus-visible,
+.docux-response-controls__refresh:focus-visible,
+.docux-response-controls__manage:focus-visible {
+  outline: 2px solid var(--app-primary);
+  outline-offset: 2px;
+}
+.docux-response-controls__model select:disabled { opacity: .6; }
+.docux-response-controls__refresh { font-size: 16px !important; line-height: 1; }
+.docux-response-controls__manage {
+  color: var(--app-text);
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  padding: 5px 9px;
+  text-decoration: none;
+  font-weight: 600;
+}
+.docux-response-controls__notice {
+  flex: 1 0 100%;
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  color: var(--app-text-muted);
+}
+.ai-chat-main:not(.hr-policy-mode) > app-chat-message-list { bottom: 165px; }
+@media (max-width: 760px) {
+  .internal-scope-bar.docux-response-controls {
+    width: calc(100% - 24px);
+    max-width: calc(100% - 24px);
+    right: 12px;
+    bottom: 82px;
+    transform: none;
+    gap: 6px 10px;
+  }
+  .docux-response-controls__scope { flex: 1 1 100%; }
+  .docux-response-controls__model { flex: 1 1 auto; }
+  .docux-response-controls__model label { font-size: 11px; }
+  .docux-response-controls__model select { max-width: min(220px, 48vw); }
+  .ai-chat-main:not(.hr-policy-mode) > app-chat-message-list { bottom: 205px; }
+}
+@media (max-width: 390px) {
+  .docux-response-controls__model select { min-width: 95px; max-width: 35vw; }
+  .docux-response-controls__scope strong { max-width: 53vw; }
+  .ai-chat-main:not(.hr-policy-mode) > app-chat-message-list { bottom: 230px; }
+}

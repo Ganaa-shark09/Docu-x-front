@@ -24,7 +24,7 @@ import { AuthService } from '../auth/auth.service';
 interface NavItem {
   label: string;
   path: string;
-  icon: 'dashboard' | 'documents' | 'approvals' | 'workflows' | 'notifications';
+  icon: 'dashboard' | 'documents' | 'approvals' | 'workflows' | 'contracts' | 'notifications';
 }
 
 type FloatingAiVisual =
@@ -48,6 +48,7 @@ type FloatingAiVisual =
   styleUrls: ['./main-layout.component.scss'],
 })
 export class MainLayoutComponent implements OnInit, OnDestroy {
+  private lastWorkflowRoutePathV16 = '';
   readonly authService = inject(AuthService);
 
   private readonly router = inject(Router);
@@ -104,6 +105,16 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     if (this.workflowMenuOpen()) this.adminMenuOpen.set(false);
   }
   readonly mobileNavigationOpen = signal(false);
+  // DOCUX_UNIFIED_OPS_V17: operation pages own their single, domain-specific breadcrumb.
+  hideSharedWorkflowBreadcrumbs(): boolean {
+    const pathname = this.router.url.split('?')[0];
+    return pathname === '/workflows/contract-workspace'
+      || pathname.startsWith('/workflows/contract-workspace/')
+      || pathname === '/workflows/legal/playbooks'
+      || pathname.startsWith('/workflows/legal/playbooks/')
+      || pathname === '/workflows/legal/clause-types'
+      || pathname.startsWith('/workflows/legal/clause-types/');
+  }
   workflowActive(): boolean {
     return this.router.url.startsWith('/workflows');
   }
@@ -227,6 +238,17 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.router.events.pipe(takeUntilDestroyed(this.destroy)).subscribe((event) => {
+      // DOCUX_WORKFLOW_ROUTE_STABILITY_V16: reset scroll on workspace-page
+      // changes, never on same-page query/filter changes.
+      if (event instanceof NavigationEnd) {
+        const routePath = event.urlAfterRedirects.split('?')[0];
+        if (routePath.startsWith('/workflows') && routePath !== this.lastWorkflowRoutePathV16) {
+          this.lastWorkflowRoutePathV16 = routePath;
+          requestAnimationFrame(() => {
+            if (!this.destroy.destroyed) window.scrollTo(0, 0);
+          });
+        }
+      }
       if (event instanceof NavigationStart) this.navigating.set(true);
       if (
         event instanceof NavigationEnd ||
@@ -248,6 +270,8 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       const labels: [string, string][] = [
         ['/dashboard', 'Overview'],
         ['/administration/organizations', 'Organizations'],
+        ['/administration/platform/ai-models', 'Platform AI governance'],
+        ['/administration/company/ai-models', 'AI model settings'],
         ['/administration/company', 'Company settings'],
         ['/administration/users', 'Users'],
         ['/administration/departments', 'Departments'],
@@ -260,6 +284,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
         ['/workflows/rfp', 'RFP & proposals'],
         ['/workflows/hr', 'HR policies'],
         ['/workflows/legal', 'Legal intelligence'],
+        ['/workflows/contract-workspace', 'Contract review'],
         ['/workflows', 'Workflows'],
       ];
       this.contextTitle.set(labels.find(([prefix]) => path.startsWith(prefix))?.[1] || 'Workspace');

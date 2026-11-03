@@ -1,3 +1,4 @@
+import { ContractAreaNavComponent } from '../../contracts/components/contract-area-nav.component';
 import { KeyValuePipe } from '@angular/common';
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -26,9 +27,9 @@ import { ToastService } from '../../../core/notifications/toast.service';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, RouterLink, LegalRuleEditorComponent, KeyValuePipe],
+  imports: [ContractAreaNavComponent, FormsModule, RouterLink, LegalRuleEditorComponent, KeyValuePipe],
   templateUrl: './legal-configuration.component.html',
-  styleUrls: ['../workflow.scss', '../components/legal.scss'],
+  styleUrls: ['../workflow.scss', '../components/legal.scss', './legal-playbook-editor.component.scss', './legal-operations-layout.scss'],
 })
 export class LegalConfigurationComponent {
   readonly api = inject(LegalClauseService);
@@ -67,6 +68,8 @@ export class LegalConfigurationComponent {
   rules: ClauseRule[] = [];
   publishConfirmed = false;
   activationConfirmed = false;
+  /** Explicit selection of a published version; active_version_uuid is only assigned on activation. */
+  activationVersionUuid = '';
   taxonomyReady = false;
   taxonomyNext = false;
   taxonomyPage = 1;
@@ -75,6 +78,9 @@ export class LegalConfigurationComponent {
   aliases = '';
   typeDocuments = 'contract';
   facts: { key: string; type: FactKind; values: string }[] = [];
+  /** Retain publish confirmation across the immediate server refresh, even if
+   * the server normalizes values when freezing the version. */
+  private recentPublish: { bookUuid: string; fingerprint: string; version: PlaybookVersion } | null = null;
   private generation = 0;
   private readonly cancel = new Subject<void>();
   constructor() {
@@ -120,6 +126,8 @@ export class LegalConfigurationComponent {
     this.effectiveUntil = '';
     this.publishConfirmed = false;
     this.activationConfirmed = false;
+    this.activationVersionUuid = '';
+    this.recentPublish = null;
     this.taxonomyReady = false;
     this.loading.set(false);
     this.pending.set(false);
@@ -163,6 +171,9 @@ export class LegalConfigurationComponent {
             this.book.set(v.book);
             this.applyDraft(v.book);
             this.history.set(v.history.results);
+            // Publishing returns a version but does not activate it. Choose an actual
+            // published version rather than relying on active_version_uuid.
+            this.activationVersionUuid = this.chooseActivationVersion(v.book, this.availableVersions());
             this.versionNext = !!v.history.next;
             this.versionPrevious = !!v.history.previous;
             this.types.set(v.types.results);
@@ -268,6 +279,8 @@ export class LegalConfigurationComponent {
     this.versionPage += delta;
     this.read(this.api.versions(this.uuid, this.versionPage), (v) => {
       this.history.set(v.results);
+      this.activationVersionUuid = this.chooseActivationVersion(this.book(), this.availableVersions());
+      this.activationConfirmed = false;
       this.versionNext = !!v.next;
       this.versionPrevious = !!v.previous;
     });
@@ -299,15 +312,12 @@ export class LegalConfigurationComponent {
   }
   save(): void {
     const b = this.book();
-    if (
-      !b ||
-      !this.manage() ||
-      this.selected() ||
-      !this.taxonomyReady ||
-      !validRules(this.rules, this.types()) ||
-      !this.name.trim()
-    )
+    if (!b || !this.manage() || this.selected() || this.pending() || !this.draftDirty()) return;
+    const blockers = this.draftIssues();
+    if (blockers.length) {
+      this.error.set('Resolve the draft validation issues below before saving.');
       return;
+    }
     const from = this.effectiveFrom || undefined;
     const until = this.effectiveUntil || null;
     if (from && until && until <= from) {
@@ -335,31 +345,99 @@ export class LegalConfigurationComponent {
   }
   publish(): void {
     const b = this.book();
-    if (!b || !this.manage() || !this.publishConfirmed || this.selected() || this.draftDirty())
+    if (!b || !this.manage() || this.selected() || this.pending() || this.matchingPublishedVersion()) return;
+    const blockers = this.publishIssues();
+    if (blockers.length) {
+      this.error.set('Finish the publish checklist before publishing this playbook.');
       return;
-    this.mutate(this.api.publish(b.uuid, b.revision), () => {
-      this.toasts.success('Immutable version published. Activation is a separate action.');
+    }
+    this.mutate(this.api.publish(b.uuid, b.revision), (published) => {
+      this.recentPublish = { bookUuid: b.uuid, fingerprint: this.draftFingerprint(), version: published };
+      this.toasts.success('Immutable version published. Select a published version below to activate it.');
+      this.versionPage = 1;
+      this.activationConfirmed = false;
       this.loadContent();
     });
   }
   activate(active: boolean, version?: string): void {
     const b = this.book();
-    if (
-      !b ||
-      !this.manage() ||
-      !this.activationConfirmed ||
-      (!version && active && !b.active_version_uuid)
-    )
+    if (!b || !this.manage() || this.selected() || this.pending() || !this.activationConfirmed) return;
+    // The published version must be explicit on initial activation. The active
+    // version field is null before the first activation, even after publishing.
+    const chosen = version || this.activationVersionUuid;
+    if (active) {
+      if (!chosen || !this.availableVersions().some((item) => item.uuid === chosen)) {
+        this.error.set('Choose a published version before activating the playbook.');
+        return;
+      }
+      if (b.is_active && b.active_version_uuid === chosen) return;
+    } else if (!b.is_active) {
       return;
-    this.mutate(this.api.activate(b.uuid, b.revision, active, version), (v) => {
-      this.book.set(v);
+    }
+    this.mutate(this.api.activate(b.uuid, b.revision, active, active ? chosen : undefined), (updated) => {
+      this.book.set(updated);
+      this.activationVersionUuid = active ? (updated.active_version_uuid || chosen) : this.activationVersionUuid;
       this.activationConfirmed = false;
-      this.toasts.success(
-        active
-          ? 'Playbook activation updated. Existing runs keep their pinned version.'
-          : 'Playbook deactivated. Existing analysis stays pinned.',
-      );
+      this.toasts.success(active
+        ? 'Published version activated for future analysis. Existing reviews keep their pinned versions.'
+        : 'Playbook deactivated. Existing reviews keep their pinned policy versions.');
     });
+  }
+
+  private chooseActivationVersion(book: Playbook | null, versions: PlaybookVersion[]): string {
+    if (!versions.length) return '';
+    // Prefer the already-active version, otherwise default to the newest
+    // published version present on this page.
+    if (book?.is_active && versions.some((v) => v.uuid === book.active_version_uuid)) {
+      return book.active_version_uuid || '';
+    }
+    return [...versions].sort((a, b) => b.number - a.number)[0].uuid;
+  }
+
+  /** A published version is not necessarily the active version. */
+  matchingPublishedVersion(): PlaybookVersion | null {
+    const b = this.book();
+    if (!b || this.draftDirty() || this.selected()) return null;
+    const docs = this.csv(this.documentTypes);
+    const end = this.effectiveUntil || null;
+    if (this.recentPublish?.bookUuid === b.uuid && this.recentPublish.fingerprint === this.draftFingerprint()) {
+      return this.recentPublish.version;
+    }
+    return this.history().find((v) =>
+      JSON.stringify(v.rules) === JSON.stringify(this.rules) &&
+      JSON.stringify(v.document_types) === JSON.stringify(docs) &&
+      (!this.effectiveFrom || v.effective_from?.slice(0, 10) === this.effectiveFrom) &&
+      (v.effective_until?.slice(0, 10) || null) === end,
+    ) || null;
+  }
+
+  private draftFingerprint(): string {
+    return JSON.stringify({
+      name: this.name,
+      description: this.description,
+      rules: this.rules,
+      documentTypes: this.csv(this.documentTypes),
+      effectiveFrom: this.effectiveFrom,
+      effectiveUntil: this.effectiveUntil,
+    });
+  }
+
+  activationVersion(): PlaybookVersion | null {
+    return this.availableVersions().find((v) => v.uuid === this.activationVersionUuid) || null;
+  }
+
+  availableVersions(): PlaybookVersion[] {
+    const versions = this.history();
+    const recent = this.recentPublish;
+    if (recent && recent.bookUuid === this.book()?.uuid && !versions.some((v) => v.uuid === recent.version.uuid)) {
+      return [recent.version, ...versions];
+    }
+    return versions;
+  }
+
+  alreadyActive(): boolean {
+    const b = this.book();
+    return !!b?.is_active && !!b.active_version_uuid && b.active_version_uuid === this.activationVersionUuid;
   }
   inspect(v: PlaybookVersion): void {
     this.selected.set(v);
@@ -451,6 +529,76 @@ export class LegalConfigurationComponent {
       ),
     ];
   }
+  /** Actionable validation, without changing the server's governance checks. */
+  draftIssues(): string[] {
+    if (!this.book() || this.selected()) return [];
+    const issues: string[] = [];
+    if (!this.manage()) issues.push('You do not have permission to edit this playbook.');
+    if (!this.taxonomyReady) issues.push('Load the remaining clause taxonomy before saving.');
+    if (!this.name.trim()) issues.push('Enter a playbook name.');
+    if (!this.csv(this.documentTypes).length) issues.push('Specify at least one document type, such as contract.');
+    if (this.effectiveFrom && this.effectiveUntil && this.effectiveUntil <= this.effectiveFrom) {
+      issues.push('The effective end date must be after the effective start date.');
+    }
+    if (!this.rules.length) issues.push('Add at least one clause rule.');
+    if (this.rules.length > 64) issues.push('A playbook can contain at most 64 clause rules.');
+    const seen = new Set<string>();
+    this.rules.forEach((rule, index) => {
+      const prefix = `Rule ${index + 1}`;
+      if (!/^[a-z][a-z0-9_]{0,79}$/.test(rule.code)) {
+        issues.push(`${prefix}: stable rule code must start with a lowercase letter and contain only lowercase letters, numbers or underscores (example: demo_001).`);
+      } else if (seen.has(rule.code)) {
+        issues.push(`${prefix}: the stable rule code is already used by another rule.`);
+      }
+      seen.add(rule.code);
+      const type = this.types().find((t) => t.uuid === rule.clause_type && t.is_active);
+      if (!type) issues.push(`${prefix}: choose an active clause type from the available taxonomy.`);
+      if (rule.fallback?.length && !rule.preferred?.length) {
+        issues.push(`${prefix}: add a preferred position before defining a fallback.`);
+      }
+      const equivalent = (a?: unknown[], b?: unknown[]) =>
+        !!a?.length && !!b?.length && JSON.stringify(a) === JSON.stringify(b);
+      if (equivalent(rule.preferred, rule.prohibited) || equivalent(rule.fallback, rule.prohibited)) {
+        issues.push(`${prefix}: preferred/fallback and prohibited positions must not be identical.`);
+      }
+      for (const group of ['when', 'preferred', 'fallback', 'prohibited'] as const) {
+        if ((rule[group] || []).length > 16) issues.push(`${prefix}: ${group} may contain at most 16 conditions.`);
+      }
+    });
+    if (this.rules.length && this.taxonomyReady && !validRules(this.rules, this.types()) && !issues.some((x) => x.includes('Rule '))) {
+      issues.push('One or more rule conditions have an invalid fact, operator, or value. Review the rule sections below.');
+    }
+    return issues;
+  }
+
+  publishIssues(): string[] {
+    const issues = this.draftIssues();
+    if (this.draftDirty()) issues.push('Save the latest draft edits before publishing.');
+    if (this.matchingPublishedVersion()) issues.push('This draft is already published. Change and save the draft to publish a new version.');
+    if (!this.publishConfirmed) issues.push('Confirm that you reviewed the saved draft.');
+    return issues;
+  }
+
+  ruleUpdated(rules: ClauseRule[]): void {
+    this.rules = rules;
+    this.publishConfirmed = false;
+    this.error.set('');
+  }
+
+  /** Stable rule codes are deliberately not silently rewritten; they identify immutable policies. */
+  suggestedCode(code: string): string {
+    return code.trim().toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^[^a-z]+/, '');
+  }
+
+  applySuggestedCode(index: number): void {
+    if (!this.manage() || !!this.selected()) return;
+    const rows = structuredClone(this.rules);
+    const suggestion = this.suggestedCode(rows[index]?.code || '');
+    if (!suggestion || suggestion.length > 80) return;
+    rows[index] = { ...rows[index], code: suggestion };
+    this.ruleUpdated(rows);
+  }
+
   draftDirty(): boolean {
     const b = this.book();
     return (

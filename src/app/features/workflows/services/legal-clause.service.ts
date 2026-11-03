@@ -170,8 +170,27 @@ export class LegalClauseService {
     if (status === 404) return 'This legal resource is unavailable or no longer accessible.';
     if (status === 409)
       return 'This resource changed while you were working. Latest data has been refreshed; reconsider your action before submitting again.';
-    if ([400, 422].includes(status))
-      return 'Validation failed. Check rule conditions, conflicting requirements, evidence and review state. Publication and finalization require complete validated data.';
+    if ([400, 422].includes(status)) {
+      // Prefer server-provided field errors over an unhelpful generic failure.
+      // Keep the output bounded and render it as Angular text, never HTML.
+      const body: unknown = error instanceof HttpErrorResponse ? error.error : null;
+      const messages: string[] = [];
+      const collect = (value: unknown, label = ''): void => {
+        if (messages.length >= 6) return;
+        if (typeof value === 'string') {
+          if (value.trim()) messages.push(label ? `${label}: ${value}` : value);
+        } else if (Array.isArray(value)) {
+          for (const item of value.slice(0, 4)) collect(item, label);
+        } else if (value && typeof value === 'object') {
+          for (const [key, item] of Object.entries(value).slice(0, 6)) {
+            collect(item, ['detail', 'non_field_errors'].includes(key) ? label : (label ? `${label}.${key}` : key));
+          }
+        }
+      };
+      collect(body);
+      const detail = messages.join(' · ').slice(0, 600);
+      return detail || 'Validation failed. Check rule codes, clause types, conditions and effective dates before saving or publishing.';
+    }
     return 'Unable to complete the legal request. Refresh to check access and try again.';
   }
 }

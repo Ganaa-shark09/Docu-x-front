@@ -18,7 +18,7 @@ import {
   inject,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subscription, finalize, forkJoin, timeout } from 'rxjs';
 
 import {
@@ -31,6 +31,7 @@ import {
   LocalChatMessage,
 } from '../../models/ai-chat.model';
 import { AiChatService } from '../../services/ai-chat.service';
+import { CompanyAiModel, CompanyAiModelService, modelApiError } from '../../../../core/services/company-ai-model.service';
 import { ChatInputComponent } from '../../components/chat-input/chat-input.component';
 import { ChatMessageListComponent } from '../../components/chat-message-list/chat-message-list.component';
 import { ConversationListComponent } from '../../components/conversation-list/conversation-list.component';
@@ -44,6 +45,7 @@ import { ConversationListComponent } from '../../components/conversation-list/co
     ChatMessageListComponent,
     ConversationListComponent,
     FormsModule,
+    RouterLink,
     NgClass,
     NgFor,
     NgIf,
@@ -53,6 +55,7 @@ import { ConversationListComponent } from '../../components/conversation-list/co
 })
 export class AiChatPageComponent implements OnInit, OnDestroy {
   private readonly aiChatService = inject(AiChatService);
+  private readonly companyModelsApi = inject(CompanyAiModelService);
   private readonly hrApi = inject(HRPolicyService);
   private readonly hrWorkflow = inject(WorkflowService);
   hrDepartments: { id: number; name: string }[] = [];
@@ -166,6 +169,12 @@ export class AiChatPageComponent implements OnInit, OnDestroy {
   isLoadingConversations = false;
   isLoadingConversation = false;
   isSending = false;
+  companyModels: CompanyAiModel[] = [];
+  selectedModelUuid = '';
+  isLoadingModels = false;
+  modelCatalogError = '';
+  private modelCatalogSubscription?: Subscription;
+  private modelCatalogRequestId = 0;
   isSwitchingToExternal = false;
 
   errorMessage = '';
@@ -202,6 +211,7 @@ export class AiChatPageComponent implements OnInit, OnDestroy {
   private routeSubscription?: Subscription;
 
   ngOnInit(): void {
+    this.loadApprovedModels();
     window.addEventListener('focus', this.verifyHRAccess);
     this.accessTimer = setInterval(() => {
       if (document.visibilityState === 'visible') this.verifyHRAccess();
@@ -242,6 +252,8 @@ export class AiChatPageComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.modelCatalogSubscription?.unsubscribe();
+    this.modelCatalogRequestId++;
     clearTimeout(this.initialLoadTimer);
     clearInterval(this.accessTimer);
     window.removeEventListener('focus', this.verifyHRAccess);
@@ -263,6 +275,40 @@ export class AiChatPageComponent implements OnInit, OnDestroy {
     this.governanceSubscription?.unsubscribe();
     this.revocationSubscription?.unsubscribe();
   }
+
+  /** Only grants approved by the backend are shown. Do not cache them across sessions. */
+  loadApprovedModels(): void {
+    this.modelCatalogSubscription?.unsubscribe();
+    const requestId = ++this.modelCatalogRequestId;
+    this.isLoadingModels = true;
+    this.modelCatalogError = '';
+    this.modelCatalogSubscription = this.companyModelsApi.listApprovedModels().subscribe({
+      next: (models) => {
+        if (requestId !== this.modelCatalogRequestId) return;
+        this.ngZone.run(() => {
+          this.companyModels = models;
+          if (this.selectedModelUuid && !models.some((m) => m.uuid === this.selectedModelUuid)) {
+            this.selectedModelUuid = '';
+            this.modelCatalogError = 'The previously selected model is no longer approved. Please review the company default before sending another message.';
+          }
+          this.isLoadingModels = false;
+          this.cdr.markForCheck();
+        });
+      },
+      error: (error: unknown) => {
+        if (requestId !== this.modelCatalogRequestId) return;
+        this.ngZone.run(() => {
+          this.companyModels = [];
+          this.selectedModelUuid = '';
+          this.isLoadingModels = false;
+          this.modelCatalogError = modelApiError(error, 'Unable to load the approved company models.');
+          this.cdr.markForCheck();
+        });
+      },
+    });
+  }
+
+  trackModel(_index: number, item: CompanyAiModel): string { return item.uuid; }
 
   get documentScope(): 'all' | 'selected' {
     return this.selectedDocuments.length > 0 ? 'selected' : 'all';
@@ -737,6 +783,9 @@ export class AiChatPageComponent implements OnInit, OnDestroy {
 
     const payload: AiChatRequest = {
       message: cleanMessage,
+      ...(!this.hrMode && this.selectedModelUuid && this.companyModels.some((m) => m.uuid === this.selectedModelUuid)
+        ? { model_uuid: this.selectedModelUuid }
+        : {}),
       top_k: documentUuids.length > 1 ? 10 : 5,
       document_scope: documentUuids.length > 0 ? 'selected' : 'all',
       document_uuids: documentUuids,
@@ -811,6 +860,10 @@ export class AiChatPageComponent implements OnInit, OnDestroy {
             return;
           }
           const apiError = this.getInternalAiError(error);
+          if (payload.model_uuid && error instanceof HttpErrorResponse && [400, 403, 404].includes(error.status)) {
+            // Never automatically retry a rejected model request: re-check entitlements first.
+            this.loadApprovedModels();
+          }
 
           if (apiError.code === 'selected_documents_unavailable') {
             this.refreshProtectedContext('*');
@@ -856,11 +909,15 @@ export class AiChatPageComponent implements OnInit, OnDestroy {
     const code = payload['code'];
 
     const detail = payload['detail'];
+    const modelError = payload['model_uuid'];
+    const extractedModelError = typeof modelError === 'string'
+      ? modelError
+      : Array.isArray(modelError) && typeof modelError[0] === 'string' ? modelError[0] : undefined;
 
     return {
       code: typeof code === 'string' ? code : undefined,
 
-      detail: typeof detail === 'string' ? detail : undefined,
+      detail: typeof detail === 'string' ? detail : extractedModelError,
     };
   }
 

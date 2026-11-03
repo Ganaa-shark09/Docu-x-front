@@ -1,12 +1,5 @@
 <section class="page">
-  <nav class="tabs" aria-label="Workflow navigation">
-    <a routerLink="/workflows/runs">Workflow runs</a
-    ><a routerLink="/workflows/definitions">Definitions</a
-    ><a routerLink="/workflows/extractions">Extraction runs</a>
-    @if (definition()?.workflow_type === 'invoice') {
-      <a routerLink="/workflows/invoices">Invoice register</a>
-    }
-  </nav>
+
   <div class="actions">
     <button type="button" (click)="load()" [disabled]="pending() || invoicePending() || loading()">
       Refresh current permissions and state

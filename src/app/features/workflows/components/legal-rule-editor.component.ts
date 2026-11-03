@@ -84,21 +84,27 @@ import { LegalPredicatesComponent } from './legal-predicates.component';
           Conditional requirements apply only when all applicability conditions match. Missing facts
           require review.
         </p>
-        <app-legal-predicates
-          title="Applicability conditions"
-          [schema]="conditions"
-          [predicates]="rule.when || []"
-          [disabled]="disabled()"
-          (changed)="position(i, 'when', $event)"
-        />
-        @for (group of positions; track group.key) {
+        <details class="playbook-rule-disclosure" [open]="(rule.when || []).length > 0">
+          <summary>Applicability conditions ({{ (rule.when || []).length }})</summary>
           <app-legal-predicates
-            [title]="group.title"
-            [schema]="schema(rule.clause_type)"
-            [predicates]="rule[group.key] || []"
+            title="Applicability conditions"
+            [schema]="conditions"
+            [predicates]="rule.when || []"
             [disabled]="disabled()"
-            (changed)="position(i, group.key, $event)"
+            (changed)="position(i, 'when', $event)"
           />
+        </details>
+        @for (group of positions; track group.key) {
+          <details class="playbook-rule-disclosure" [open]="(rule[group.key] || []).length > 0">
+            <summary>{{ group.title }} ({{ (rule[group.key] || []).length }})</summary>
+            <app-legal-predicates
+              [title]="group.title"
+              [schema]="schema(rule.clause_type)"
+              [predicates]="rule[group.key] || []"
+              [disabled]="disabled()"
+              (changed)="position(i, group.key, $event)"
+            />
+          </details>
         }
       </section>
     } @empty {

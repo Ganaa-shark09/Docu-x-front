@@ -1,0 +1,110 @@
+<section class="cd" aria-labelledby="cd-title">
+  <header class="cd__header">
+    <div class="cd__heading">
+      <div class="cd__eyebrow">WORKFLOW DEFINITIONS <span aria-hidden="true">/</span> CONTRACT REVIEW</div>
+      <h1 id="cd-title">Contract review</h1>
+      <p>Configure accountable review and approval steps for your legal documents.</p>
+    </div>
+    <div class="cd__actions">
+      <a class="cd__btn cd__btn--secondary" routerLink="/workflows/contract-workspace">Review register <span aria-hidden="true">↗</span></a>
+      @if (canCreate) {
+        <button class="cd__btn cd__btn--primary" type="button" (click)="createWorkflow.emit()"
+          [attr.aria-expanded]="formOpen" [disabled]="busy">
+          <span aria-hidden="true">{{ formOpen ? '×' : '+' }}</span>
+          {{ formOpen ? 'Close form' : 'New workflow' }}
+        </button>
+      }
+    </div>
+  </header>
+
+  @if (directoryError) {
+    <p class="cd__notice cd__notice--warning" role="status">{{ directoryError }}</p>
+  }
+
+  @if (formOpen) {
+    <div class="cd__composer" aria-label="Create contract review workflow">
+      <div class="cd__composer-head"><h2>New contract workflow</h2><p>Set the reviewer, approver and publishing rules.</p></div>
+      <ng-content></ng-content>
+    </div>
+  }
+
+  @if (definitions.length && !loading && !error) {
+    <div class="cd__summary" aria-label="Definitions on the current page">
+      <div class="cd__summary-metric"><strong>{{ totalCount }}</strong><span>Accessible definitions</span></div>
+      <div class="cd__summary-metric"><strong>{{ publishedCount }}</strong><span>Published on this page</span></div>
+      <div class="cd__summary-metric"><strong>{{ readyCount }}</strong><span>Ready to start on this page</span></div>
+    </div>
+  }
+
+  <section class="cd__panel" aria-labelledby="cd-list-title">
+    <div class="cd__panel-head">
+      <div><h2 id="cd-list-title">Workflow definitions</h2><p>Manage reusable contract review processes and open published workflows.</p></div>
+      <button class="cd__refresh" type="button" (click)="refreshWorkflows.emit()" [disabled]="loading || busy">
+        <span aria-hidden="true">↻</span> Refresh
+      </button>
+    </div>
+
+    @if (definitions.length > 0 && !loading && !error) {
+      <div class="cd__filters" role="search">
+        <label class="cd__field cd__field--search"><span>Search definitions</span>
+          <input type="search" [(ngModel)]="search" placeholder="Name, description or department" autocomplete="off" />
+        </label>
+        <label class="cd__field cd__field--status"><span>Status</span>
+          <select [(ngModel)]="status">
+            <option value="all">All statuses</option><option value="published">Published</option>
+            <option value="draft">Unpublished</option><option value="inactive">Inactive</option>
+          </select>
+        </label>
+        @if (filteredOut) { <button type="button" class="cd__clear" (click)="clearFilters()">Clear</button> }
+      </div>
+    }
+
+    @if (error) {
+      <div class="cd__state cd__state--error" role="alert"><strong>Couldn't load contract workflows</strong><p>{{ error }}</p>
+        <button type="button" class="cd__btn cd__btn--secondary" (click)="refreshWorkflows.emit()">Try again</button>
+      </div>
+    } @else if (loading) {
+      <div class="cd__state" role="status"><span class="cd__spinner" aria-hidden="true"></span><p>Loading contract definitions…</p></div>
+    } @else if (!definitions.length) {
+      <div class="cd__state cd__state--empty">
+        <div class="cd__illustration" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="5" width="16" height="22" rx="2"/><path d="M12 12h8M12 17h8M12 22h5"/></svg></div>
+        <div><h3>No contract workflows yet</h3><p>{{ canCreate ? 'Create a review process, assign its reviewers and publish a version to start contract work.' : 'No contract review definition is available to your account. Contact your workflow administrator.' }}</p></div>
+        @if (canCreate) { <button type="button" class="cd__btn cd__btn--primary" (click)="createWorkflow.emit()" [disabled]="busy">Create workflow</button> }
+      </div>
+    } @else if (!filtered.length) {
+      <div class="cd__state cd__state--empty"><div><h3>No matching definitions</h3><p>Try a different name, department or status.</p></div>
+        <button class="cd__btn cd__btn--secondary" type="button" (click)="clearFilters()">Clear filters</button></div>
+    } @else {
+      <div class="cd__table-scroll">
+        <table class="cd__table">
+          <thead><tr><th scope="col">Workflow</th><th scope="col">Scope</th><th scope="col">Version</th><th scope="col">Status</th><th scope="col"><span class="cd__sr">Action</span></th></tr></thead>
+          <tbody>
+            @for (item of filtered; track item.uuid) {
+              <tr>
+                <td class="cd__name"><strong>{{ item.name }}</strong><small>{{ item.description || 'Contract review definition' }}</small></td>
+                <td>{{ scopeOf(item) }}</td>
+                <td>{{ item.latest_version ? 'v' + item.latest_version.number : 'Not published' }}</td>
+                <td><span class="cd__badge" [attr.data-status]="statusOf(item)">{{ statusOf(item) === 'draft' ? 'Unpublished' : (statusOf(item) | titlecase) }}</span></td>
+                <td class="cd__action"><button type="button" class="cd__open" (click)="openWorkflow.emit(item)" [attr.aria-label]="'Open ' + item.name">
+                  {{ item.is_active && item.latest_version && item.capabilities.start ? 'Open & start' : 'View details' }} <span aria-hidden="true">→</span>
+                </button></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+    @if (!loading && !error && definitions.length > 0) {
+      <footer class="cd__footer"><span>Showing {{ filtered.length }} of {{ definitions.length }} on this page · {{ totalCount }} accessible</span>
+        @if (hasPrevious || hasNext) {
+          <nav class="cd__pager" aria-label="Contract workflow definition pages">
+            <button type="button" (click)="pageChange.emit(currentPage - 1)" [disabled]="!hasPrevious || busy">Previous</button>
+            <span>Page {{ currentPage }}</span>
+            <button type="button" (click)="pageChange.emit(currentPage + 1)" [disabled]="!hasNext || busy">Next</button>
+          </nav>
+        }
+      </footer>
+    }
+  </section>
+  <p class="cd__note">Workflow definitions configure the approval process. The review register contains the actual contract records.</p>
+</section>

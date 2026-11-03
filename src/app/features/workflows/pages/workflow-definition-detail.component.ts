@@ -17,7 +17,7 @@ import { WorkflowPublisherComponent } from '../components/workflow-publisher.com
   standalone: true,
   imports: [FormsModule, RouterLink, WorkflowPublisherComponent],
   templateUrl: './workflow-definition-detail.component.html',
-  styleUrls: ['../workflow.scss'],
+  styleUrls: ['../workflow.scss', './workflow-definition-detail.component.scss'],
 })
 export class WorkflowDefinitionDetailComponent {
   private readonly api = inject(WorkflowService);
@@ -39,6 +39,7 @@ export class WorkflowDefinitionDetailComponent {
   versionUuid = '';
   selected: string[] = [];
   showPublisher = false;
+  showUnavailable = false;
   docPage = 1;
   docsLoading = signal(false);
   readonly docsHasNext = signal(false);
@@ -53,6 +54,7 @@ export class WorkflowDefinitionDetailComponent {
       this.uuid = p.get('uuid') || '';
       this.selected = [];
       this.startAttempt = null;
+      this.showUnavailable = false;
       this.documents.set([]);
       this.docGeneration++;
       this.load();
@@ -77,6 +79,7 @@ export class WorkflowDefinitionDetailComponent {
     this.memberships.set([]);
     this.selected = [];
     this.showPublisher = false;
+    this.showUnavailable = false;
     this.loading.set(false);
     this.docsLoading.set(false);
     this.startAttempt = null;
@@ -90,6 +93,7 @@ export class WorkflowDefinitionDetailComponent {
   load(): void {
     this.docGeneration++;
     this.documents.set([]);
+    this.showUnavailable = false;
     const gen = ++this.generation;
     this.definition.set(null);
     this.versions.set([]);
@@ -105,7 +109,7 @@ export class WorkflowDefinitionDetailComponent {
           if (!r.versions.some((v) => v.uuid === this.versionUuid))
             this.versionUuid = r.versions[0]?.uuid || '';
           this.loading.set(false);
-          this.loadDocuments(1);
+          if (r.definition.capabilities.start && r.versions.length) this.loadDocuments(1);
           if (r.definition.capabilities.administer)
             this.governance
               .memberships()
@@ -124,6 +128,69 @@ export class WorkflowDefinitionDetailComponent {
           }
         },
       });
+  }
+  isContract(): boolean {
+    return this.definition()?.workflow_type === 'contract_review';
+  }
+  isInvoice(): boolean {
+    return this.definition()?.workflow_type === 'invoice';
+  }
+  workflowKind(): string {
+    return this.isContract() ? 'Contract review' : this.isInvoice() ? 'Invoice extraction' : 'Workflow';
+  }
+  backRoute(): string {
+    return this.isContract() ? '/workflows/contract-workspace' :
+      this.isInvoice() ? '/workflows/invoices' : '/workflows/definitions';
+  }
+  backLabel(): string {
+    return this.isContract() ? 'Back to contract reviews' :
+      this.isInvoice() ? 'Back to invoice workspace' : 'Back to definitions';
+  }
+  startTitle(): string {
+    return this.isContract() ? 'Start contract review' :
+      this.isInvoice() ? 'Start invoice workflow' : 'Start workflow';
+  }
+  documentHint(): string {
+    return this.isContract()
+      ? 'Choose one authorized, ready document. The server verifies document and field permissions before starting the contract review.'
+      : this.isInvoice()
+        ? 'Choose one authorized, ready invoice document. The server verifies document and field permissions before starting.'
+        : 'Choose up to 20 accessible internal documents. The server verifies document and field permissions before starting.';
+  }
+  documentUploadHint(): string {
+    return this.isContract() ? 'Prepare a contract document in Documents' :
+      this.isInvoice() ? 'Prepare an invoice in Documents' : 'Prepare a document in Documents';
+  }
+  eligibleDocuments(): DocumentListRecord[] {
+    return this.documents().filter((doc) => this.allowed(doc));
+  }
+  unavailableDocuments(): DocumentListRecord[] {
+    return this.documents().filter((doc) => !this.allowed(doc));
+  }
+  documentReason(doc: DocumentListRecord): string {
+    if (this.singleDocument() && doc.status !== 'ready') return 'Not ready';
+    const types = this.version()?.allowed_document_types || [];
+    return types.length && !types.includes(doc.document_type || '') ? 'Document type not allowed' : 'Not eligible';
+  }
+  documentTitle(doc: DocumentListRecord): string {
+    return doc.title || doc.original_filename || doc.uuid;
+  }
+  versionChanged(): void {
+    this.selected = [];
+    this.startAttempt = null;
+    this.showUnavailable = false;
+  }
+  nextSteps(key: string): string[] {
+    return (this.version()?.transitions || []).filter((transition) => transition.source === key)
+      .map((transition) => `${label(transition.outcome)} → ${transition.target}`);
+  }
+  workflowScope(): string {
+    const department = this.definition()?.department;
+    return department == null ? 'Company wide' : `Department ${department}`;
+  }
+  isReadyToStart(): boolean {
+    const d = this.definition();
+    return !!d?.is_active && !!d.capabilities.start && !!this.version();
   }
   version(): Version | undefined {
     return this.versions().find((v) => v.uuid === this.versionUuid);
@@ -193,7 +260,8 @@ export class WorkflowDefinitionDetailComponent {
       !this.version() ||
       !this.selected.length ||
       this.selected.length > 20 ||
-      (this.singleDocument() && this.selected.length !== 1)
+      (this.singleDocument() && this.selected.length !== 1) ||
+      !d.is_active
     )
       return;
     const documents = [...this.selected].sort();
@@ -257,9 +325,6 @@ export class WorkflowDefinitionDetailComponent {
   }
   singleDocument(): boolean {
     return ['invoice', 'contract_review'].includes(this.definition()?.workflow_type || '');
-  }
-  isInvoice(): boolean {
-    return this.definition()?.workflow_type === 'invoice';
   }
   nature(type: string): string {
     return ['human_review', 'approval'].includes(type) ? 'Human' : type === 'ai' ? 'AI' : 'System';

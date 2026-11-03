@@ -1,0 +1,55 @@
+<section class="company-models-page">
+  <div class="model-page-head">
+    <div>
+      <p class="model-eyebrow">Administration / Company / AI governance</p>
+      <h1>Approved AI models</h1>
+      <p class="model-subtitle">Choose which approved model DOCU-X uses by default. Only platform-approved providers and models are listed.</p>
+    </div>
+    <div class="model-page-actions">
+      <a routerLink="/ai/internal" class="model-button model-button--ghost">Open Internal AI</a>
+      <button type="button" class="model-button" (click)="refresh()" [disabled]="loading || !!savingUuid">Refresh models</button>
+    </div>
+  </div>
+
+  <p *ngIf="isPlatformSuperuser" class="model-info">Platform superuser view: grants may include multiple companies.
+    <a routerLink="/administration/platform/ai-models" class="model-button">Manage companies, provider credentials and grants</a>
+  </p>
+  <p *ngIf="profileWarning" class="model-alert model-alert--error" role="status">{{ profileWarning }}</p>
+  <p *ngIf="error" class="model-alert model-alert--error" role="alert">{{ error }}</p>
+  <p *ngIf="success" class="model-alert model-alert--success" role="status">{{ success }}</p>
+
+  <div *ngIf="loading" class="model-info" role="status">Loading approved model access…</div>
+  <ng-container *ngIf="!loading">
+    <div class="model-info" *ngIf="!models.length && !error">
+      <strong>No approved AI models are configured</strong>
+      <p>The model API returned an empty list. This is a configuration state, not a Groq connectivity test.</p>
+      <p>A platform superuser can create a company-owned provider configuration in Django Admin, then create a Company Model Grant for that company (for example, Groq model <code>openai/gpt-oss-120b</code>). The provider must be active, its credentials configured, and the company must permit the relevant cloud or local routing.</p>
+      <p>After grants are configured, select <strong>Refresh models</strong>. Company admins can then choose an approved default. Existing legacy routing may apply until strict grants are enabled.</p>
+    </div>
+    <div class="model-intro" *ngIf="models.length">
+      <div><span class="model-kicker">Company</span><strong>{{ profile?.company_name || 'Your company' }}</strong></div>
+      <div><span class="model-kicker">Available models</span><strong>{{ models.length }}</strong></div>
+      <div><span class="model-kicker">Default configuration</span><strong>{{ isCompanyAdmin ? 'Company admin controls' : 'Managed by your company admin' }}</strong></div>
+    </div>
+    <div class="model-grid" *ngIf="models.length">
+      <article class="model-card" *ngFor="let item of models; trackBy: trackByUuid" [class.model-card--default]="item.is_default">
+        <div class="model-card__top">
+          <span class="model-provider">{{ item.provider_type | uppercase }}</span>
+          <span *ngIf="item.is_default" class="model-default">Company default</span>
+        </div>
+        <h2>{{ item.display_name || item.model_id }}</h2>
+        <p *ngIf="isPlatformSuperuser" class="model-id">Company UUID: {{ item.company }}</p>
+        <p class="model-id">{{ item.model_id }}</p>
+        <div class="model-card__bottom">
+          <span class="model-available">Approved &amp; enabled</span>
+          <button *ngIf="isCompanyAdmin && !item.is_default" type="button" class="model-button model-button--primary"
+            [disabled]="!!savingUuid" (click)="setDefault(item)">
+            {{ savingUuid === item.uuid ? 'Saving…' : 'Set as company default' }}
+          </button>
+          <span *ngIf="item.is_default" class="model-current">Current default</span>
+        </div>
+      </article>
+    </div>
+  </ng-container>
+  <p class="model-footnote">Model access is issued by the platform superuser. Sensitive documents remain subject to the DOCU-X data firewall; approval to use a cloud model does not bypass document restrictions. API keys are never shown here.</p>
+</section>

@@ -55,11 +55,35 @@ export const routes: Routes = [
           import('./features/workflows/workflows.routes').then((m) => m.WORKFLOWS_ROUTES),
       },
       {
+        path: 'contracts',
+        loadChildren: () =>
+          import('./features/contracts/contracts.routes').then((m) => m.CONTRACTS_ROUTES),
+      },
+      {
         path: 'notifications',
         loadComponent: () =>
           import('./features/workflows/pages/workflow-notifications.component').then(
             (m) => m.WorkflowNotificationsComponent,
           ),
+      },
+      {
+        path: 'administration/platform/ai-models',
+        loadComponent: () =>
+          import('./features/settings/platform-ai-administration/platform-ai-administration.component').then(
+            m => m.PlatformAiAdministrationComponent,
+          ),
+      },
+      {
+        path: 'administration/company/ai-models',
+        loadComponent: () =>
+          import('./features/settings/company-ai-models/company-ai-models.component').then(
+            (m) => m.CompanyAiModelsComponent,
+          ),
+      },
+      {
+        path: 'settings/company/ai-models',
+        pathMatch: 'full',
+        redirectTo: 'administration/company/ai-models',
       },
       {
         path: 'administration',

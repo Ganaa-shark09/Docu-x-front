@@ -1,0 +1,23 @@
+@use '../../contract-common';
+
+/* Details remain operational: a quiet header and four task-oriented sections. */
+.cx-detail-header { padding-bottom: 7px; }
+.cx-detail-reference { font-size: 11px !important; color: var(--cx-muted); margin-top: 12px !important; word-break: break-all; }
+.cx-review-tabs { margin-top: 2px; gap: 26px; }
+.cx-review-tabs button { font-size: 13px; padding: 13px 2px 16px; }
+.cx-review-tabs button[aria-selected='true'] { color: var(--cx-accent); font-weight: 750; border-bottom-color: var(--cx-accent); }
+.cx-review-bar > div { padding: 18px 22px; }
+.cx-review-bar { border-radius: 11px; }
+.cx-page-header--detail .cx-actions { align-self: start; }
+.cx-detail-grid > .cx-panel:first-child { min-height: 240px; }
+.cx-record-list .cx-record { align-items: flex-start; }
+.cx-obligation-grid > .cx-side-panel { position: sticky; top: 18px; }
+.cx-footnote { max-width: 960px; }
+@media(max-width: 1020px) { .cx-obligation-grid > .cx-side-panel { position: static; } }
+@media(max-width: 720px) { .cx-review-tabs { gap: 18px; } .cx-page-header--detail .cx-actions { width: 100%; } }
+
+/* DOCUX_NAV_V12 — contract context tabs; shared light/dark feature tokens. */
+.cx-section-nav { display:flex; flex-wrap:wrap; gap:7px; align-items:center; padding-bottom:11px; border-bottom:1px solid var(--cx-border); }
+.cx-section-nav a { padding:10px 14px; border-radius:9px; color:var(--cx-muted); text-decoration:none; font-size:12px; font-weight:670; }
+.cx-section-nav a:hover,.cx-section-nav a.is-current { color:var(--cx-text); background:var(--cx-muted-surface); }
+.cx-section-nav a.is-current { box-shadow:inset 0 -2px var(--cx-accent); }

@@ -1,0 +1,156 @@
+<div class="cx-page">
+  <app-contract-area-nav active="register" />
+
+  <!-- DOCUX_NAV_V12 contract context -->
+
+  <header class="cx-page-header">
+    <div>
+      <div class="cx-eyebrow"><span class="cx-eyebrow__dot" aria-hidden="true"></span> LEGAL OPERATIONS</div>
+      <h1>Contract review</h1>
+      <p>Review contract records, validated dates and evidence-linked follow-ups.</p>
+    </div>
+    <div class="cx-actions">
+      <button type="button" class="cx-btn cx-btn--secondary" (click)="toggleCreateWorkflow()" [disabled]="permissionsLoading || !canCreateWorkflow || createBusy" [attr.aria-expanded]="creatingWorkflow" aria-controls="cx-create-workflow">
+        {{ creatingWorkflow ? 'Close creation form' : 'Create contract workflow' }}
+      </button>
+      <button type="button" class="cx-btn cx-btn--primary" (click)="toggleStartReview()" [disabled]="createBusy" [attr.aria-expanded]="choosingWorkflow" aria-controls="cx-start-review">
+        {{ choosingWorkflow ? 'Close start form' : 'Start contract review' }}
+      </button>
+    </div>
+  </header>
+
+  <div *ngIf="permissionsError" class="cx-inline-message" role="status">
+    {{ permissionsError }}
+    <button type="button" class="cx-btn cx-btn--quiet" (click)="retryCreatePermissions()" [disabled]="permissionsLoading">Retry permissions</button>
+  </div>
+  <div *ngIf="creationMessage" class="cx-inline-message cx-inline-message--success" role="status">{{ creationMessage }}</div>
+
+  <section *ngIf="creatingWorkflow && canCreateWorkflow" id="cx-create-workflow" class="cx-create-workflow" aria-labelledby="cx-create-title">
+    <div class="cx-create-workflow__heading">
+      <div>
+        <span class="cx-start-panel__step">WORKFLOW CONFIGURATION</span>
+        <h2 id="cx-create-title">Create &amp; publish a contract workflow</h2>
+        <p>Set up a reusable legal review process. You'll choose reviewer and approval assignments, policy, and optional clause comparison. Starting a review happens separately.</p>
+      </div>
+      <button type="button" class="cx-btn cx-btn--quiet" (click)="toggleCreateWorkflow()" [disabled]="createBusy">Close</button>
+    </div>
+    <app-contract-definition
+      [memberships]="memberships"
+      [companyAdmin]="companyAdmin"
+      [authorized]="canCreateWorkflow"
+      (created)="onContractWorkflowCreated($event)"
+      (accessDenied)="onContractWorkflowDenied()"
+      (busyChange)="createBusy = $event"
+    />
+  </section>
+
+  <section *ngIf="choosingWorkflow" id="cx-start-review" class="cx-start-panel" aria-labelledby="cx-start-title">
+    <header class="cx-start-panel__heading">
+      <div>
+        <span class="cx-start-panel__step">START A CONTRACT REVIEW</span>
+        <h2 id="cx-start-title">Choose a review process</h2>
+        <p>Select a published contract workflow below. Next, you will choose an authorized contract document and start the review.</p>
+      </div>
+      <button type="button" class="cx-btn cx-btn--quiet" (click)="toggleStartReview()">Close</button>
+    </header>
+
+    <div class="cx-start-steps" aria-label="Review setup steps">
+      <span class="cx-start-steps__active"><b>1</b> Select workflow</span>
+      <span><b>2</b> Choose document</span>
+      <span><b>3</b> Start review</span>
+    </div>
+
+    <div *ngIf="workflowsLoading" class="cx-start-panel__state" role="status">Loading authorized contract workflows…</div>
+    <div *ngIf="workflowsError" class="cx-start-panel__state" role="alert">
+      {{ workflowsError }}
+      <button type="button" class="cx-btn cx-btn--secondary" (click)="loadStartWorkflows(workflowPage)">Retry</button>
+    </div>
+    <div *ngIf="!workflowsLoading && !workflowsError && !availableWorkflows.length" class="cx-start-panel__state">
+      <strong>No available published workflows on this page</strong>
+      <p>A contract administrator must create and publish a workflow before a contract review can be started.</p>
+      <button *ngIf="canCreateWorkflow" type="button" class="cx-btn cx-btn--secondary" (click)="toggleCreateWorkflow()">Create contract workflow</button>
+    </div>
+
+    <div *ngIf="!workflowsLoading && !workflowsError && availableWorkflows.length" class="cx-start-picker">
+      <div class="cx-start-picker__caption">AVAILABLE REVIEW PROCESSES</div>
+      <div role="radiogroup" aria-label="Select a published contract workflow" class="cx-start-picker__list">
+        <label
+          class="cx-start-picker__choice"
+          *ngFor="let workflow of availableWorkflows"
+          [class.is-selected]="selectedWorkflowUuid === workflow.uuid"
+        >
+          <input type="radio" name="start-contract-workflow" [value]="workflow.uuid" [checked]="selectedWorkflowUuid === workflow.uuid" (change)="selectStartWorkflow(workflow.uuid)" />
+          <span class="cx-start-picker__info">
+            <strong>{{ workflow.name }}</strong>
+            <small>{{ workflow.department === null ? 'Company-wide process' : 'Department ' + workflow.department }} · Published version {{ workflow.latest_version?.number }}</small>
+            <small *ngIf="workflow.description">{{ workflow.description }}</small>
+          </span>
+          <span class="cx-start-picker__badge">Ready</span>
+        </label>
+      </div>
+      <div class="cx-start-picker__footer">
+        <p>The next screen checks document access and permissions before allowing a review to start.</p>
+        <button class="cx-btn cx-btn--primary" type="button" (click)="continueToDocumentSelection()" [disabled]="!selectedWorkflowUuid">
+          Continue to document selection →
+        </button>
+      </div>
+    </div>
+
+    <nav class="cx-start-panel__pagination" aria-label="Available contract workflow pages" *ngIf="workflowPrevious || workflowNext">
+      <button type="button" class="cx-btn cx-btn--secondary" (click)="loadStartWorkflows(workflowPage - 1)" [disabled]="workflowsLoading || !workflowPrevious">Previous</button>
+      <span>Page {{ workflowPage }}</span>
+      <button type="button" class="cx-btn cx-btn--secondary" (click)="loadStartWorkflows(workflowPage + 1)" [disabled]="workflowsLoading || !workflowNext">Next</button>
+    </nav>
+  </section>
+
+  <section class="cx-stat-grid" aria-label="Accessible contract statistics">
+    <article class="cx-stat">
+      <span class="cx-stat__label">Accessible reviews</span>
+      <strong>{{ summaryLoading || !summary ? '—' : summary.total }}</strong>
+      <small>Records visible to you</small>
+    </article>
+    <article class="cx-stat">
+      <span class="cx-stat__label">Needs attention</span>
+      <strong>{{ summaryLoading || !summary ? '—' : attention }}</strong>
+      <small>Review, approval or exception</small>
+    </article>
+    <button class="cx-stat cx-stat--action" type="button" (click)="showCompleted()" [disabled]="summaryLoading || !summary">
+      <span class="cx-stat__label">Completed workflows <span class="cx-stat__arrow" aria-hidden="true">↗</span></span>
+      <strong>{{ summaryLoading || !summary ? '—' : completed }}</strong>
+      <small>Completed is not signed</small>
+    </button>
+  </section>
+  <p class="cx-inline-message" role="status" *ngIf="summaryError">{{ summaryError }}</p>
+
+  <section class="cx-panel" aria-labelledby="cx-register-title">
+    <div class="cx-panel-head">
+      <div><h2 id="cx-register-title">Contract register</h2><p>Access-controlled results from contract reviews.</p></div>
+      <div class="cx-actions"><span class="cx-count" *ngIf="!loading && !error">{{ count }} records</span><button class="cx-btn cx-btn--quiet" type="button" (click)="refresh()" [disabled]="loading">Refresh</button></div>
+    </div>
+    <form class="cx-filterbar" [formGroup]="filters" (ngSubmit)="applyFilters()">
+      <label class="cx-control cx-control--search"><span>Search by document</span><input type="search" formControlName="search" maxlength="100" placeholder="Search document title…" /></label>
+      <label class="cx-control cx-control--select"><span>Workflow status</span><select formControlName="status"><option value="">All statuses</option><option *ngFor="let choice of statusChoices" [value]="choice.value">{{ choice.label }}</option></select></label>
+      <button class="cx-btn cx-btn--primary" type="submit" [disabled]="loading">Apply</button>
+      <button class="cx-btn cx-btn--quiet" type="button" (click)="resetFilters()" [disabled]="loading">Reset</button>
+    </form>
+
+    <div *ngIf="error" class="cx-state cx-state--error" role="alert"><span class="cx-state__glyph" aria-hidden="true">!</span><h3>Could not load contracts</h3><p>{{ error }}</p><button type="button" class="cx-btn cx-btn--secondary" (click)="refresh()">Try again</button></div>
+    <div *ngIf="loading" class="cx-state" role="status"><span class="cx-spinner" aria-hidden="true"></span><p>Loading accessible contract reviews…</p></div>
+    <div *ngIf="!loading && !error && rows.length === 0" class="cx-state"><span class="cx-state__glyph" aria-hidden="true">▤</span><h3>{{ filters.value.search || filters.value.status ? 'No matching contracts' : 'No contract reviews yet' }}</h3><p>{{ filters.value.search || filters.value.status ? 'Try a different search or status.' : 'Use Start contract review to select a published workflow. Reviewed contracts will appear here when accessible to your account.' }}</p><div class="cx-actions"><button *ngIf="filters.value.search || filters.value.status" class="cx-btn cx-btn--secondary" type="button" (click)="resetFilters()">Clear filters</button></div></div>
+
+    <div class="cx-table-wrap" *ngIf="!loading && !error && rows.length">
+      <table class="cx-table"><thead><tr><th scope="col">Document</th><th scope="col">Type</th><th scope="col">Status</th><th scope="col">Expiration</th><th scope="col">Review</th><th scope="col"><span class="cx-sr-only">Open</span></th></tr></thead>
+        <tbody><tr *ngFor="let row of rows; trackBy: trackUuid">
+          <td class="cx-table__document"><a [routerLink]="['/workflows/contract-workspace', row.uuid]">{{ row.document_title || 'Untitled contract' }}</a><small>Updated review · Revision {{ row.revision }}</small></td>
+          <td>{{ row.contract_type || '—' }}</td>
+          <td><span class="cx-status" [attr.data-tone]="statusTone(row.status)"><span class="cx-status__dot" aria-hidden="true"></span>{{ label(row.status) | titlecase }}</span></td>
+          <td>{{ row.expiration_date ? (row.expiration_date | date:'mediumDate') : '—' }}</td>
+          <td><span [class.cx-alert-text]="row.blocking_issues > 0">{{ row.blocking_issues > 0 ? row.blocking_issues + ' blocking' : 'No blocking issues' }}</span><small>{{ row.source_coverage_complete === true ? 'Coverage complete' : row.source_coverage_complete === false ? 'Coverage incomplete' : 'Coverage not recorded' }}</small></td>
+          <td class="cx-table__action"><a class="cx-link" [routerLink]="['/workflows/contract-workspace', row.uuid]" [attr.aria-label]="'Open ' + row.document_title">Open <span aria-hidden="true">→</span></a></td>
+        </tr></tbody>
+      </table>
+    </div>
+    <footer *ngIf="!loading && !error && count > 0" class="cx-panel-footer"><span>Showing {{ firstRow }}–{{ lastRow }} of {{ count }}</span><div class="cx-pager"><button type="button" (click)="goToPage(page - 1)" [disabled]="!previous" aria-label="Previous page">Previous</button><span>Page {{ page }} of {{ pageCount }}</span><button type="button" (click)="goToPage(page + 1)" [disabled]="!next" aria-label="Next page">Next</button></div></footer>
+  </section>
+  <p class="cx-footnote">Only authorized contract reviews appear here. Workflow completion is not equivalent to a contract being signed.</p>
+</div>

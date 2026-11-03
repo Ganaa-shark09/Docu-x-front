@@ -32,6 +32,9 @@ export const API_ENDPOINTS = {
     externalDocuments: '/ai/external-documents/',
     externalDocumentsBulkUpload: '/ai/external-documents/bulk-upload/',
     llmProviders: '/ai/llm-providers/',
+    companyModels: '/ai/company-models/',
+    platformCompanies: '/ai/platform/companies/',
+    platformProviders: '/ai/platform/providers/',
   },
 
   approvals: {
@@ -41,6 +44,7 @@ export const API_ENDPOINTS = {
   workflows: {
     extractionTemplates: '/workflows/extraction-templates/',
     extractionRuns: '/workflows/extraction-runs/',
+    contractReviews: '/workflows/contract-reviews/',
   },
 
   notifications: {

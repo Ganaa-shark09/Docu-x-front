@@ -1,9 +1,5 @@
-<section class="workspace">
-  <nav class="tabs" aria-label="Legal navigation">
-    <a routerLink="/workflows/definitions">Workflows</a
-    ><a routerLink="/workflows/legal/playbooks">Playbooks</a
-    ><a routerLink="/workflows/legal/clause-types">Clause taxonomy</a>
-  </nav>
+<section class="workspace docux-unified-legal">
+  <app-contract-area-nav [active]="mode === 'taxonomy' ? 'taxonomy' : 'playbooks'" [showTaxonomy]="true" />
   <header class="heading">
     <div>
       <h1>
@@ -187,143 +183,226 @@
     </nav>
   }
   @if (book(); as b) {
-    <section class="card">
-      <div class="rule-heading">
-        <h2>{{ b.name }}</h2>
-        <span class="badge"
-          >{{ b.is_active ? 'Active' : 'Inactive' }} · Revision {{ b.revision }}</span
-        >
-      </div>
-      <p>
-        Department: {{ b.department_id || 'Company wide' }} · Active version reference:
-        {{ b.active_version_uuid || 'None' }}
-      </p>
-      @if (selected(); as v) {
-        <p class="notice">
-          Immutable published version {{ v.number }} ·
-          {{ v.uuid === b.active_version_uuid ? 'Current active version' : 'Historical version' }} ·
-          Published {{ v.created_at }}
-        </p>
-        <p>
-          Applicable documents: {{ v.document_types.join(', ') }} · Effective
-          {{ v.effective_from }} to {{ v.effective_until || 'No end' }}
-        </p>
-        <button type="button" (click)="draft()" [disabled]="pending()">Return to draft</button>
-      } @else {
-        <p class="notice">
-          Editable draft. Save before publishing; existing runs retain their original pinned
-          version.
-        </p>
-        <fieldset [disabled]="pending() || !manage()">
-          <div class="grid">
-            <label>Name<input name="bookName" [(ngModel)]="name" maxlength="150" /></label
-            ><label
-              >Description<textarea
-                name="bookDescription"
-                [(ngModel)]="description"
-              ></textarea></label
-            ><label>Document types<input name="documents" [(ngModel)]="documentTypes" /></label
-            ><label
-              >Effective start<input type="date" name="from" [(ngModel)]="effectiveFrom" /></label
-            ><label
-              >Effective end<input type="date" name="until" [(ngModel)]="effectiveUntil"
-            /></label>
+    <section class="playbook-editor" aria-label="Playbook editor">
+      <header class="playbook-editor__hero">
+        <div>
+          <span class="playbook-editor__eyebrow">LEGAL OPERATIONS · GOVERNED POLICY</span>
+          <h2>{{ b.name }}</h2>
+          <p class="muted">Review and maintain the draft policy, publish an immutable version, then activate the published version when it is ready for future analysis.</p>
+          <div class="playbook-editor__meta">
+            <span>Revision {{ b.revision }}</span>
+            <span>{{ b.department_id === null ? 'Company wide' : 'Department ' + b.department_id }}</span>
+            <span class="playbook-editor__state">{{ b.is_active ? 'Active' : 'Inactive' }}</span>
           </div>
-        </fieldset>
-      }
-      @if (taxonomyNext) {
-        <p class="warning">Load the remaining taxonomy before editing or saving rules.</p>
-        <button type="button" (click)="loadMoreTypes()" [disabled]="loading() || pending()">
-          Load more clause types
-        </button>
-      }
-      <app-legal-rule-editor
-        [rules]="rules"
-        [taxonomy]="editorTaxonomy()"
-        [disabled]="pending() || !manage() || !!selected() || !taxonomyReady"
-        (changed)="rules = $event; publishConfirmed = false"
-      />
-      @if (manage() && !selected()) {
-        <div class="actions">
-          <button
-            type="button"
-            (click)="save()"
-            [disabled]="pending() || !taxonomyReady || !validRules(rules, types())"
-          >
-            Save draft
-          </button>
         </div>
-        <label class="check"
-          ><input type="checkbox" [(ngModel)]="publishConfirmed" [disabled]="pending()" />I reviewed
-          the saved draft and want to publish an immutable version</label
-        ><button
-          type="button"
-          (click)="publish()"
-          [disabled]="pending() || !publishConfirmed || draftDirty()"
-        >
-          Publish saved draft
-        </button>
+        <a class="playbook-editor__button" routerLink="/workflows/legal/playbooks">Back to playbooks</a>
+      </header>
+
+      @if (selected(); as v) {
+        <div class="playbook-editor__notice" role="status">
+          Viewing immutable version {{ v.number }} ({{ v.uuid === b.active_version_uuid ? 'currently active' : 'historical' }}), published {{ v.created_at }}.
+          <button type="button" (click)="draft()" [disabled]="pending()">Return to editable draft</button>
+        </div>
       }
-      @if (manage()) {
-        <label class="check"
-          ><input type="checkbox" [(ngModel)]="activationConfirmed" [disabled]="pending()" />Confirm
-          changing activation for future analysis</label
-        >
-        <div class="actions">
-          <button
-            type="button"
-            (click)="activate(!b.is_active)"
-            [disabled]="
-              pending() || !activationConfirmed || (!b.is_active && !b.active_version_uuid)
-            "
-          >
-            {{ b.is_active ? 'Deactivate' : 'Activate current version' }}
-          </button>
-          @if (selected(); as v) {
-            <button
-              type="button"
-              (click)="activate(true, v.uuid)"
-              [disabled]="pending() || !activationConfirmed"
-            >
-              Activate version {{ v.number }}
-            </button>
+
+      <div class="playbook-editor__grid">
+        <div class="playbook-editor__main">
+          <section class="playbook-editor__panel" aria-labelledby="pb-details-heading">
+            <div class="playbook-editor__panel-heading">
+              <span class="playbook-editor__number">01</span>
+              <div><h3 id="pb-details-heading">Policy details</h3><p>Scope, document types, and effective period</p></div>
+            </div>
+            @if (selected(); as v) {
+              <dl class="playbook-editor__facts">
+                <div><dt>Document types</dt><dd>{{ v.document_types.join(', ') }}</dd></div>
+                <div><dt>Effective start</dt><dd>{{ v.effective_from }}</dd></div>
+                <div><dt>Effective end</dt><dd>{{ v.effective_until || 'No end date' }}</dd></div>
+              </dl>
+            } @else {
+              <fieldset class="playbook-editor__fields" [disabled]="pending() || !manage()">
+                <label>Name<input name="bookName" [(ngModel)]="name" maxlength="150" required /></label>
+                <label>Description<textarea name="bookDescription" [(ngModel)]="description" rows="3" maxlength="2000"></textarea></label>
+                <label>Document types (comma-separated)<input name="documents" [(ngModel)]="documentTypes" placeholder="contract" /></label>
+                <div class="playbook-editor__dates">
+                  <label>Effective start<input type="date" name="from" [(ngModel)]="effectiveFrom" /></label>
+                  <label>Effective end<input type="date" name="until" [(ngModel)]="effectiveUntil" /></label>
+                </div>
+              </fieldset>
+            }
+          </section>
+
+          <section class="playbook-editor__panel" aria-labelledby="pb-rules-heading">
+            <div class="playbook-editor__panel-heading">
+              <span class="playbook-editor__number">02</span>
+              <div><h3 id="pb-rules-heading">Clause rules</h3><p>Configure requirements, applicability and acceptable positions</p></div>
+              <span class="playbook-editor__count">{{ rules.length }} / 64</span>
+            </div>
+            @if (taxonomyNext) {
+              <p class="playbook-editor__notice" role="status">Additional clause types must be loaded before rules can be edited or saved.</p>
+              <button type="button" class="playbook-editor__button" (click)="loadMoreTypes()" [disabled]="loading() || pending()">Load more clause types</button>
+            }
+            <app-legal-rule-editor
+              [rules]="rules"
+              [taxonomy]="editorTaxonomy()"
+              [disabled]="pending() || !manage() || !!selected() || !taxonomyReady"
+              (changed)="ruleUpdated($event)"
+            />
+          </section>
+
+          @if (manage() && !selected()) {
+            @if (draftDirty()) {
+              <section class="playbook-editor__panel" aria-labelledby="pb-save-heading">
+                <div class="playbook-editor__panel-heading">
+                  <span class="playbook-editor__number">03</span>
+                  <div><h3 id="pb-save-heading">Save draft changes</h3><p>Only save when the policy or its clause rules have changed</p></div>
+                </div>
+                @if (draftIssues().length) {
+                  <div class="playbook-editor__validation" role="status">
+                    <strong>Complete these items before saving</strong>
+                    <ul>
+                      @for (issue of draftIssues(); track $index) { <li>{{ issue }}</li> }
+                    </ul>
+                    @for (r of rules; track $index; let i = $index) {
+                      @if (r.code !== suggestedCode(r.code) && suggestedCode(r.code)) {
+                        <button type="button" class="playbook-editor__text-button" (click)="applySuggestedCode(i)">Use suggested code for rule {{ i + 1 }}: {{ suggestedCode(r.code) }}</button>
+                      }
+                    }
+                  </div>
+                } @else {
+                  <p class="playbook-editor__notice" role="status">You have unsaved changes. Saving updates the draft revision but will not publish it.</p>
+                }
+                <div class="playbook-editor__action-row">
+                  <button type="button" class="playbook-editor__button playbook-editor__button--primary" (click)="save()" [disabled]="pending() || !taxonomyReady || draftIssues().length > 0">
+                    {{ pending() ? 'Saving…' : 'Save draft changes' }}
+                  </button>
+                </div>
+              </section>
+            } @else {
+              <div class="playbook-editor__complete" role="status">
+                <strong>Draft saved</strong>
+                <span>No unsaved changes. You can edit the policy to create another draft revision.</span>
+              </div>
+            }
+
+            @if (matchingPublishedVersion(); as published) {
+              <div class="playbook-editor__complete" role="status">
+                <strong>Published as version {{ published.number }}</strong>
+                <span>This saved policy already matches a published version. No further publishing action is required unless you make new changes.</span>
+              </div>
+            } @else {
+              <section class="playbook-editor__panel" aria-labelledby="pb-publish-heading">
+                <div class="playbook-editor__panel-heading">
+                  <span class="playbook-editor__number">04</span>
+                  <div><h3 id="pb-publish-heading">Publish policy version</h3><p>Freeze the saved rules and taxonomy into an immutable version</p></div>
+                </div>
+                @if (draftDirty()) {
+                  <p class="playbook-editor__notice">Save your changes before publishing a new version.</p>
+                } @else if (draftIssues().length) {
+                  <p class="playbook-editor__notice">Finish the draft validation requirements before publishing.</p>
+                } @else {
+                  <p class="playbook-editor__success">The saved draft is ready for publication review.</p>
+                }
+                <label class="playbook-editor__checkbox">
+                  <input type="checkbox" [(ngModel)]="publishConfirmed" [disabled]="pending() || draftDirty() || draftIssues().length > 0" />
+                  <span>I reviewed the saved draft and approve publication as an immutable version.</span>
+                </label>
+                <div class="playbook-editor__action-row">
+                  <button type="button" class="playbook-editor__button playbook-editor__button--primary" (click)="publish()" [disabled]="pending() || !publishConfirmed || draftDirty() || draftIssues().length > 0">Publish saved draft</button>
+                  <span class="muted">Published versions must be activated separately before they govern new analysis.</span>
+                </div>
+              </section>
+            }
+          }
+
+          @if (manage() && !selected()) {
+            <section class="playbook-editor__panel" aria-labelledby="pb-activate-heading">
+              <div class="playbook-editor__panel-heading">
+                <span class="playbook-editor__number">05</span>
+                <div><h3 id="pb-activate-heading">Policy activation</h3><p>Control which published version applies to future analysis</p></div>
+              </div>
+              @if (b.is_active) {
+                <div class="playbook-editor__complete" role="status">
+                  <strong>Playbook active</strong>
+                  <span>The active policy version applies to new legal analysis. Existing reviews retain the version originally pinned to them.</span>
+                </div>
+                <details class="playbook-editor__management">
+                  <summary>Change version or deactivate</summary>
+                  <div class="playbook-editor__management-body">
+                    @if (availableVersions().length) {
+                      <label class="playbook-editor__version-field">Published version
+                        <select [(ngModel)]="activationVersionUuid" [disabled]="pending()">
+                          @for (v of availableVersions(); track v.uuid) {
+                            <option [value]="v.uuid">Version {{ v.number }}{{ v.uuid === b.active_version_uuid ? ' (currently active)' : '' }}</option>
+                          }
+                        </select>
+                      </label>
+                    }
+                    <label class="playbook-editor__checkbox">
+                      <input type="checkbox" [(ngModel)]="activationConfirmed" [disabled]="pending()" />
+                      <span>I understand this changes which policy is used for future analysis only.</span>
+                    </label>
+                    <div class="playbook-editor__action-row">
+                      @if (!alreadyActive() && activationVersion()) {
+                        <button type="button" class="playbook-editor__button playbook-editor__button--primary" (click)="activate(true)" [disabled]="pending() || !activationConfirmed">Switch to version {{ activationVersion()?.number }}</button>
+                      }
+                      <button type="button" class="playbook-editor__button playbook-editor__button--danger" (click)="activate(false)" [disabled]="pending() || !activationConfirmed">Deactivate playbook</button>
+                    </div>
+                  </div>
+                </details>
+              } @else if (availableVersions().length) {
+                <p class="muted">Select one of the published versions below. Publishing alone does not activate a policy.</p>
+                <label class="playbook-editor__version-field">Version to activate
+                  <select [(ngModel)]="activationVersionUuid" [disabled]="pending()">
+                    @for (v of availableVersions(); track v.uuid) {
+                      <option [value]="v.uuid">Version {{ v.number }} · Published {{ v.created_at }}</option>
+                    }
+                  </select>
+                </label>
+                <label class="playbook-editor__checkbox">
+                  <input type="checkbox" [(ngModel)]="activationConfirmed" [disabled]="pending()" />
+                  <span>I understand this published policy will govern new analysis. Existing reviews retain their pinned policy versions.</span>
+                </label>
+                <div class="playbook-editor__action-row">
+                  <button type="button" class="playbook-editor__button playbook-editor__button--primary" (click)="activate(true)" [disabled]="pending() || !activationConfirmed || !activationVersionUuid || !activationVersion()">Activate version {{ activationVersion()?.number }}</button>
+                </div>
+              } @else {
+                <p class="playbook-editor__notice">No published version is available yet. Save and publish a draft before activation.</p>
+              }
+            </section>
           }
         </div>
-      }
-    </section>
-    <section class="card">
-      <h2>Published version history</h2>
-      <p class="muted">
-        Publication freezes rules and taxonomy. Inspect older versions without editing them.
-      </p>
-      @for (v of history(); track v.uuid) {
-        <div class="rule-heading">
-          <span
-            >Version {{ v.number }} · {{ v.created_at }} ·
-            {{ v.uuid === b.active_version_uuid ? 'Active' : 'Historical' }}</span
-          ><button type="button" (click)="inspect(v)" [disabled]="pending()">
-            Inspect version {{ v.number }}
-          </button>
-        </div>
-      } @empty {
-        <p>No published versions.</p>
-      }
-      <nav class="pagination">
-        <button
-          type="button"
-          (click)="versions(-1)"
-          [disabled]="!versionPrevious || pending() || loading()"
-        >
-          Previous</button
-        ><span>Page {{ versionPage }}</span
-        ><button
-          type="button"
-          (click)="versions(1)"
-          [disabled]="!versionNext || pending() || loading()"
-        >
-          Next
-        </button>
-      </nav>
+
+        <aside class="playbook-editor__side" aria-label="Version information">
+          <section class="playbook-editor__panel playbook-editor__panel--side">
+            <h3>Version status</h3>
+            <dl class="playbook-editor__facts">
+              <div><dt>Draft revision</dt><dd>{{ b.revision }}</dd></div>
+              <div><dt>Active status</dt><dd>{{ b.is_active ? 'Active' : 'Inactive' }}</dd></div>
+              <div><dt>Active published version</dt><dd>{{ b.active_version_uuid ? 'Pinned' : 'Not assigned' }}</dd></div>
+              <div><dt>Published versions on page</dt><dd>{{ history().length }}</dd></div>
+            </dl>
+          </section>
+          <section class="playbook-editor__panel playbook-editor__panel--side">
+            <h3>Published version history</h3>
+            <p class="muted">Published policies are immutable. Inspect a version without editing it.</p>
+            <div class="playbook-editor__versions">
+              @for (v of history(); track v.uuid) {
+                <div class="playbook-editor__version">
+                  <div><strong>Version {{ v.number }}</strong><small>{{ v.uuid === b.active_version_uuid ? 'Active version' : 'Published' }} · {{ v.created_at }}</small></div>
+                  <button type="button" class="playbook-editor__text-button" (click)="inspect(v)" [disabled]="pending()">Inspect</button>
+                </div>
+              } @empty {
+                <p class="muted">No published versions yet.</p>
+              }
+            </div>
+            <nav class="pagination" aria-label="Published version pages">
+              <button type="button" (click)="versions(-1)" [disabled]="!versionPrevious || pending() || loading()">Previous</button>
+              <span>Page {{ versionPage }}</span>
+              <button type="button" (click)="versions(1)" [disabled]="!versionNext || pending() || loading()">Next</button>
+            </nav>
+          </section>
+        </aside>
+      </div>
     </section>
   }
 </section>
